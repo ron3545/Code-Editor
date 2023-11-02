@@ -3,11 +3,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../imgui/stb_image.h"
 
-#define IMGUI_DEFINE_MATH_OPERATORS
-#include "../imgui/imgui.h"
-#include "../imgui/imgui_internal.h"
-#include "../imgui/imgui_stdlib.h"
-
 extern ID3D11Device* g_pd3dDevice;
 
 // Simple helper function to load an image into a DX11 texture with common settings

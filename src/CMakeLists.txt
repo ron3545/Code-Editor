@@ -9,6 +9,7 @@ add_subdirectory(Imagehandler)
 add_subdirectory(ToolBar)
 add_subdirectory(MenuBar)
 add_subdirectory(StatusBar)
+add_subdirectory(Editor)
 
 add_executable(${PROJECT_NAME} WIN32  CodeEditor.cpp)
 
@@ -18,6 +19,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     MenuBar
     StatusBar
     ToolBar
+    Editor
 
     d3d11.lib 
     dxgi.lib 

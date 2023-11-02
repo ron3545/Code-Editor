@@ -15,15 +15,19 @@
 #include "ToolBar/ToolBar.h"
 #include "ImageHandler/ImageHandler.h"
 #include "StatusBar/StatusBar.h"
+#include "Editor/CmdPanel.h"
+
+
 
 constexpr wchar_t* SOFTWARE_NAME = L"ArmSim Pro";
 const char* LOGO = "";
  HWND hwnd = NULL;
 //======================================MENU ITEM==============================================
-ImGui::ToolBar* vertical_tool_bar   = nullptr;
-ImGui::ToolBar* horizontal_tool_bar = nullptr;
+ArmSimPro::ToolBar* vertical_tool_bar   = nullptr;
+ArmSimPro::ToolBar* horizontal_tool_bar = nullptr;
 
-ImGui::StatusBar* status_bar = nullptr;
+ArmSimPro::StatusBar* status_bar = nullptr;
+ArmSimPro::CmdPanel* cmd_panel = nullptr;
 //=============================================================================================
 ID3D11Device*                   g_pd3dDevice = nullptr;
 static ID3D11DeviceContext*     g_pd3dDeviceContext = nullptr;
@@ -47,8 +51,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     hwnd = ::CreateWindowW(wc.lpszClassName, 
                     SOFTWARE_NAME, 
                     WS_OVERLAPPEDWINDOW, 
-                    100, 
-                    100, 
+                    0, 
+                    0, 
                     1280, 
                     800, 
                     nullptr, 
@@ -129,29 +133,30 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/ON/Search.png", &Search_image.ON_textureID, &Search_image.width, &Search_image.height));
     IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/OFF/Search.png", &Search_image.OFF_textureID));
 
-    IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/ON/Settings.png", &Settings_image.ON_textureID, &Settings_image.width, &Settings_image.height));
-    IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/OFF/Settings.png", &Settings_image.OFF_textureID));
+    //IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/ON/Settings.png", &Settings_image.ON_textureID, &Settings_image.width, &Settings_image.height));
+    //IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/OFF/Settings.png", &Settings_image.OFF_textureID));
 //================================================================================================================================================================
-
+   
 //==================================Initializations===============================================================================================================
     const RGBA bg_col = RGBA(24, 24, 24, 255);
     const RGBA highlighter_col = RGBA(0, 120, 212, 255);
-    vertical_tool_bar = new ImGui::ToolBar("Vertical", ImVec2(25, 25), bg_col, highlighter_col, 5, 30, ImGuiAxis_Y);
+    vertical_tool_bar = new ArmSimPro::ToolBar("Vertical", bg_col, 30, ImGuiAxis_Y);
     {
-        vertical_tool_bar->AppendTool("Folder", Folder_image, nullptr);
-        vertical_tool_bar->AppendTool("Search", Search_image, nullptr);
-        vertical_tool_bar->AppendTool("Debug", Debug_image, nullptr);
-        vertical_tool_bar->AppendTool("Simulate", Robot_image, nullptr);
-        vertical_tool_bar->AppendTool("Settings", Settings_image, nullptr, false);  
+        vertical_tool_bar->AppendTool("Folder", Folder_image, nullptr);                
+        vertical_tool_bar->AppendTool("Search", Search_image, nullptr);                
+        vertical_tool_bar->AppendTool("Debug", Debug_image, nullptr);                  
+        vertical_tool_bar->AppendTool("Simulate", Robot_image, nullptr);               
+        //vertical_tool_bar->AppendTool("Settings", Settings_image, nullptr, true);      
     }
 
-    horizontal_tool_bar = new ImGui::ToolBar("Horizontal", ImVec2(25, 25), bg_col, 30);
+    horizontal_tool_bar = new ArmSimPro::ToolBar("Horizontal", bg_col, 30, ImGuiAxis_X);
     {
-        horizontal_tool_bar->AppendTool("verify", Verify_image, nullptr);
-        horizontal_tool_bar->AppendTool("Upload", Compile_image, nullptr);
+        horizontal_tool_bar->AppendTool("verify", Verify_image, nullptr, true);   horizontal_tool_bar->SetPaddingBefore("verify", 10);
+        horizontal_tool_bar->AppendTool("Upload", Compile_image, nullptr, true);  horizontal_tool_bar->SetPaddingBefore("Upload", 5);
     }
 
-    status_bar = new ImGui::StatusBar("status", 30, horizontal_tool_bar->GetColor(), RGBA(51,57,60,200));
+    status_bar = new ArmSimPro::StatusBar("status", 20, horizontal_tool_bar->GetbackgroundColor());
+    cmd_panel = new ArmSimPro::CmdPanel("Command Line", status_bar->GetHeight(), bg_col);
 //==================================================================================================================================================================
 
     bool done = false;
@@ -180,6 +185,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
         {   
+            float main_menubar_height;
             if(ImGui::BeginMainMenuBar())
             {   
                 if (ImGui::BeginMenu("File"))
@@ -210,45 +216,15 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
                     if (ImGui::MenuItem("Paste", "CTRL+V")) {}
                     ImGui::EndMenu();
                 }
+                main_menubar_height = ImGui::GetWindowHeight();
                 ImGui::EndMainMenuBar();
             }
 
-            vertical_tool_bar->SetPaddingBefore("Settings", ImGui::GetWindowHeight() - vertical_tool_bar->GetToolSize().y);
+            horizontal_tool_bar->SetToolBar(main_menubar_height + 10);
+            vertical_tool_bar->SetToolBar(horizontal_tool_bar->GetThickness(), status_bar->GetHeight());
 
-            status_bar->SetStatusBar();
-            horizontal_tool_bar->SetToolBar();
-            vertical_tool_bar->SetToolBar(horizontal_tool_bar->GetThickness(), status_bar->GetThickness());
-
-            static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
-
-            // We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
-            // because it would be confusing to have two docking targets within each others.
-            ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
-            ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(viewport->Pos);
-            ImGui::SetNextWindowSize(viewport->Size);
-            ImGui::SetNextWindowViewport(viewport->ID);
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-            window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize;
-            window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-
-            // When using ImGuiDockNodeFlags_PassthruCentralNode, DockSpace() will render our background and handle the pass-thru hole, so we ask Begin() to not render a background.
-            if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
-            window_flags |= ImGuiWindowFlags_NoBackground;
-
-            RGBA bg = RGBA(31, 39,42, 255);
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-            ImGui::PushStyleColor(ImGuiCol_WindowBg, bg.GetCol());
-            ImGui::Begin("DockSpace", nullptr, window_flags);
-            {
-                ImGui::PopStyleVar();
-                ImGui::PopStyleVar(2);
-
-                
-            }
-            ImGui::End();
-            ImGui::PopStyleColor();
+            status_bar->SetStatusBar(std::to_string(vertical_tool_bar->GetTotalWidth()).c_str());
+            cmd_panel->SetPanel(100, vertical_tool_bar->GetTotalWidth());
         }
         ImGui::Render();
         const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
@@ -273,13 +249,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     ::DestroyWindow(hwnd);
     ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
 
-    delete file;
-    delete edit;
-
     delete vertical_tool_bar;
     delete horizontal_tool_bar;
-
+    delete cmd_panel;
     delete status_bar;
+
     return 0;
 }
 

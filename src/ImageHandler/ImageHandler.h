@@ -1,12 +1,17 @@
 #pragma once
 #include <d3d11.h>
+
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include "../imgui/imgui.h"
+#include "../imgui/imgui_internal.h"
+#include "../imgui/imgui_stdlib.h"
 
 struct RGBA
-{
-    float R, G, B, A;
+{   
     typedef unsigned int uint;
-    RGBA() {}
+    uint R, G, B, A;
+    
+    RGBA() : R(NULL), G(NULL), B(NULL), A(NULL) {}
     RGBA(uint r, uint g, uint b, uint a) : R(r), G(g), B(b), A(a) {}
 
     RGBA operator=(const RGBA& other)
@@ -19,14 +24,14 @@ struct RGBA
         return *this;
     }
 
-    ImVec4 GetCol()
+    inline ImVec4 GetCol()
     {
-        return ImVec4(R/255, G/255, B/255, A/255);
+        return ImVec4((float)R/255, (float)G/255, (float)B/255, (float)A/255);
     }
 
-    ImVec4 GetCol() const
+    inline ImVec4 GetCol() const
     {
-        return ImVec4(R/255, G/255, B/255, A/255);
+        return ImVec4((float)R/255, (float)G/255, (float)B/255, (float)A/255);
     }
 };
 
