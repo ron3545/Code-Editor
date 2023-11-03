@@ -71,7 +71,7 @@ namespace ArmSimPro
         };
 
     private:
-        const char* _label;
+        const std::string _label;
         ImVec2 _tool_size;
         
         const RGBA _bg_col;
@@ -95,7 +95,7 @@ namespace ArmSimPro
         std::vector<std::string> ToolsNoHighlight;
         
     public:
-        ToolBar() : _label(nullptr), _toolbar_axis(ImGuiAxis_None), _isPrimarySideBarVisible(false), _highlighter_thickness(0.0f), _toolbar_thickness(0.0f), _spacing(0.0f), _primary_sidebar_width(0.0f) {}
+        ToolBar() : _toolbar_axis(ImGuiAxis_None), _isPrimarySideBarVisible(false), _highlighter_thickness(0.0f), _toolbar_thickness(0.0f), _spacing(0.0f), _primary_sidebar_width(0.0f) {}
         ToolBar(const char* label, const RGBA& bg_col, float toolbar_thickness, ImGuiAxis toolbar_axis);
         ~ToolBar() {}
 

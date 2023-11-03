@@ -7,8 +7,11 @@
 // See more C++ related extension (fmt, RAII, syntaxis sugar) on Wiki:
 //   https://github.com/ocornut/imgui/wiki/Useful-Extensions#cness
 
+#define IMGUI_DEFINE_MATH_OPERATORS
+
 #include "imgui.h"
 #include "imgui_stdlib.h"
+
 
 // Clang warnings with -Weverything
 #if defined(__clang__)
@@ -78,6 +81,57 @@ bool ImGui::InputTextWithHint(const char* label, const char* hint, std::string* 
     cb_user_data.ChainCallback = callback;
     cb_user_data.ChainCallbackUserData = user_data;
     return InputTextWithHint(label, hint, (char*)str->c_str(), str->capacity() + 1, flags, InputTextCallback, &cb_user_data);
+}
+
+bool ImGui::Splitter(const char* label, const ImU32& OffState, const ImU32& OnState, const ImVec2& size_arg, const ImVec2& pos_arg,float* thickness, ImGuiAxis axis)
+{
+    //TODO: when there is multiple splitter, mouse cursor on the other cannot be set.
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    IM_ASSERT(size_arg.x != 0.0f && size_arg.y != 0.0f);
+
+    ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const ImGuiID id = window->GetID(label);
+    
+    const ImVec2 padding = g.Style.FramePadding;
+    ImVec2 size = CalcItemSize(size_arg, 0.0f, 0.0f);
+
+    const ImRect bb(pos_arg, pos_arg + size);
+
+    ItemSize(size);
+    if (!ItemAdd(bb, id))
+        return false;
+    
+    bool hovered, held;
+    bool pressed = ButtonBehavior(bb, id, &hovered, &held, ImGuiButtonFlags_MouseButtonDefault_);
+    
+    const ImU32 col = (pressed || hovered ||held)? OnState : OffState;
+    RenderNavHighlight(bb, id);
+    RenderFrame(bb.Min, bb.Max, col, true, 0.0f);
+    window->DrawList->AddRectFilled(bb.Min, bb.Max, GetColorU32(col));
+
+    ImGuiMouseCursor cursor = ImGuiMouseCursor_Arrow;
+    if(pressed || IsMouseHoveringRect(bb.Min, bb.Max) || held)
+    {
+        if(axis == ImGuiAxis_Y)
+            cursor = ImGuiMouseCursor_ResizeEW;
+        else 
+            cursor = ImGuiMouseCursor_ResizeNS;
+    }
+
+    SetMouseCursor(cursor);
+    if(IsItemActive())
+    {   
+        if(axis == ImGuiAxis_X)
+            *thickness -= ImGui::GetIO().MouseDelta.y;
+        else if (axis == ImGuiAxis_Y)
+            *thickness += ImGui::GetIO().MouseDelta.x/6;
+    }
+    SetMouseCursor(cursor);
+    return pressed;
 }
 
 #if defined(__clang__)

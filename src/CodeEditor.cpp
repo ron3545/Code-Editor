@@ -156,7 +156,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     }
 
     status_bar = new ArmSimPro::StatusBar("status", 20, horizontal_tool_bar->GetbackgroundColor());
-    cmd_panel = new ArmSimPro::CmdPanel("Command Line", status_bar->GetHeight(), bg_col);
+    cmd_panel = new ArmSimPro::CmdPanel("Command Line", status_bar->GetHeight(), bg_col, highlighter_col);
 //==================================================================================================================================================================
 
     bool done = false;

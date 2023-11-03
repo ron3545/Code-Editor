@@ -22,17 +22,16 @@ namespace ArmSimPro
         ImGuiViewportP* viewportp;
 
         const RGBA _bg_col;
+        const RGBA _highlighter_col;
         
     public:
         CmdPanel() : viewportp(nullptr) {}
-        CmdPanel(const char* IDname, float status_bar_thickness, const RGBA& bg_col);
+        CmdPanel(const char* IDname, float status_bar_thickness, const RGBA& bg_col, const RGBA& highlighter_col);
         ~CmdPanel() {}
 
         void SetPanel(float top_margin, float right_margin);
         void SetHeight(float height) {_height = height;}
-        void SetWidth(float width)   { width = _width;}
-
-        inline float GetCurrentWidth() const  {return _width;}
+        
         inline float GetCurretnHeight() const {return _height;}
     private:
 
