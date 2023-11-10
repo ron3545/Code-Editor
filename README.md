@@ -1,5 +1,7 @@
 # ArmSimPro Code Editor
 
+![Capture](https://github.com/ron3545/ArmSim-Pro/assets/86136180/ac044228-ece7-41ff-86c6-243f35f0370f)
+
 https://github.com/ron3545/ArmSim-Pro/assets/86136180/c57ce211-72a9-475e-8565-36b74467fb56
 
 ## Overview
