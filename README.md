@@ -2,7 +2,11 @@
 
 ![Capture](https://github.com/ron3545/ArmSim-Pro/assets/86136180/ac044228-ece7-41ff-86c6-243f35f0370f)
 
-https://github.com/ron3545/ArmSim-Pro/assets/86136180/c57ce211-72a9-475e-8565-36b74467fb56
+
+
+https://github.com/ron3545/ArmSim-Pro/assets/86136180/5d9ea109-fdf2-4963-8536-9ef0b1584f25
+
+
 
 ## Overview
 The ArmSimPro Code Editor is a versatile text editor designed specifically for programming microcontrollers that control a 6 Degrees of Freedom (6 DOF) robotic arm. It provides a user-friendly interface for writing, editing, and debugging code related to the control and movement of the robotic arm.
