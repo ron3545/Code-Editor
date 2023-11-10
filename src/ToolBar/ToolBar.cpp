@@ -142,34 +142,36 @@ namespace ArmSimPro
         ImGui::SetNextWindowViewport(viewport->ID);
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(5.0f, 5.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         ImGui::PushStyleColor(ImGuiCol_WindowBg, _bg_col.GetCol());
-        ImGui::Begin(std::string(_label + " Primary SideBar").c_str(), NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus );
+        ImGui::Begin(std::string(_label + " Primary SideBar").c_str(), NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus);
         {   
-
             ImVec2 windowPos = ImGui::GetWindowPos();
             ImVec2 windowSize = ImGui::GetWindowSize();
 
             const float splitter_thickness = 6;
-            ImVec2 splitter_size(splitter_thickness, windowSize.y + windowPos.y);
-            ImVec2 splitter_pos(windowPos.x + (_primary_sidebar_width - 6), 0);
+            ImVec2 splitter_size(splitter_thickness, windowPos[ImGuiAxis_Y] + windowSize[ImGuiAxis_Y]);
+            ImVec2 splitter_pos(windowPos.x + (_primary_sidebar_width - splitter_thickness), 0);
 
             ImGui::Splitter(std::string(_label + " splitter").c_str(), ImGui::GetColorU32(_bg_col.GetCol()),
                             ImGui::GetColorU32(_highlighter_col.GetCol()), splitter_size, splitter_pos, 
                             &_primary_sidebar_width, ImGuiAxis_Y);
-
+            
+            ImGuiMouseCursor cursor = ImGuiMouseCursor_Arrow;
+            if(ImGui::IsItemActive() || ImGui::IsItemHovered())
+                cursor = ImGuiMouseCursor_ResizeEW;
+            ImGui::SetMouseCursor(cursor);
             //size limit
-            if(_primary_sidebar_width < 164.400024)
-                _primary_sidebar_width = 164.400024;
-            else if(_primary_sidebar_width > 670.401486)
-                _primary_sidebar_width = 670.401486;
+            if(_primary_sidebar_width < 197.33)
+                _primary_sidebar_width = 197.33;
+            else if(_primary_sidebar_width > 579.33)
+                _primary_sidebar_width = 579.33;
 
             //ptr_to_func();
         }
         ImGui::PopStyleColor();
         ImGui::End();
-        ImGui::PopStyleVar(3);
+        ImGui::PopStyleVar(2);
     }
 
     void ToolBar::VeritcalSpacing(const ToolTip& tool, float spacing)

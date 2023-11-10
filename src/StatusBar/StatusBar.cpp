@@ -1,6 +1,6 @@
 #include "StatusBar.h"
 
-void ArmSimPro::StatusBar::SetStatusBar(const char* text)
+void ArmSimPro::StatusBar::BeginStatusBar()
 {
     _tool_size = ImVec2(_thickness, _thickness);
     ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -22,44 +22,14 @@ void ArmSimPro::StatusBar::SetStatusBar(const char* text)
     ImGui::SetNextWindowPos(pos);
     ImGui::SetNextWindowViewport(viewport->ID);
 
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(5.0f, 5.0f));
     ImGui::PushStyleColor(ImGuiCol_WindowBg, _bg_col.GetCol());
     ImGui::Begin(_IDname, NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoFocusOnAppearing);
-    { 
-        ImGui::Text(text);
-    }
+}
+void ArmSimPro::StatusBar::EndStatusBar()
+{
     ImGui::PopStyleColor();
-    ImGui::End();
     ImGui::PopStyleVar(2);
-}
-
-void ArmSimPro::StatusBar::SetSpaceBefore(const char* ToolID, float value)
-{
-
-}
-
-void ArmSimPro::StatusBar::AppendTool(const char* ToolID, const ImageData& image, std::function<void()> ptr_to_func)
-{
-
-}
-
-void ArmSimPro::StatusBar::SetHorizontalSpace(float value)
-{
-
-}
-
-bool ArmSimPro::StatusBar::ImageButton2State(const ImVec2& size)
-{
-    return true;
-}
-
-bool ArmSimPro::StatusBar::TextButtonWithHighligher(const ImVec2& size)
-{
-    return true;
-}
-
-bool ArmSimPro::StatusBar::GetButtonBehavior()
-{
-    return true;
+    ImGui::End();
 }

@@ -93,10 +93,8 @@ bool ImGui::Splitter(const char* label, const ImU32& OffState, const ImU32& OnSt
     IM_ASSERT(size_arg.x != 0.0f && size_arg.y != 0.0f);
 
     ImGuiContext& g = *GImGui;
-    const ImGuiStyle& style = g.Style;
+    g.IO.MouseDrawCursor = true;
     const ImGuiID id = window->GetID(label);
-    
-    const ImVec2 padding = g.Style.FramePadding;
     ImVec2 size = CalcItemSize(size_arg, 0.0f, 0.0f);
 
     const ImRect bb(pos_arg, pos_arg + size);
@@ -113,24 +111,15 @@ bool ImGui::Splitter(const char* label, const ImU32& OffState, const ImU32& OnSt
     RenderFrame(bb.Min, bb.Max, col, true, 0.0f);
     window->DrawList->AddRectFilled(bb.Min, bb.Max, GetColorU32(col));
 
-    ImGuiMouseCursor cursor = ImGuiMouseCursor_Arrow;
-    if(pressed || IsMouseHoveringRect(bb.Min, bb.Max) || held)
-    {
-        if(axis == ImGuiAxis_Y)
-            cursor = ImGuiMouseCursor_ResizeEW;
-        else 
-            cursor = ImGuiMouseCursor_ResizeNS;
-    }
-
-    SetMouseCursor(cursor);
     if(IsItemActive())
     {   
+        ImGui::MarkItemEdited(id);
         if(axis == ImGuiAxis_X)
             *thickness -= ImGui::GetIO().MouseDelta.y;
         else if (axis == ImGuiAxis_Y)
             *thickness += ImGui::GetIO().MouseDelta.x/6;
     }
-    SetMouseCursor(cursor);
+    
     return pressed;
 }
 

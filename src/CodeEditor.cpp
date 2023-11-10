@@ -6,9 +6,21 @@
 #include "imgui/imgui_stdlib.h"
 #include "imgui/imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
+
 #include <d3d11.h>
 #include <tchar.h>
 #include <dwmapi.h>
+
+#include <mutex>
+#include <thread>
+#include <numeric>
+#include <future>
+
+#include <fstream>
+#include <streambuf>
+#define DIRECTINPUT_VERSION 0x0800
+#include <dinput.h>
+#include <tchar.h>
 
 #include "MenuBar/File.h"
 #include "MenuBar/Edit.h"
@@ -16,20 +28,25 @@
 #include "ImageHandler/ImageHandler.h"
 #include "StatusBar/StatusBar.h"
 #include "Editor/CmdPanel.h"
-
-
+#include "Editor/TextEditor.h"
 
 constexpr wchar_t* SOFTWARE_NAME = L"ArmSim Pro";
 const char* LOGO = "";
- HWND hwnd = NULL;
-//======================================MENU ITEM==============================================
-ArmSimPro::ToolBar* vertical_tool_bar   = nullptr;
-ArmSimPro::ToolBar* horizontal_tool_bar = nullptr;
-
-ArmSimPro::StatusBar* status_bar = nullptr;
-ArmSimPro::CmdPanel* cmd_panel = nullptr;
+HWND hwnd = NULL;
 //=============================================================================================
-ID3D11Device*                   g_pd3dDevice = nullptr;
+static const char* Consolas_Font        = "../../../Utils/Fonts/Consolas.ttf";
+static const char* DroidSansMono_Font   = "../../../Utils/Fonts/DroidSansMono.ttf";
+static const char* Menlo_Regular_Font   = "../../../Utils/Fonts/Menlo-Regular.ttf";
+static const char* MONACO_Font          = "../../../Utils/Fonts/MONACO.TTF";
+
+//======================================CLASS DECLARATION======================================
+static ArmSimPro::ToolBar* vertical_tool_bar   = nullptr;
+static ArmSimPro::ToolBar* horizontal_tool_bar = nullptr;
+
+static ArmSimPro::StatusBar* status_bar = nullptr;
+static ArmSimPro::CmdPanel* cmd_panel = nullptr;
+//=============================================================================================
+       ID3D11Device*            g_pd3dDevice = nullptr; //should be non-static. Other translation units will be using this
 static ID3D11DeviceContext*     g_pd3dDeviceContext = nullptr;
 static IDXGISwapChain*          g_pSwapChain = nullptr;
 static UINT                     g_ResizeWidth = 0, g_ResizeHeight = 0;
@@ -85,7 +102,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
-    io.IniFilename = NULL;  //prevents from saving the last states and position of each widgets
    
     io.DisplaySize = ImVec2(1280, 720) / io.DisplayFramebufferScale;
     
@@ -105,7 +121,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-//======================================Load Icons/Images==========================================================================================================
+//======================================Load Icons/Images/Fonts==========================================================================================================
     static ImageData Compile_image;
     static ImageData Verify_image;
  
@@ -135,6 +151,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 
     //IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/ON/Settings.png", &Settings_image.ON_textureID, &Settings_image.width, &Settings_image.height));
     //IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/OFF/Settings.png", &Settings_image.OFF_textureID));
+
+    static const float code_editor_font_size = 24;
+    static const float GUI_font_size = 14;
+    static ImFont* Consolas      = io.Fonts->AddFontFromFileTTF(Consolas_Font     , GUI_font_size); //default
+    static ImFont* DroidSansMono = io.Fonts->AddFontFromFileTTF(DroidSansMono_Font, code_editor_font_size);
+    static ImFont* Menlo_Regular = io.Fonts->AddFontFromFileTTF(Menlo_Regular_Font, code_editor_font_size);
+    static ImFont* MONACO        = io.Fonts->AddFontFromFileTTF(MONACO_Font       , code_editor_font_size);
 //================================================================================================================================================================
    
 //==================================Initializations===============================================================================================================
@@ -155,8 +178,105 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         horizontal_tool_bar->AppendTool("Upload", Compile_image, nullptr, true);  horizontal_tool_bar->SetPaddingBefore("Upload", 5);
     }
 
-    status_bar = new ArmSimPro::StatusBar("status", 20, horizontal_tool_bar->GetbackgroundColor());
+    status_bar = new ArmSimPro::StatusBar("status", 30, horizontal_tool_bar->GetbackgroundColor());
     cmd_panel = new ArmSimPro::CmdPanel("Command Line", status_bar->GetHeight(), bg_col, highlighter_col);
+
+//==============================================Setting up Code Editor======================================================================================
+    ArmSimPro::TextEditor txt_editor = ArmSimPro::TextEditor(bg_col.GetCol());
+    ArmSimPro::TextEditor::Palette colors;
+    {
+        colors[static_cast<unsigned int>(ArmSimPro::TextEditor::PaletteIndex::Background)] = ImGui::GetColorU32(RGBA(31, 31, 31, 255).GetCol());
+        colors[static_cast<unsigned int>(ArmSimPro::TextEditor::PaletteIndex::CurrentLineFill)] = ImGui::GetColorU32(RGBA(31, 31, 31, 80).GetCol());
+        colors[static_cast<unsigned int>(ArmSimPro::TextEditor::PaletteIndex::CurrentLineFillInactive)] = ImGui::GetColorU32(RGBA(31, 31, 31, 80).GetCol());
+        colors[static_cast<unsigned int>(ArmSimPro::TextEditor::PaletteIndex::CurrentLineEdge)] = ImGui::GetColorU32(RGBA(117, 117, 117, 255).GetCol());
+
+    }
+    //txt_editor->SetPalette(colors);
+
+    //language selection
+    static bool _use_cpp_lang = true; 
+    auto programming_lang = (_use_cpp_lang)? ArmSimPro::TextEditor::LanguageDefinition::CPlusPlus() : ArmSimPro::TextEditor::LanguageDefinition::C();
+
+    static const char* ppnames[] = { "NULL", "PM_REMOVE",
+		"ZeroMemory", "DXGI_SWAP_EFFECT_DISCARD", "D3D_FEATURE_LEVEL", "D3D_DRIVER_TYPE_HARDWARE", "WINAPI","D3D11_SDK_VERSION", "assert" };
+    
+    static const char* ppvalues[] = { 
+		"#define NULL ((void*)0)", 
+		"#define PM_REMOVE (0x0001)",
+		"Microsoft's own memory zapper function\n(which is a macro actually)\nvoid ZeroMemory(\n\t[in] PVOID  Destination,\n\t[in] SIZE_T Length\n); ", 
+		"enum DXGI_SWAP_EFFECT::DXGI_SWAP_EFFECT_DISCARD = 0", 
+		"enum D3D_FEATURE_LEVEL", 
+		"enum D3D_DRIVER_TYPE::D3D_DRIVER_TYPE_HARDWARE  = ( D3D_DRIVER_TYPE_UNKNOWN + 1 )",
+		"#define WINAPI __stdcall",
+		"#define D3D11_SDK_VERSION (7)",
+		" #define assert(expression) (void)(                                                  \n"
+        "    (!!(expression)) ||                                                              \n"
+        "    (_wassert(_CRT_WIDE(#expression), _CRT_WIDE(__FILE__), (unsigned)(__LINE__)), 0) \n"
+        " )"
+		};
+    
+    for (int i = 0; i < sizeof(ppnames) / sizeof(ppnames[0]); ++i)
+	{
+		ArmSimPro::TextEditor::Identifier id;
+		id.mDeclaration = ppvalues[i];
+		programming_lang.mPreprocIdentifiers.insert(std::make_pair(std::string(ppnames[i]), id));
+	}
+
+	// set your own identifiers
+	static const char* identifiers[] = {
+		"HWND", "HRESULT", "LPRESULT","D3D11_RENDER_TARGET_VIEW_DESC", "DXGI_SWAP_CHAIN_DESC","MSG","LRESULT","WPARAM", "LPARAM","UINT","LPVOID",
+		"ID3D11Device", "ID3D11DeviceContext", "ID3D11Buffer", "ID3D11Buffer", "ID3D10Blob", "ID3D11VertexShader", "ID3D11InputLayout", "ID3D11Buffer",
+		"ID3D10Blob", "ID3D11PixelShader", "ID3D11SamplerState", "ID3D11ShaderResourceView", "ID3D11RasterizerState", "ID3D11BlendState", "ID3D11DepthStencilState",
+		"IDXGISwapChain", "ID3D11RenderTargetView", "ID3D11Texture2D", "TextEditor" };
+	static const char* idecls[] = 
+	{
+		"typedef HWND_* HWND", "typedef long HRESULT", "typedef long* LPRESULT", "struct D3D11_RENDER_TARGET_VIEW_DESC", "struct DXGI_SWAP_CHAIN_DESC",
+		"typedef tagMSG MSG\n * Message structure","typedef LONG_PTR LRESULT","WPARAM", "LPARAM","UINT","LPVOID",
+		"ID3D11Device", "ID3D11DeviceContext", "ID3D11Buffer", "ID3D11Buffer", "ID3D10Blob", "ID3D11VertexShader", "ID3D11InputLayout", "ID3D11Buffer",
+		"ID3D10Blob", "ID3D11PixelShader", "ID3D11SamplerState", "ID3D11ShaderResourceView", "ID3D11RasterizerState", "ID3D11BlendState", "ID3D11DepthStencilState",
+		"IDXGISwapChain", "ID3D11RenderTargetView", "ID3D11Texture2D", "class TextEditor" };
+	for (int i = 0; i < sizeof(identifiers) / sizeof(identifiers[0]); ++i)
+	{
+		ArmSimPro::TextEditor::Identifier id;
+		id.mDeclaration = std::string(idecls[i]);
+		programming_lang.mIdentifiers.insert(std::make_pair(std::string(identifiers[i]), id));
+	}
+	txt_editor.SetLanguageDefinition(programming_lang);
+	
+
+	// error markers
+	//ArmSimPro::TextEditor::ErrorMarkers markers;
+	//markers.insert(std::make_pair<int, std::string>(6, "Example error here:\nInclude file not found: \"TextEditor.h\""));
+	//markers.insert(std::make_pair<int, std::string>(41, "Another example error"));
+	//txt_editor->SetErrorMarkers(markers);
+
+	// "breakpoint" markers
+	//ArmSimPro::TextEditor::Breakpoints bpts;
+	//bpts.insert(24);
+	//bpts.insert(47);
+	//txt_editor->SetBreakpoints(bpts);
+
+	static const char* fileToEdit = "../../../src/Editor/TextEditor.cpp";
+    std::string path = fileToEdit;
+    std::string result;
+
+    size_t found = path.find_last_of("/");
+    if (found != std::string::npos) 
+        result = path.substr(found + 1);
+    else 
+        result = path;
+
+    //read file and display
+	{
+		std::ifstream t(fileToEdit);
+		if (t.good())
+		{
+			std::string str((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
+			txt_editor.SetText(str);
+		}
+	}
+    
+
 //==================================================================================================================================================================
 
     bool done = false;
@@ -196,35 +316,146 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
                     ImGui::Separator();
                     if (ImGui::MenuItem("Open", "CTRL+O")) {} 
                     if (ImGui::MenuItem("Close", "CTRL+W")) {} 
-                    if (ImGui::MenuItem("Save", "CTRL+S")) {} 
+                    if (ImGui::MenuItem("Save", "CTRL+S")) 
+                    {
+                        auto textToSave = txt_editor.GetText();
+                        /// save text....
+                    } 
+
                     if (ImGui::MenuItem("Save As", "CTRL+Shift+S")) {} 
                     ImGui::Separator();
                     if (ImGui::MenuItem("Cut", "CTRL+X")) {}
                     if (ImGui::MenuItem("Copy", "CTRL+C")) {}
+
                     ImGui::Separator();
-                    if (ImGui::MenuItem("Quit", "CTRL+Q")) {}
+                    if (ImGui::MenuItem("Quit", "CTRL+Q")) 
+                        break;
+                    
                     ImGui::EndMenu();
                 }
 
                 if (ImGui::BeginMenu("Edit"))
-                {
-                    if (ImGui::MenuItem("Undo", "CTRL+Z")) {}
-                    if (ImGui::MenuItem("Redo", "CTRL+Y", false, false)) {}  // Disabled item
+                {   
+                    bool ro = txt_editor.IsReadOnly();
+                    if (ImGui::MenuItem("Undo", "CTRL+Z", nullptr, !ro && txt_editor.CanUndo())) 
+                        txt_editor.Undo();
+                    if (ImGui::MenuItem("Redo", "CTRL+Y", nullptr, !ro && txt_editor.CanRedo())) 
+                        txt_editor.Redo();
                     ImGui::Separator();
-                    if (ImGui::MenuItem("Cut", "CTRL+X")) {}
-                    if (ImGui::MenuItem("Copy", "CTRL+C")) {}
-                    if (ImGui::MenuItem("Paste", "CTRL+V")) {}
+
+                    if (ImGui::MenuItem("Cut", "CTRL+X", nullptr, !ro && txt_editor.HasSelection())) 
+                        txt_editor.Cut();
+                    if (ImGui::MenuItem("Copy", "CTRL+C", nullptr, !ro && txt_editor.HasSelection()))
+                        txt_editor.Copy();
+                    if (ImGui::MenuItem("Delete", "Del", nullptr, !ro && txt_editor.HasSelection())) 
+                        txt_editor.Delete();
+                    if (ImGui::MenuItem("Paset", "Ctrl+V", nullptr, !ro && ImGui::GetClipboardText() != nullptr)) 
+                        txt_editor.Paste();
+                    ImGui::Separator();
+
+                    if (ImGui::MenuItem("Select all", nullptr, nullptr))
+					    txt_editor.SetSelection(ArmSimPro::TextEditor::Coordinates(), ArmSimPro::TextEditor::Coordinates(txt_editor.GetTotalLines(), 0));
+
                     ImGui::EndMenu();
                 }
                 main_menubar_height = ImGui::GetWindowHeight();
                 ImGui::EndMainMenuBar();
             }
+            auto cpos = txt_editor.GetCursorPosition();
 
             horizontal_tool_bar->SetToolBar(main_menubar_height + 10);
-            vertical_tool_bar->SetToolBar(horizontal_tool_bar->GetThickness(), status_bar->GetHeight());
+            vertical_tool_bar->SetToolBar(horizontal_tool_bar->GetThickness(), status_bar->GetHeight() + 18);
 
-            status_bar->SetStatusBar(std::to_string(vertical_tool_bar->GetTotalWidth()).c_str());
+            status_bar->BeginStatusBar();
+            {
+                float width = ImGui::GetWindowWidth();
+                char buffer[255];
+
+                snprintf(buffer, sizeof(buffer), "%6d/%-6d %6d lines  | %s | %s | %s | %s", cpos.mLine + 1, cpos.mColumn + 1, txt_editor.GetTotalLines(),
+                            txt_editor.IsOverwrite() ? "Ovr" : "Ins",
+                            txt_editor.CanUndo() ? "*" : " ",
+                            txt_editor.GetLanguageDefinition().mName.c_str(), fileToEdit
+                        );
+
+                static ImVec2 textSize; 
+                if(textSize.x == NULL)
+                    textSize = ImGui::CalcTextSize(buffer); //this is a bottleneck function. should prevent it from always calculating.
+
+                ImGui::SetCursorPosX(width - (textSize.x + 40));
+                ImGui::Text(buffer);
+            }
+            status_bar->EndStatusBar();
+
             cmd_panel->SetPanel(100, vertical_tool_bar->GetTotalWidth());
+
+            //Code Editor dockable panel
+            {
+                ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+                ImVec2 size, pos;
+                {                       
+                    const float menubar_toolbar_total_thickness = horizontal_tool_bar->GetThickness() + (main_menubar_height + 10);
+
+                    pos[ImGuiAxis_X]  = viewport->Pos[ImGuiAxis_X] + vertical_tool_bar->GetTotalWidth() + 20;
+                    pos[ImGuiAxis_Y]  = viewport->Pos[ImGuiAxis_Y] + menubar_toolbar_total_thickness + 8;
+
+                    size[ImGuiAxis_X] = viewport->WorkSize.x - vertical_tool_bar->GetTotalWidth() - 18;
+                    size[ImGuiAxis_Y] = viewport->WorkSize.y - (cmd_panel->GetCurretnHeight() + status_bar->GetHeight() + 47);
+                }
+
+                ImGui::SetNextWindowPos(pos);
+                ImGui::SetNextWindowSize(size);
+                ImGui::SetNextWindowViewport(viewport->ID);
+
+                //use the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
+                // because it would be confusing to have two docking targets within each others.
+                ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+                window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus; 
+                
+                static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
+                if(dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
+                    window_flags |= ImGuiWindowFlags_NoBackground;
+
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 10)); //used to change window titlebar height;
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+                ImGui::PushStyleColor(ImGuiCol_TitleBgActive, bg_col.GetCol());
+                ImGui::PushStyleColor(ImGuiCol_TitleBg, bg_col.GetCol());
+                ImGui::Begin("DockSpace", nullptr, window_flags);
+                {   
+                    
+                    ImGuiIO& io = ImGui::GetIO();
+                    if(io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
+                    {
+                        ImGuiID dockspace_id = ImGui::GetID("MyDockspace");
+                        const ImVec2 dockspace_size = ImGui::GetContentRegionAvail();
+                        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags | ImGuiDockNodeFlags_NoWindowMenuButton);
+
+                        static bool first_run = true;
+                        if(first_run)
+                        {
+                            first_run = false;
+                            
+                            ImGui::DockBuilderRemoveNode(dockspace_id); // clear any previous layout
+                            ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+                            ImGui::DockBuilderSetNodeSize(dockspace_id, dockspace_size);
+
+                            ImGui::DockBuilderDockWindow(result.c_str(), dockspace_id);
+                            ImGui::DockBuilderFinish(dockspace_id);
+                        }
+                    }
+                }
+                ImGui::PopStyleColor(2);
+                ImGui::End();
+                ImGui::PopStyleVar(4);
+
+                ImGui::PushFont(DroidSansMono);
+                std::async(std::launch::async, [&txt_editor, result](){
+                    txt_editor.Render(result.c_str());
+                });
+                ImGui::PopFont();
+            }
         }
         ImGui::Render();
         const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
@@ -253,6 +484,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     delete horizontal_tool_bar;
     delete cmd_panel;
     delete status_bar;
+
+    delete Consolas; 
+    delete DroidSansMono;
+    delete Menlo_Regular;
+    delete MONACO;       
 
     return 0;
 }

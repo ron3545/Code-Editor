@@ -22,7 +22,11 @@ namespace ArmSimPro
             std::string ToolID;
             ImageData image;
             std::function<void()> ptr_to_func;
+
+            std::string Text;
+            bool this_is_text;
         }ToolData;
+
     private:
         const char* _IDname;
         const float _thickness;
@@ -33,21 +37,12 @@ namespace ArmSimPro
         std::vector<ToolData> Tools;
         std::unordered_map<const char*, float> Spacer;
     public:
+
         StatusBar() : _IDname(nullptr), _thickness(NULL) {}
         StatusBar(const char* IDname, float thickness, const RGBA& bg_col) : _IDname(IDname), _thickness(thickness), _bg_col(bg_col) {}
 
-        void SetStatusBar(const char* text);
-        void SetSpaceBefore(const char* ToolID, float value);
-        void AppendTool(const char* ToolID, const ImageData& image, std::function<void()> ptr_to_func);
-
+        void BeginStatusBar();
+        void EndStatusBar();
         inline float GetHeight() const { return _thickness; } 
-
-    private:
-        void SetHorizontalSpace(float value);
-
-        bool ImageButton2State(const ImVec2& size);
-        bool TextButtonWithHighligher(const ImVec2& size);
-
-        bool GetButtonBehavior();
     };
 }

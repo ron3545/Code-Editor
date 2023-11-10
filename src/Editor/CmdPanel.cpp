@@ -12,7 +12,7 @@ void ArmSimPro::CmdPanel::SetPanel(float top_margin, float right_margin)
     ImVec2 size, pos;
     //Set the status bar to the very bottom of the window
     ImRect available_rect = viewportp->GetBuildWorkRect();
-    ImVec2 contentRegionAvailable = ImGui::GetContentRegionAvail();
+    //ImVec2 contentRegionAvailable = ImGui::GetContentRegionAvail();
     {
         pos = available_rect.Min;
         pos[ImGuiAxis_Y] = (available_rect.Max[ImGuiAxis_Y] - _height) - _status_bar_thickness;
@@ -20,7 +20,7 @@ void ArmSimPro::CmdPanel::SetPanel(float top_margin, float right_margin)
 
         size = available_rect.GetSize();
         size[ImGuiAxis_Y] = _height;
-        size[ImGuiAxis_X] += right_margin + 20;
+        size[ImGuiAxis_X] += right_margin;
     }
 
     ImGui::SetNextWindowSize(size);
@@ -43,7 +43,12 @@ void ArmSimPro::CmdPanel::SetPanel(float top_margin, float right_margin)
         ImGui::Splitter(std::string(_IDname + " splitter").c_str(), ImGui::GetColorU32(_bg_col.GetCol()),
                         ImGui::GetColorU32(_highlighter_col.GetCol()), splitter_size, splitter_pos, 
                         &_height, ImGuiAxis_X);
-        ImGui::Text(std::to_string(_height).c_str());
+        
+        ImGuiMouseCursor cursor = ImGuiMouseCursor_Arrow;
+        if(ImGui::IsItemActive() || ImGui::IsItemHovered())
+                cursor = ImGuiMouseCursor_ResizeNS;
+        ImGui::SetMouseCursor(cursor);
+
         //size limit
         if(_height < 93)
             _height = 93;
