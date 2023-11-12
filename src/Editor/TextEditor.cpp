@@ -1063,6 +1063,7 @@ namespace  ArmSimPro
                     }
                     prevColor = color;
 
+                    //Draws Tab 
                     if (glyph.mChar == '\t')
                     {
                         auto oldX = bufferOffset.x;
@@ -1071,27 +1072,29 @@ namespace  ArmSimPro
 
                         if (mShowWhitespaces)
                         {
-                            const auto s = ImGui::GetFontSize();
-                            const auto x1 = textScreenPos.x + oldX + 1.0f;
-                            const auto x2 = textScreenPos.x + bufferOffset.x - 1.0f;
-                            const auto y = textScreenPos.y + bufferOffset.y + s * 0.5f;
-                            const ImVec2 p1(x1, y);
-                            const ImVec2 p2(x2, y);
-                            const ImVec2 p3(x2 - s * 0.2f, y - s * 0.2f);
-                            const ImVec2 p4(x2 - s * 0.2f, y + s * 0.2f);
-                            drawList->AddLine(p1, p2, 0x90909090);
-                            drawList->AddLine(p2, p3, 0x90909090);
-                            drawList->AddLine(p2, p4, 0x90909090);
+                            //const auto s = ImGui::GetFontSize();
+                            //const auto x1 = textScreenPos.x + oldX + 1.0f;
+                            //const auto x2 = textScreenPos.x + bufferOffset.x - 1.0f;
+                            //const auto y = textScreenPos.y + bufferOffset.y + s * 0.5f;
+                            //const ImVec2 p1(x1, y);
+                            //const ImVec2 p2(x2, y);
+                            //const ImVec2 p3(x2 - s * 0.2f, y - s * 0.2f);
+                            //const ImVec2 p4(x2 - s * 0.2f, y + s * 0.2f);
+                            //drawList->AddLine(p1, p2, 0x90909090);
+                            //drawList->AddLine(p2, p3, 0x90909090);
+                            //drawList->AddLine(p2, p4, 0x90909090);
+                                                             
                         }
                     }
+                    //Draw Spacing
                     else if (glyph.mChar == ' ')
                     {
                         if (mShowWhitespaces)
                         {
-                            const auto s = ImGui::GetFontSize();
-                            const auto x = textScreenPos.x + bufferOffset.x + spaceSize * 0.5f;
-                            const auto y = textScreenPos.y + bufferOffset.y + s * 0.5f;
-                            drawList->AddCircleFilled(ImVec2(x, y), 1.5f, 0x80808080, 4);
+                            //const auto s = ImGui::GetFontSize();
+                            //const auto x = textScreenPos.x + bufferOffset.x + spaceSize * 0.5f;
+                            //const auto y = textScreenPos.y + bufferOffset.y + s * 0.5f;
+                            //drawList->AddCircleFilled(ImVec2(x, y), 1.5f, 0x80808080, 4);
                         }
                         bufferOffset.x += spaceSize;
                         i++;
@@ -1401,6 +1404,97 @@ namespace  ArmSimPro
             line.erase(line.begin() + cindex, line.begin() + line.size());
             SetCursorPosition(Coordinates(coord.mLine + 1, GetCharacterColumn(coord.mLine + 1, (int)whitespaceSize)));
             u.mAdded = (char)aChar;
+        }
+
+        else if(aChar == '{')
+        {
+            char buf[3];
+            int e = ImTextCharToUtf8(buf, 2, aChar);
+            if(e > 0)
+            {
+                buf[e] = '{ }';
+                auto& line = mLines[coord.mLine];
+                auto cindex = GetCharacterIndex(coord);
+
+                if (mOverwrite && cindex < (int)line.size())
+                {
+                    auto d = UTF8CharLength(line[cindex].mChar);
+
+                    u.mRemovedStart = mState.mCursorPosition;
+                    u.mRemovedEnd = Coordinates(coord.mLine, GetCharacterColumn(coord.mLine, cindex + d));
+
+                    while (d-- > 0 && cindex < (int)line.size())
+                    {
+                        u.mRemoved += line[cindex].mChar;
+                        line.erase(line.begin() + cindex);
+                    }
+                }
+                for (int i = 0; i < 2; i++, ++cindex)
+                    line.insert(line.begin() + cindex, Glyph(buf[i], PaletteIndex::Default));
+                u.mAdded = buf;
+
+                SetCursorPosition(Coordinates(coord.mLine, GetCharacterColumn(coord.mLine, cindex )));
+            }
+        }
+        else if(aChar == '[')
+        {
+            char buf[3];
+            int e = ImTextCharToUtf8(buf, 2, aChar);
+            if(e > 0)
+            {
+                buf[e] = '[ ]';
+                auto& line = mLines[coord.mLine];
+                auto cindex = GetCharacterIndex(coord);
+
+                if (mOverwrite && cindex < (int)line.size())
+                {
+                    auto d = UTF8CharLength(line[cindex].mChar);
+
+                    u.mRemovedStart = mState.mCursorPosition;
+                    u.mRemovedEnd = Coordinates(coord.mLine, GetCharacterColumn(coord.mLine, cindex + d));
+
+                    while (d-- > 0 && cindex < (int)line.size())
+                    {
+                        u.mRemoved += line[cindex].mChar;
+                        line.erase(line.begin() + cindex);
+                    }
+                }
+                for (int i = 0; i < 2; i++, ++cindex)
+                    line.insert(line.begin() + cindex, Glyph(buf[i], PaletteIndex::Default));
+                u.mAdded = buf;
+
+                SetCursorPosition(Coordinates(coord.mLine, GetCharacterColumn(coord.mLine, cindex )));
+            }
+        }
+        else if(aChar == '(')
+        {
+            char buf[3];
+            int e = ImTextCharToUtf8(buf, 2, aChar);
+            if(e > 0)
+            {
+                buf[e] = '( )';
+                auto& line = mLines[coord.mLine];
+                auto cindex = GetCharacterIndex(coord);
+
+                if (mOverwrite && cindex < (int)line.size())
+                {
+                    auto d = UTF8CharLength(line[cindex].mChar);
+
+                    u.mRemovedStart = mState.mCursorPosition;
+                    u.mRemovedEnd = Coordinates(coord.mLine, GetCharacterColumn(coord.mLine, cindex + d));
+
+                    while (d-- > 0 && cindex < (int)line.size())
+                    {
+                        u.mRemoved += line[cindex].mChar;
+                        line.erase(line.begin() + cindex);
+                    }
+                }
+                for (int i = 0; i < 2; i++, ++cindex)
+                    line.insert(line.begin() + cindex, Glyph(buf[i], PaletteIndex::Default));
+                u.mAdded = buf;
+
+                SetCursorPosition(Coordinates(coord.mLine, GetCharacterColumn(coord.mLine, cindex )));
+            }
         }
         else
         {

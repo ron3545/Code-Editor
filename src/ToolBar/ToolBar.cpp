@@ -93,7 +93,7 @@ namespace ArmSimPro
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(5.0f, 5.0f));
         ImGui::PushStyleColor(ImGuiCol_WindowBg, _bg_col.GetCol());
-        ImGui::Begin(_label.c_str(), NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus);
+        ImGui::Begin(_label.c_str(), NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration);
         
         static std::string current_button;
         {   
@@ -134,7 +134,7 @@ namespace ArmSimPro
 
     void ToolBar::ShowPrimarySideBar(ToolTip& Tool)
     {   
-        if(!_isPrimarySideBarVisible || _toolbar_axis == ImGuiAxis_X)
+        if(!_isPrimarySideBarVisible || _toolbar_axis == ImGuiAxis_X || !Tool.tool.isActive)
             return;
 
         ImGui::SetNextWindowSize(ImVec2(_primary_sidebar_width, _toolbart_height));
@@ -144,12 +144,23 @@ namespace ArmSimPro
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         ImGui::PushStyleColor(ImGuiCol_WindowBg, _bg_col.GetCol());
-        ImGui::Begin(std::string(_label + " Primary SideBar").c_str(), NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus);
+        ImGui::Begin(std::string(Tool.button_name + " Primary SideBar").c_str(), NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollWithMouse);
         {   
             ImVec2 windowPos = ImGui::GetWindowPos();
             ImVec2 windowSize = ImGui::GetWindowSize();
-
             const float splitter_thickness = 6;
+
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, _bg_col.GetCol());
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+            
+            ImGui::BeginChild(Tool.button_name.c_str(), ImVec2(windowSize.x - splitter_thickness, windowSize.y - splitter_thickness), false, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoMove);
+            if(Tool.tool.ptr_to_func)
+                Tool.tool.ptr_to_func();
+            ImGui::EndChild();
+            ImGui::PopStyleVar(2);
+            ImGui::PopStyleColor();
+
             ImVec2 splitter_size(splitter_thickness, windowPos[ImGuiAxis_Y] + windowSize[ImGuiAxis_Y]);
             ImVec2 splitter_pos(windowPos.x + (_primary_sidebar_width - splitter_thickness), 0);
 
@@ -166,8 +177,6 @@ namespace ArmSimPro
                 _primary_sidebar_width = 197.33;
             else if(_primary_sidebar_width > 579.33)
                 _primary_sidebar_width = 579.33;
-
-            //ptr_to_func();
         }
         ImGui::PopStyleColor();
         ImGui::End();
