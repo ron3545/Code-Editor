@@ -146,7 +146,7 @@ namespace ArmSimPro
             bool mMultiLineComment : 1;
             bool mPreprocessor : 1;
 
-            Glyph(Char aChar, PaletteIndex aColorIndex) : mChar(aChar), mColorIndex(aColorIndex),
+            Glyph(Char aChar, PaletteIndex aColorIndex = PaletteIndex::Default) : mChar(aChar), mColorIndex(aColorIndex),
                 mComment(false), mMultiLineComment(false), mPreprocessor(false) {}
         };
 
@@ -386,7 +386,7 @@ namespace ArmSimPro
         LanguageDefinition mLanguageDefinition;
         RegexList mRegexList;
 
-        Lines mLines;
+        Lines mLines;          //lines of codes
         EditorState mState;
         UndoBuffer mUndoBuffer;
         
@@ -394,9 +394,9 @@ namespace ArmSimPro
         ErrorMarkers mErrorMarkers;
         ImVec2 mCharAdvance;
         Coordinates mInteractiveStart, mInteractiveEnd;
-        std::string mLineBuffer;  //handles the texts being displayed
+
+        std::string mLineBuffer;  //handles the colorized texts being displayed
         uint64_t mStartTime;
         const ImVec4 _window_bg_col;
     };
-
 };

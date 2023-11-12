@@ -10,6 +10,7 @@
 #include <d3d11.h>
 #include <tchar.h>
 #include <dwmapi.h>
+#include <filesystem>
 
 #include <mutex>
 #include <thread>
@@ -30,22 +31,29 @@
 #include "Editor/CmdPanel.h"
 #include "Editor/TextEditor.h"
 
+using namespace std;
+
 constexpr wchar_t* SOFTWARE_NAME = L"ArmSim Pro";
 const char* LOGO = "";
 HWND hwnd = NULL;
-//=============================================================================================
+//=======================================================================================================================================
 static const char* Consolas_Font        = "../../../Utils/Fonts/Consolas.ttf";
 static const char* DroidSansMono_Font   = "../../../Utils/Fonts/DroidSansMono.ttf";
 static const char* Menlo_Regular_Font   = "../../../Utils/Fonts/Menlo-Regular.ttf";
 static const char* MONACO_Font          = "../../../Utils/Fonts/MONACO.TTF";
 
-//======================================CLASS DECLARATION======================================
+static ImFont* DefaultFont;     
+static ImFont* CodeEditorFont;
+static ImFont* FileTreeFont;
+static ImFont* StatusBarFont;       
+
+//======================================CLASS DECLARATION================================================================================
 static ArmSimPro::ToolBar* vertical_tool_bar   = nullptr;
 static ArmSimPro::ToolBar* horizontal_tool_bar = nullptr;
 
 static ArmSimPro::StatusBar* status_bar = nullptr;
 static ArmSimPro::CmdPanel* cmd_panel = nullptr;
-//=============================================================================================
+//========================================================================================================================================
        ID3D11Device*            g_pd3dDevice = nullptr; //should be non-static. Other translation units will be using this
 static ID3D11DeviceContext*     g_pd3dDeviceContext = nullptr;
 static IDXGISwapChain*          g_pSwapChain = nullptr;
@@ -56,6 +64,23 @@ bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
+//==================================================TREE VIEW OF DIRECTORY===================================================================
+struct DirectoryNode
+{
+	std::string FullPath;
+	std::string FileName;
+	std::vector<DirectoryNode> Children;
+	bool IsDirectory;
+};
+static DirectoryNode project_root_node;
+
+void RecursivelyAddDirectoryNodes(DirectoryNode& parentNode, std::filesystem::directory_iterator directoryIterator);
+DirectoryNode CreateDirectryNodeTreeFromPath(const std::filesystem::path& rootPath);
+void RecursivelyDisplayDirectoryNode(const DirectoryNode& parentNode);
+void ImplementDirectoryNode();
+
+//============================================TOOLBAR FUNCTIONS==========================================================================
+void SearchOnCodeEditor();
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -152,24 +177,22 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     //IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/ON/Settings.png", &Settings_image.ON_textureID, &Settings_image.width, &Settings_image.height));
     //IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/OFF/Settings.png", &Settings_image.OFF_textureID));
 
-    static const float code_editor_font_size = 24;
-    static const float GUI_font_size = 14;
-    static ImFont* Consolas      = io.Fonts->AddFontFromFileTTF(Consolas_Font     , GUI_font_size); //default
-    static ImFont* DroidSansMono = io.Fonts->AddFontFromFileTTF(DroidSansMono_Font, code_editor_font_size);
-    static ImFont* Menlo_Regular = io.Fonts->AddFontFromFileTTF(Menlo_Regular_Font, code_editor_font_size);
-    static ImFont* MONACO        = io.Fonts->AddFontFromFileTTF(MONACO_Font       , code_editor_font_size);
+    DefaultFont         = io.Fonts->AddFontFromFileTTF(Consolas_Font     , 14); //default
+    CodeEditorFont      = io.Fonts->AddFontFromFileTTF(DroidSansMono_Font, 24);
+    FileTreeFont        = io.Fonts->AddFontFromFileTTF(Menlo_Regular_Font, 18);
+    StatusBarFont       = io.Fonts->AddFontFromFileTTF(MONACO_Font       , 11);
 //================================================================================================================================================================
    
 //==================================Initializations===============================================================================================================
     const RGBA bg_col = RGBA(24, 24, 24, 255);
     const RGBA highlighter_col = RGBA(0, 120, 212, 255);
+
     vertical_tool_bar = new ArmSimPro::ToolBar("Vertical", bg_col, 30, ImGuiAxis_Y);
     {
-        vertical_tool_bar->AppendTool("Folder", Folder_image, nullptr);                
-        vertical_tool_bar->AppendTool("Search", Search_image, nullptr);                
+        vertical_tool_bar->AppendTool("Explorer", Folder_image, ImplementDirectoryNode);                
+        vertical_tool_bar->AppendTool("Search", Search_image, SearchOnCodeEditor);                
         vertical_tool_bar->AppendTool("Debug", Debug_image, nullptr);                  
-        vertical_tool_bar->AppendTool("Simulate", Robot_image, nullptr);               
-        //vertical_tool_bar->AppendTool("Settings", Settings_image, nullptr, true);      
+        vertical_tool_bar->AppendTool("Simulate", Robot_image, nullptr);                    
     }
 
     horizontal_tool_bar = new ArmSimPro::ToolBar("Horizontal", bg_col, 30, ImGuiAxis_X);
@@ -256,7 +279,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	//bpts.insert(47);
 	//txt_editor->SetBreakpoints(bpts);
 
-	static const char* fileToEdit = "../../../src/Editor/TextEditor.cpp";
+	static const char* fileToEdit = "../../../src/CodeEditor.cpp";
     std::string path = fileToEdit;
     std::string result;
 
@@ -275,7 +298,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 			txt_editor.SetText(str);
 		}
 	}
-    
 
 //==================================================================================================================================================================
 
@@ -363,8 +385,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
             }
             auto cpos = txt_editor.GetCursorPosition();
 
+            if(project_root_node.FileName.empty())
+                project_root_node = CreateDirectryNodeTreeFromPath(L"C:/Users/Ron Joshua Quirap/Documents/Projects/Empower-Smart-Deploy");
+
             horizontal_tool_bar->SetToolBar(main_menubar_height + 10);
-            vertical_tool_bar->SetToolBar(horizontal_tool_bar->GetThickness(), status_bar->GetHeight() + 18);
+            vertical_tool_bar->SetToolBar(horizontal_tool_bar->GetThickness(), status_bar->GetHeight() + 17);
 
             status_bar->BeginStatusBar();
             {
@@ -450,11 +475,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
                 ImGui::End();
                 ImGui::PopStyleVar(4);
 
-                ImGui::PushFont(DroidSansMono);
-                std::async(std::launch::async, [&txt_editor, result](){
-                    txt_editor.Render(result.c_str());
-                });
+                ImGui::PushFont(CodeEditorFont);
+                txt_editor.Render(result.c_str());
                 ImGui::PopFont();
+                    
+                {}
             }
         }
         ImGui::Render();
@@ -485,13 +510,108 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     delete cmd_panel;
     delete status_bar;
 
-    delete Consolas; 
-    delete DroidSansMono;
-    delete Menlo_Regular;
-    delete MONACO;       
+    delete DefaultFont;  
+    delete CodeEditorFont;
+    delete FileTreeFont;
+    delete StatusBarFont;
 
     return 0;
 }
+
+void SearchOnCodeEditor()
+{   
+    static std::string buffer;
+
+    ImGui::Dummy(ImVec2(0.0f, 13.05f));
+    ImGui::Dummy(ImVec2(5.0f, 13.05f));
+    ImGui::SameLine();
+
+    ImGui::PushFont(FileTreeFont);
+    {   
+        static bool Show_Replace_InputText = false;
+        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,255,255,255));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(49,49,49,255));
+            if(ImGui::Button(">"))
+                Show_Replace_InputText = true;
+            ImGui::SetItemTooltip("Toggle Replace");
+            ImGui::SameLine();
+            ImGui::Dummy(ImVec2(3.0f, 13.05f));
+            ImGui::SameLine();
+        ImGui::PopStyleColor(2);
+
+        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,255,255,255));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(49,49,49,255));
+        ImGui::PushItemWidth(-1);
+            ImGui::InputTextWithHint("##Search", "Search", &buffer);
+            ImGui::SetItemTooltip("Search");
+        ImGui::PopItemWidth();
+        ImGui::PopStyleColor(2);
+    }
+    ImGui::PopFont();
+}
+
+//===============================================Tree View of directory Impl=====================================================
+void RecursivelyAddDirectoryNodes(DirectoryNode& parentNode, std::filesystem::directory_iterator directoryIterator)
+{
+    for (const std::filesystem::directory_entry& entry : directoryIterator)
+	{
+		DirectoryNode& childNode = parentNode.Children.emplace_back();
+		childNode.FullPath = entry.path().u8string();
+		childNode.FileName = entry.path().filename().u8string();
+		if (childNode.IsDirectory = entry.is_directory(); childNode.IsDirectory)
+			RecursivelyAddDirectoryNodes(childNode, std::filesystem::directory_iterator(entry));
+	}
+
+	auto moveDirectoriesToFront = [](const DirectoryNode& a, const DirectoryNode& b) { return (a.IsDirectory > b.IsDirectory); };
+	std::sort(parentNode.Children.begin(), parentNode.Children.end(), moveDirectoriesToFront);
+}
+
+DirectoryNode CreateDirectryNodeTreeFromPath(const std::filesystem::path& rootPath)
+{
+    DirectoryNode rootNode;
+	rootNode.FullPath = rootPath.u8string();
+	rootNode.FileName = rootPath.filename().u8string();
+	if (rootNode.IsDirectory = std::filesystem::is_directory(rootPath); rootNode.IsDirectory)
+		RecursivelyAddDirectoryNodes(rootNode, std::filesystem::directory_iterator(rootPath));
+
+	return rootNode;
+}
+
+void RecursivelyDisplayDirectoryNode(const DirectoryNode& parentNode)
+{
+    ImGui::PushID(&parentNode);
+	if (parentNode.IsDirectory)
+	{
+		if (ImGui::TreeNodeEx(parentNode.FileName.c_str(), ImGuiTreeNodeFlags_SpanFullWidth))
+		{
+			for (const DirectoryNode& childNode : parentNode.Children)
+				RecursivelyDisplayDirectoryNode(childNode);
+			ImGui::TreePop();
+		}
+	}
+	else
+	{
+		if (ImGui::TreeNodeEx(parentNode.FileName.c_str(), ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth))
+		{
+			// ... handle file click interaction
+		}
+	}
+	ImGui::PopID();
+}
+
+void ImplementDirectoryNode()
+{
+    ImGui::Dummy(ImVec2(0.0f, 13.05f));
+    ImGui::Dummy(ImVec2(6.0f, 13.05f));
+    ImGui::SameLine();
+    
+    ImGui::PushFont(FileTreeFont);
+    if(!project_root_node.FileName.empty() || !project_root_node.FullPath.empty())
+	    RecursivelyDisplayDirectoryNode(project_root_node);
+    ImGui::PopFont();
+}
+
+//================================================================================================================================
 
 bool CreateDeviceD3D(HWND hWnd)
 {

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.6)
 
 project(ARMSIMPRO_core LANGUAGES CXX)
-
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_subdirectory(imgui)
@@ -24,4 +24,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     d3d11.lib 
     dxgi.lib 
     d3dcompiler.lib
-    )
+)
