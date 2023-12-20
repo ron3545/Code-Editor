@@ -99,7 +99,7 @@ namespace ArmSimPro
         ToolBar(const char* label, const RGBA& bg_col, float toolbar_thickness, ImGuiAxis toolbar_axis);
         ~ToolBar() {}
 
-        void AppendTool(const char* name, ImageData image, std::function<void()> ptr_to_func, bool NoHighlight = false);
+        void AppendTool(const char* name, ImageData image, std::function<void()> ptr_to_func, bool NoHighlight = false, bool ActiveOnRun = false);
         
         void SetToolBar(float top_margin = 0, float bottom_marigin = 8);
         void SetPaddingBefore(const char* buttonID, float space);

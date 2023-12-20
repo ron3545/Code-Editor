@@ -1,17 +1,19 @@
-add_library( imgui "" )
+add_library( FileDialog "" )
 
 file(GLOB HeadersFiles "${CMAKE_CURRENT_LIST_DIR}/*.h")
 file(GLOB SourceFiles "${CMAKE_CURRENT_LIST_DIR}/*.cpp")
 
-target_sources( imgui 
+target_sources( FileDialog 
     PRIVATE 
         ${SourceFiles}
     PUBLIC
         ${HeadersFiles}
 )
 
-target_include_directories( imgui
+target_include_directories( FileDialog
     PUBLIC 
         ${CMAKE_CURRENT_LIST_DIR}
+        imgui
+        Shell32.lib
         d3d11.lib 
 )

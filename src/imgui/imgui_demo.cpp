@@ -5791,7 +5791,7 @@ static void ShowDemoWindowColumns()
             //if (ImGui::Button(label, ImVec2(-FLT_MIN,0.0f))) {}
             ImGui::NextColumn();
         }
-        ImGui::Columns(1);
+        
         ImGui::Separator();
 
         ImGui::Text("With border:");

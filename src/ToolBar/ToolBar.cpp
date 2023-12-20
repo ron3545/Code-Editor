@@ -2,8 +2,6 @@
 
 #include <algorithm>
 #include <cassert>
-
-#include <thread>
 #include <chrono>
 using namespace std::chrono_literals;
 
@@ -25,19 +23,19 @@ namespace ArmSimPro
 
     ToolBar::ToolBar(const char* label, const RGBA& bg_col, float toolbar_thickness, ImGuiAxis toolbar_axis)
         : _label(label),  _bg_col(bg_col), _highlighter_col(RGBA(0, 120, 212, 255)), _isPrimarySideBarVisible(false), _highlighter_thickness(3), _toolbar_thickness(toolbar_thickness), 
-        _toolbar_axis(toolbar_axis), _spacing(24.6f), _primary_sidebar_width(240)
+        _toolbar_axis(toolbar_axis), _spacing(24.6f), _primary_sidebar_width(340)
 
     {
         _tool_size = ImVec2(toolbar_thickness , toolbar_thickness);
         viewport = ImGui::GetMainViewport();
     }
 
-    void ToolBar::AppendTool(const char* name, ImageData image, std::function<void()> ptr_to_func, bool NoHighlight)
+    void ToolBar::AppendTool(const char* name, ImageData image, std::function<void()> ptr_to_func, bool NoHighlight, bool ActiveOnRun)
     {
         ToolTip tool;
         tool.button_name = name;
         tool.tool.image = image;
-        tool.tool.isActive = false;
+        tool.tool.isActive = ActiveOnRun;
         tool.tool.ptr_to_func = ptr_to_func;
 
         Tools.push_back(tool);
@@ -100,7 +98,7 @@ namespace ArmSimPro
             ImGui::Spacing();
             for(auto& Tool : Tools)
             {
-                if(RunToolBar(Tool, requested_size))
+                if(RunToolBar(Tool, requested_size) || Tool.tool.isActive)
                     current_button = Tool.button_name;
                 ShowPrimarySideBar(Tool);
             }
@@ -151,14 +149,13 @@ namespace ArmSimPro
             const float splitter_thickness = 6;
 
             ImGui::PushStyleColor(ImGuiCol_ChildBg, _bg_col.GetCol());
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
             
             ImGui::BeginChild(Tool.button_name.c_str(), ImVec2(windowSize.x - splitter_thickness, windowSize.y - splitter_thickness), false, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoMove);
             if(Tool.tool.ptr_to_func)
                 Tool.tool.ptr_to_func();
             ImGui::EndChild();
-            ImGui::PopStyleVar(2);
+            ImGui::PopStyleVar();
             ImGui::PopStyleColor();
 
             ImVec2 splitter_size(splitter_thickness, windowPos[ImGuiAxis_Y] + windowSize[ImGuiAxis_Y]);

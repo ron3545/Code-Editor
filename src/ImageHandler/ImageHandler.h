@@ -42,4 +42,10 @@ struct ImageData
     int width, height;
 };
 
+struct SingleImageData
+{
+    ID3D11ShaderResourceView* textureID;
+    int width, height;
+};
+
 bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width = nullptr, int* out_height = nullptr);
