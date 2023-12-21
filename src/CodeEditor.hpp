@@ -392,51 +392,42 @@ bool ButtonWithIcon(const char* label, const char* icon, const char* definition)
 
 namespace  ArmSimPro
 {
-    std::unordered_map<std::string, std::vector<std::string>> LoadUserDataFrom_ini()
+    struct Data
     {
-        std::filesystem::path current_exe_path = std::filesystem::current_path();
-        std::string file_path(current_exe_path.u8string() + "\\ArmSim.ini");
+        std::string root; 
+        std::set<std::string> files;
+        size_t Total_editors;
 
-        std::ifstream file(file_path);
-        if (!file.is_open())
-            return std::unordered_map<std::string, std::vector<std::string>>();
-
-        std::unordered_map<std::string, std::vector<std::string>> user_data;
-        
-        std::string line;
-        while(std::getline(file, line))
+        bool operator < (const Data& other) const
         {
-            if(line.empty())
-                continue;
-            
-            std::string root_project;
-            std::vector<std::string> opened_editors;
-            int total_editors = 0;
-
-            // Extract Root project
-            std::smatch root_project_match;
-            if(std::regex_search(line, root_project_match, std::regex("Root Project -> (.+)")));
-                root_project = root_project_match[1];
-            
-            // Extracting Total Editors
-            std::smatch total_editors_match;
-            if (std::regex_search(line, total_editors_match, std::regex("Total Editors -> (\\d+)")))
-                total_editors = std::stoi(total_editors_match[1]);
-            
-            // Extracting Opened Editors
-            std::smatch opened_editors_match;
-            if (std::regex_search(line, opened_editors_match, std::regex("Opened_Editors -> \\[ (.+) \\]")))
-            {
-                std::string opened_editors_str = opened_editors_match[1];
-                std::istringstream iss(opened_editors_str);
-                std::string path;
-                while (std::getline(iss, path, ',')) 
-                    opened_editors.push_back(path);
-            
-            }
-            user_data.insert(std::make_pair(root_project, opened_editors));
+            return this->root < other.root;
         }
-        return user_data;
+    };
+
+    Data LoadUserDataFrom_ini(const std::string& line)
+    {
+        Data data;
+        // Extract Root project
+        std::smatch root_project_match;
+        if(std::regex_search(line, root_project_match, std::regex("Root Project -> (.+)")));
+            data.root = root_project_match[1];
+        
+        // Extracting Total Editors
+        std::smatch total_editors_match;
+        if (std::regex_search(line, total_editors_match, std::regex("Total Editors -> (\\d+)")))
+            data.Total_editors = std::stoi(total_editors_match[1]);
+        
+        // Extracting Opened Editors
+        std::smatch opened_editors_match;
+        if (std::regex_search(line, opened_editors_match, std::regex("Opened_Editors -> \\[ (.+) \\]")))
+        {
+            std::string opened_editors_str = opened_editors_match[1];
+            std::istringstream iss(opened_editors_str);
+            std::string path;
+            while (std::getline(iss, path, ','))
+                data.files.insert(path);
+        }
+        return data;
     }
 
     void SaveUserDataTo_ini()
@@ -486,6 +477,7 @@ void SetupIdentifiers(ArmSimPro::TextEditor::LanguageDefinition& programming_lan
 static std::mutex LoadEditor_mutex;
 void LoadEditor(const std::string& file)
 {
+    std::lock_guard<std::mutex> lock(LoadEditor_mutex);
     ArmSimPro::TextEditor editor(file,bg_col.GetCol());
     auto programming_lang = ArmSimPro::TextEditor::LanguageDefinition::CPlusPlus();
 
@@ -516,8 +508,64 @@ void LoadEditor(const std::string& file)
     Opened_TextEditors.push_back(ArmSimPro::TextEditorState(editor));
 }
 
+void RecentlyOpenedProjects()
+{
+    std::set<ArmSimPro::Data> user_data;
+    std::filesystem::path current_exe_path = std::filesystem::current_path();
+    std::string file_path(current_exe_path.u8string() + "\\ArmSim.ini");
+
+    std::ifstream file(file_path);
+    if (!file.is_open())
+        return;
+
+    std::string line;
+    while(std::getline(file, line))
+    {
+        auto data = ArmSimPro::LoadUserDataFrom_ini(line);
+        user_data.insert(data);
+        
+        for(const auto& i : data.files)
+            ImGui::Text(i.c_str());
+    }
+    file.close();
+
+    if(!user_data.empty())
+    {   
+        ImGui::SetCursorPosY(120);
+        ImGui::PushFont(TextFont);
+        for(const auto& data : user_data)
+        {   
+            ImGui::Dummy(ImVec2(10, 0)); ImGui::SameLine();
+            if(!data.root.empty())
+            {   
+                std::string file_name;
+                size_t lastSeparatorPos = data.root.find_last_of("\\/");
+                if (lastSeparatorPos != std::string::npos)
+                    file_name = data.root.substr(lastSeparatorPos + 1);
+                
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(39, 136, 255, 255));
+                ImGui::TextWrapped(file_name.c_str());
+                ImGui::PopStyleColor();
+                if(ImGui::IsItemClicked())
+                {
+                    SelectedProjectPath = data.root;
+                    {
+                        // auto task = std::async(std::launch::async, LoadEditor, file);
+                        // task.wait();
+                    }
+                }
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
+                ImGui::SetItemTooltip(data.root.c_str());
+                ImGui::PopStyleColor();
+            }
+            ImGui::Dummy(ImVec2(0, 4));
+        }
+        ImGui::PopFont();
+    }
+}
+
 void WelcomPage()
-{   
+{  
     // Render Welcome Page
     float window_width = ImGui::GetWindowWidth();
     ImGui::Columns(2, "mycols", false);
@@ -558,43 +606,8 @@ void WelcomPage()
             ImGui::PushFont(FileTreeFont);
                 ImGui::Text("Recent");
             ImGui::PopFont();
-
-            auto user_data = ArmSimPro::LoadUserDataFrom_ini();
             
-            if(!user_data.empty())
-            {   
-                ImGui::SetCursorPosY(120);
-                ImGui::PushFont(TextFont);
-                for(const auto& data : user_data)
-                {
-                    ImGui::Dummy(ImVec2(10, 0)); ImGui::SameLine();
-                    if(!data.first.empty())
-                    {      
-                        std::string file_name;
-                        size_t lastSeparatorPos = data.first.find_last_of("\\/");
-                        if (lastSeparatorPos != std::string::npos)
-                            file_name = data.first.substr(lastSeparatorPos + 1);
-                        
-                        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(39, 136, 255, 255));
-                        ImGui::TextWrapped(file_name.c_str());
-                        if(ImGui::IsItemClicked())
-                        {
-                            SelectedProjectPath = data.first;
-                            for(const auto& file : data.second)
-                            {
-                                
-                            }
-                        }
-                        ImGui::PopStyleColor();
-
-                        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
-                        ImGui::SetItemTooltip(data.first.c_str());
-                        ImGui::PopStyleColor();
-                    }
-                    ImGui::Dummy(ImVec2(0, 4));
-                }
-                ImGui::PopFont();
-            }
+            RecentlyOpenedProjects();
         }
     ImGui::Columns();
 }

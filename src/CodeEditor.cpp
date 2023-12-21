@@ -205,8 +205,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
             if (msg.message == WM_QUIT)
                 done = true;
         }
-        if (done)
+        if (done){
+            ArmSimPro::SaveUserDataTo_ini();
             break;
+        }
 
         if (g_ResizeWidth != 0 && g_ResizeHeight != 0)
         {
@@ -223,11 +225,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
             // Create a project
             if(!SelectedProjectPath.empty() && project_root_node.FileName.empty() && project_root_node.FullPath.empty()){
                 auto task = std::async(std::launch::async, CreateDirectryNodeTreeFromPath, SelectedProjectPath);
-                auto status = task.wait_for(std::chrono::milliseconds(1));
-                if(status != std::future_status::timeout)
-                {
-                    
-                }
+                project_root_node = task.get();
             }
 
             ImGui::PushFont(DefaultFont);
@@ -343,7 +341,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         g_pSwapChain->Present(1, 0);
     }
 
-    ArmSimPro::SaveUserDataTo_ini();
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
@@ -515,7 +512,8 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
                 {  
                     auto it = std::find(Opened_TextEditors.cbegin(), Opened_TextEditors.cend(), parentNode.FullPath);
                     if(it == Opened_TextEditors.cend()){
-                        LoadEditor(parentNode.FullPath);
+                        auto task = std::async(std::launch::async, LoadEditor, parentNode.FullPath);
+                        task.wait();
                     }
                 }
             }    
@@ -765,6 +763,8 @@ static void EditorWithoutDockSpace(float main_menubar_height)
                 //     Opened_TextEditors.erase(it, Opened_TextEditors.end());
                 // }
                 RenderTextEditors();
+
+                
             }
             else
             {
