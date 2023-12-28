@@ -395,24 +395,23 @@ void SearchOnCodeEditor()
 }
 
 //===============================================Tree View of directory Impl=====================================================
-
-void RecursivelyAddDirectoryNodes(DirectoryNode& parentNode, std::filesystem::directory_iterator& directoryIterator)
-{   
-    for (const std::filesystem::directory_entry& entry : directoryIterator)
+void RecursivelyAddDirectoryNodes(DirectoryNode& parentNode, std::filesystem::directory_iterator directoryIterator)
+{
+	for (const std::filesystem::directory_entry& entry : directoryIterator)
 	{
 		DirectoryNode& childNode = parentNode.Children.emplace_back();
 		childNode.FullPath = entry.path().u8string();
 		childNode.FileName = entry.path().filename().u8string();
-        childNode.Selected = false;
 		if (childNode.IsDirectory = entry.is_directory(); childNode.IsDirectory)
 			RecursivelyAddDirectoryNodes(childNode, std::filesystem::directory_iterator(entry));
 	}
+
 	auto moveDirectoriesToFront = [](const DirectoryNode& a, const DirectoryNode& b) { return (a.IsDirectory > b.IsDirectory); };
 	std::sort(parentNode.Children.begin(), parentNode.Children.end(), moveDirectoriesToFront);
 }
 
 static std::mutex dir_tree;
-DirectoryNode CreateDirectryNodeTreeFromPath(const std::filesystem::path& rootPath)
+DirectoryNode CreateDirectryNodeTreeFromPath(const fs::path& rootPath)
 {   
     std::lock_guard<std::mutex> lock_dir_tree(dir_tree);
     
@@ -420,9 +419,8 @@ DirectoryNode CreateDirectryNodeTreeFromPath(const std::filesystem::path& rootPa
 	rootNode.FullPath = rootPath.u8string();
 	rootNode.FileName = rootPath.filename().u8string();
 
-	if (rootNode.IsDirectory = std::filesystem::is_directory(rootPath); rootNode.IsDirectory)
-        RecursivelyAddDirectoryNodes(rootNode, std::filesystem::directory_iterator(rootPath));
-
+	if (rootNode.IsDirectory = fs::is_directory(rootPath); rootNode.IsDirectory)
+        RecursivelyAddDirectoryNodes(rootNode, fs::directory_iterator(rootPath));
 	return rootNode;
 }
 
@@ -692,12 +690,17 @@ static void RenderTextEditors()
     //https://stackoverflow.com/questions/39139341/how-to-efficiently-delete-elements-from-a-vector-given-an-another-vector
     
     //copy, delete, repopulate
-    TextEditors tmp;
-    std::copy_if(Opened_TextEditors.begin(), Opened_TextEditors.end(), std::back_inserter(tmp),
-    [ToDelete](const ArmSimPro::TextEditorState& it){
-        return std::find(ToDelete.begin(), ToDelete.end(), it.editor.GetPath()) == ToDelete.end();
-    });
+    if(!ToDelete.empty())
+    {
+        TextEditors tmp;
+        std::copy_if(Opened_TextEditors.begin(), Opened_TextEditors.end(), std::back_inserter(tmp),
+        [ToDelete](const ArmSimPro::TextEditorState& it){
+            return std::find(ToDelete.begin(), ToDelete.end(), it.editor.GetPath()) == ToDelete.end();
+        });
 
+        Opened_TextEditors.clear();
+        std::copy(tmp.begin(), tmp.end(),std::back_inserter(Opened_TextEditors));
+    }
 }
 
 static void EditorWithoutDockSpace(float main_menubar_height)
@@ -750,21 +753,19 @@ static void EditorWithoutDockSpace(float main_menubar_height)
             {
                 show_welcome = false;
                 //make sure to have no duplicates      
-                // static size_t prev_size = 0;
-                // if(Opened_TextEditors.size() != prev_size)
-                // {
-                //     prev_size = Opened_TextEditors.size();
-                //     std::sort(Opened_TextEditors.begin(), Opened_TextEditors.end(), [](const ArmSimPro::TextEditorState& e1, const ArmSimPro::TextEditorState& e2){
-                //         return e1.editor.GetPath() < e2.editor.GetPath();
-                //     });
-                //     auto it = std::unique(Opened_TextEditors.begin(), Opened_TextEditors.end(), [](const ArmSimPro::TextEditorState& e1, const ArmSimPro::TextEditorState& e2){
-                //         return e1.editor.GetPath() == e2.editor.GetPath();
-                //     });
-                //     Opened_TextEditors.erase(it, Opened_TextEditors.end());
-                // }
+                static size_t prev_size = 0;
+                if(Opened_TextEditors.size() != prev_size)
+                {
+                    prev_size = Opened_TextEditors.size();
+                    std::sort(Opened_TextEditors.begin(), Opened_TextEditors.end(), [](const ArmSimPro::TextEditorState& e1, const ArmSimPro::TextEditorState& e2){
+                        return e1.editor.GetPath() < e2.editor.GetPath();
+                    });
+                    auto it = std::unique(Opened_TextEditors.begin(), Opened_TextEditors.end(), [](const ArmSimPro::TextEditorState& e1, const ArmSimPro::TextEditorState& e2){
+                        return e1.editor.GetPath() == e2.editor.GetPath();
+                    });
+                    Opened_TextEditors.erase(it, Opened_TextEditors.end());
+                }
                 RenderTextEditors();
-
-                
             }
             else
             {

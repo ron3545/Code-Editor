@@ -5,13 +5,9 @@
 #include <shlobj.h>
 #include <sstream>
 #include <d3d11.h>
-#include <tchar.h>
 #include <dwmapi.h>
-#include <filesystem>
-#include <cstring>
 #include <map>
 #include <unordered_map>
-#include <string_view>
 
 #include <mutex>
 #include <future>
@@ -27,6 +23,9 @@
 #include <functional>
 #include <iterator>
 
+#include <filesystem>
+namespace fs = std::filesystem;
+
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui/imgui.h"
 #include "imgui/imgui_internal.h"
@@ -38,9 +37,11 @@
 #include "Editor/CmdPanel.h"
 #include "Editor/TextEditor.h"
 #include "FileDialog/FileDialog.h"
-
 #include "IconFontHeaders/IconsCodicons.h"
 #include "IconFontHeaders/IconsMaterialDesignIcons.h"
+#include "Utility.hpp"
+
+#include <nlohmann/json.hpp>
 
 const char* WELCOME_PAGE = "\tWelcome\t";
 constexpr wchar_t* SOFTWARE_NAME = L"ArmSim Pro";
@@ -54,8 +55,8 @@ static const char* MONACO_Font          = "../../../Utils/Fonts/MONACO.TTF";
 //=======================================================Variables==========================================================================
 static bool auto_save = false;
 
-static std::filesystem::path SelectedProjectPath; 
-static std::filesystem::path NewProjectDir; 
+static fs::path SelectedProjectPath; 
+static fs::path NewProjectDir; 
 
 static std::string selected_window_path, prev_selected_window_path; // for editing
 static std::string current_editor;
@@ -84,7 +85,6 @@ static ImFont* CodeEditorFont;
 static ImFont* FileTreeFont;
 static ImFont* StatusBarFont;
 static ImFont* TextFont;   
-
 static ImFont* IMDIFont;
 static ImFont* ICFont;
 //==========================================================================================================================================
@@ -104,16 +104,11 @@ struct DirectoryNode
 
 static DirectoryNode project_root_node;
 
-//std::string Selected_File_Path;          
-//std::string Selcted_File_Name;
-//std::string Prev_Selected_File_Name;
-
-static void RecursivelyAddDirectoryNodes(DirectoryNode& parentNode, std::filesystem::directory_iterator& directoryIterator);
-static DirectoryNode CreateDirectryNodeTreeFromPath(const std::filesystem::path& rootPath);
+static void RecursivelyAddDirectoryNodes(DirectoryNode& parentNode, fs::directory_iterator& directoryIterator);
+static DirectoryNode CreateDirectryNodeTreeFromPath(const fs::path& rootPath);
 static void ImplementDirectoryNode();
 static void SearchOnCodeEditor();
 
-//void EditorDockSpace(float main_menubar_height); //Under Development
 void EditorWithoutDockSpace(float main_menubar_height); 
 
 const char* ppnames[] = { "NULL", "PM_REMOVE",
@@ -171,24 +166,24 @@ enum DirStatus
 };
 const char* DirCreateLog[] = {"None","Project already exist.", "Project Created.", "Failed To create project.", "Project name not specified."};
 
-static DirStatus CreateProjectDirectory(const std::filesystem::path& path, const char* ProjectName, std::filesystem::path* out)
+static DirStatus CreateProjectDirectory(const fs::path& path, const char* ProjectName, fs::path* out)
 {
     *out = path / ProjectName;
-    if(std::filesystem::exists(*out))
+    if(fs::exists(*out))
         return DirStatus_AlreadyExist;
     
     //Create Directory
-    if(std::filesystem::create_directory(*out))
+    if(fs::create_directory(*out))
         return DirStatus_Created;
     return DirStatus_FailedToCreate;
 }
 
-static DirStatus CreatesDefaultProjectDirectory(const std::filesystem::path& NewProjectPath, const char* ProjectName, std::filesystem::path* output_path)
+static DirStatus CreatesDefaultProjectDirectory(const fs::path& NewProjectPath, const char* ProjectName, fs::path* output_path)
 {
-    if(!std::filesystem::exists(NewProjectPath))
+    if(!fs::exists(NewProjectPath))
     {   
         //Creates "ArmSimPro Projects" folder and then create a named project directory of the user
-        if(std::filesystem::create_directory(NewProjectPath))
+        if(fs::create_directory(NewProjectPath))
             return CreateProjectDirectory(NewProjectPath, ProjectName, output_path);
         return DirStatus_FailedToCreate;
     }
@@ -209,7 +204,7 @@ std::string GetFileNameFromPath(const std::string& filePath) {
     return filePath;
 }
 
-void OpenFileDialog(std::filesystem::path& path, const char* key)
+void OpenFileDialog(fs::path& path, const char* key)
 {   
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));
     ImGui::PushStyleColor(ImGuiCol_ChildBg, bg_col.GetCol());
@@ -320,7 +315,7 @@ void ProjectWizard()
 
         ImGui::Checkbox("Use default Location", &UseDefault_Location);
         if(UseDefault_Location)
-            NewProjectDir = std::filesystem::path(getenv("USERPROFILE")) / "Documents" / "ArmSimPro Projects";
+            NewProjectDir = fs::path(getenv("USERPROFILE")) / "Documents" / "ArmSimPro Projects";
 
         ImGui::SetCursorPosY(240);
         ImGui::Separator();
@@ -369,9 +364,11 @@ bool ButtonWithIconEx(const char* label, const char* icon = nullptr, const char*
 
     if(definition != nullptr)
     {
+        ImGui::PushFont(TextFont);
         ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
         ImGui::SetItemTooltip(definition);
         ImGui::PopStyleColor();
+        ImGui::PopFont();
     }
 
     ImGui::Dummy(ImVec2(0, 45));
@@ -407,72 +404,40 @@ namespace  ArmSimPro
     Data LoadUserDataFrom_ini(const std::string& line)
     {
         Data data;
-        // Extract Root project
-        std::smatch root_project_match;
-        if(std::regex_search(line, root_project_match, std::regex("Root Project -> (.+)")));
-            data.root = root_project_match[1];
         
-        // Extracting Total Editors
-        std::smatch total_editors_match;
-        if (std::regex_search(line, total_editors_match, std::regex("Total Editors -> (\\d+)")))
-            data.Total_editors = std::stoi(total_editors_match[1]);
-        
-        // Extracting Opened Editors
-        std::smatch opened_editors_match;
-        if (std::regex_search(line, opened_editors_match, std::regex("Opened_Editors -> \\[ (.+) \\]")))
-        {
-            std::string opened_editors_str = opened_editors_match[1];
-            std::istringstream iss(opened_editors_str);
-            std::string path;
-            while (std::getline(iss, path, ','))
-                data.files.insert(path);
-        }
         return data;
     }
 
     void SaveUserDataTo_ini()
     {
-        std::vector<std::string> Opened_editor_file_paths;
-        const std::string project_directory = SelectedProjectPath.u8string();
-
-        if(project_directory.empty())
-            return;
-
-        for(const auto& editor : Opened_TextEditors)
-            if(editor.Open)
-                Opened_editor_file_paths.push_back(editor.editor.GetPath());
+        fs::path current_exe_path = fs::current_path();
+        std::string file_path(current_exe_path.u8string() + "\\ArmSim.json");
         
-        std::filesystem::path current_exe_path = std::filesystem::current_path();
-        std::string file(current_exe_path.u8string() + "\\ArmSim.ini");
-        std::ofstream ini_file(file, std::ios::app);
-            ini_file << "Root Project -> " << project_directory << std::endl << "Total Editors -> " << Opened_editor_file_paths.size() << std::endl << "Opened_Editors -> [ ";
+        nlohmann::json json_data;
+        bool file_exist = fs::exists(fs::path(file_path));
+        if(file_exist)
+        {
+            std::ifstream config_file(file_path);
+            json_data = nlohmann::json::parse(config_file);
+            config_file.close();
             
-            const size_t size = Opened_editor_file_paths.size();
             
-            for(size_t i = 0; i < Opened_editor_file_paths.size(); ++i){
-                ini_file << Opened_editor_file_paths[i];
+        }
 
-                if(i < Opened_editor_file_paths.size() - 1)
-                    ini_file << " , ";
-            }
-            ini_file << " ]\n\n\n";
-        ini_file.close();
+        std::vector<std::string> FilePath_OpenedEditors;
+        for(auto it = Opened_TextEditors.cbegin(); it != Opened_TextEditors.cend(); ++it)
+            if(it->Open)
+                FilePath_OpenedEditors.push_back(it->editor.GetPath());
+
+        json_data["root file"] = SelectedProjectPath.u8string();
+        json_data["total file"] = static_cast<size_t>(FilePath_OpenedEditors.size());
+        json_data["files"] = FilePath_OpenedEditors;
+        
+        // std::ofstream file(file_path, std::ios::app);
+        // file << std::setw(4) << json_data << "\n\n";
+        // file.close();
     }
 };
-
-void SetupPreprocIdentifiers(ArmSimPro::TextEditor::LanguageDefinition& programming_lang, const char* value)
-{
-    ArmSimPro::TextEditor::Identifier id;
-    id.mDeclaration = value;
-    programming_lang.mPreprocIdentifiers.insert(std::make_pair(std::string(value), id));
-}
-
-void SetupIdentifiers(ArmSimPro::TextEditor::LanguageDefinition& programming_lang, const char* value, const char* idecls)
-{
-    ArmSimPro::TextEditor::Identifier id;
-    id.mDeclaration = std::string(idecls);
-    programming_lang.mIdentifiers.insert(std::make_pair(std::string(value), id));
-}
 
 static std::mutex LoadEditor_mutex;
 void LoadEditor(const std::string& file)
@@ -482,9 +447,18 @@ void LoadEditor(const std::string& file)
     auto programming_lang = ArmSimPro::TextEditor::LanguageDefinition::CPlusPlus();
 
     for (int i = 0; i < sizeof(ppnames) / sizeof(ppnames[0]); ++i)
-        SetupPreprocIdentifiers(programming_lang, ppvalues[i]);
+    {
+        ArmSimPro::TextEditor::Identifier id;
+        id.mDeclaration = ppvalues[i];
+        programming_lang.mPreprocIdentifiers.insert(std::make_pair(std::string(ppvalues[i]), id));
+    }  
+
     for (int i = 0; i < sizeof(identifiers) / sizeof(identifiers[0]); ++i)
-        SetupIdentifiers(programming_lang, identifiers[i], idecls[i]);
+    {
+        ArmSimPro::TextEditor::Identifier id;
+        id.mDeclaration = std::string(idecls[i]);
+        programming_lang.mIdentifiers.insert(std::make_pair(std::string(identifiers[i]), id));
+    } 
 
     editor.SetLanguageDefinition(programming_lang);
 
@@ -503,64 +477,73 @@ void LoadEditor(const std::string& file)
     ArmSimPro::TextEditor::Palette palette = editor.GetPalette();
     palette[(int)ArmSimPro::TextEditor::PaletteIndex::Background] = ImGui::ColorConvertFloat4ToU32(child_col.GetCol());
     palette[(int)ArmSimPro::TextEditor::PaletteIndex::Number] = ImGui::ColorConvertFloat4ToU32(RGBA(189, 219, 173, 255).GetCol());
-    editor.SetPalette(palette);
+    //editor.SetPalette(palette);
 
     Opened_TextEditors.push_back(ArmSimPro::TextEditorState(editor));
 }
 
-void RecentlyOpenedProjects()
+void GetRecentlyOpenedProjects()
 {
-    std::set<ArmSimPro::Data> user_data;
-    std::filesystem::path current_exe_path = std::filesystem::current_path();
+    fs::path current_exe_path = fs::current_path();
     std::string file_path(current_exe_path.u8string() + "\\ArmSim.ini");
+    std::map<std::string, std::set<std::string>> Application_data;
 
-    std::ifstream file(file_path);
-    if (!file.is_open())
-        return;
-
-    std::string line;
-    while(std::getline(file, line))
+    if(Application_data.empty())
     {
-        auto data = ArmSimPro::LoadUserDataFrom_ini(line);
-        user_data.insert(data);
-        
-        for(const auto& i : data.files)
-            ImGui::Text(i.c_str());
-    }
-    file.close();
+        std::ifstream file(file_path);
+        if (!file.is_open())
+            return;
 
-    if(!user_data.empty())
-    {   
-        ImGui::SetCursorPosY(120);
+        std::string line;
+        while(std::getline(file, line))
+        {
+            const auto data = ArmSimPro::LoadUserDataFrom_ini(line);
+            std::set<std::string> files(data.files.begin(), data.files.end());
+            
+        }
+        file.close();
+    }
+
+    std::string prev_root_file;
+    float posX = 120;
+    for(const auto& data : Application_data)
+    {
+        ImGui::SetCursorPosY(posX);
         ImGui::PushFont(TextFont);
-        for(const auto& data : user_data)
-        {   
-            ImGui::Dummy(ImVec2(10, 0)); ImGui::SameLine();
-            if(!data.root.empty())
-            {   
-                std::string file_name;
-                size_t lastSeparatorPos = data.root.find_last_of("\\/");
-                if (lastSeparatorPos != std::string::npos)
-                    file_name = data.root.substr(lastSeparatorPos + 1);
-                
-                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(39, 136, 255, 255));
-                ImGui::TextWrapped(file_name.c_str());
-                ImGui::PopStyleColor();
-                if(ImGui::IsItemClicked())
-                {
-                    SelectedProjectPath = data.root;
+        {
+            if(data.first != prev_root_file && !data.first.empty())
+            {
+                prev_root_file = data.first;
+                ImGui::Dummy(ImVec2(10, 0)); ImGui::SameLine();
+                {   
+                    std::string file_name;
+                    size_t lastSeparatorPos = data.first.find_last_of("\\/");
+                    if (lastSeparatorPos != std::string::npos)
+                        file_name = data.first.substr(lastSeparatorPos + 1);
+                    
+                    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(39, 136, 255, 255));
+                    ImGui::TextWrapped(file_name.c_str());
+                    ImGui::PopStyleColor();
+                    if(ImGui::IsItemClicked())
                     {
-                        // auto task = std::async(std::launch::async, LoadEditor, file);
-                        // task.wait();
+                        SelectedProjectPath = data.first;
+                        
+                        std::vector<std::future<void>> m_futures;
+                        for(const auto& file : data.second){
+                            m_futures.push_back(std::async(std::launch::async, LoadEditor, file));
+                            
+                        }
+                        for(auto& future : m_futures)
+                            future.wait();
                     }
+                    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
+                    ImGui::SetItemTooltip(data.first.c_str());
+                    ImGui::PopStyleColor();
                 }
-                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
-                ImGui::SetItemTooltip(data.root.c_str());
-                ImGui::PopStyleColor();
             }
-            ImGui::Dummy(ImVec2(0, 4));
         }
         ImGui::PopFont();
+        posX += 15.1254;
     }
 }
 
@@ -598,7 +581,9 @@ void WelcomPage()
         ImGui::PopStyleVar();
 
         if(ButtonWithIcon("New Project...", ICON_CI_GIT_PULL_REQUEST, "Clone a remote repository to a local folder..."))
-        {}
+        {
+            
+        }
 
         ImGui::NextColumn();
         {
@@ -607,7 +592,7 @@ void WelcomPage()
                 ImGui::Text("Recent");
             ImGui::PopFont();
             
-            RecentlyOpenedProjects();
+            GetRecentlyOpenedProjects();
         }
     ImGui::Columns();
 }
