@@ -49,6 +49,3 @@ The ArmSimPro Code Editor is a versatile text editor designed specifically for p
 
 ## Contributing
 Contributions to the ArmSimPro Code Editor are welcome. Feel free to submit issues, pull requests, or feature requests to enhance the editor's functionality and usability.
-
-## License
-This project is licensed under the MIT License - see the LICENSE file for details.
