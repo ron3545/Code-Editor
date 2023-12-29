@@ -206,7 +206,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
                 done = true;
         }
         if (done){
-            ArmSimPro::SaveUserDataTo_ini();
+            ArmSimPro::SaveUserData();
             break;
         }
 
@@ -688,8 +688,8 @@ static void RenderTextEditors()
     }// end loop
 
     //https://stackoverflow.com/questions/39139341/how-to-efficiently-delete-elements-from-a-vector-given-an-another-vector
-    
     //copy, delete, repopulate
+    //using erase method causes some weird anomalies. will fix it later.
     if(!ToDelete.empty())
     {
         TextEditors tmp;

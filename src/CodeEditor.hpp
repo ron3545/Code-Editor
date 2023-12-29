@@ -389,31 +389,35 @@ bool ButtonWithIcon(const char* label, const char* icon, const char* definition)
 
 namespace  ArmSimPro
 {
-    struct Data
+    nlohmann::json LoadUserData()
     {
-        std::string root; 
-        std::set<std::string> files;
-        size_t Total_editors;
-
-        bool operator < (const Data& other) const
-        {
-            return this->root < other.root;
-        }
-    };
-
-    Data LoadUserDataFrom_ini(const std::string& line)
-    {
-        Data data;
+        fs::path current_exe_path = fs::current_path();
+        std::string file_path(current_exe_path.u8string() + "\\ArmSim.json");
+        nlohmann::json data;
         
+        std::ifstream config_file(file_path);
+            data = nlohmann::json::parse(config_file);
+        config_file.close();
+
         return data;
     }
 
-    void SaveUserDataTo_ini()
+    void SaveUserData()
     {
         fs::path current_exe_path = fs::current_path();
         std::string file_path(current_exe_path.u8string() + "\\ArmSim.json");
         
-        nlohmann::json json_data;
+        std::vector<std::string> FilePath_OpenedEditors;
+        for(auto it = Opened_TextEditors.cbegin(); it != Opened_TextEditors.cend(); ++it)
+            if(it->Open)
+                FilePath_OpenedEditors.push_back(it->editor.GetPath());
+
+        nlohmann::json new_data;
+        new_data[OPENED_FILES] = FilePath_OpenedEditors;
+        new_data[ROOT_PROJECT] = SelectedProjectPath.u8string();
+        new_data[NUMBER_OPENED_FILE] = FilePath_OpenedEditors.size();
+
+        nlohmann::json json_data; 
         bool file_exist = fs::exists(fs::path(file_path));
         if(file_exist)
         {
@@ -421,21 +425,17 @@ namespace  ArmSimPro
             json_data = nlohmann::json::parse(config_file);
             config_file.close();
             
-            
+            json_data[RECENT_FILES].push_back(new_data);
         }
-
-        std::vector<std::string> FilePath_OpenedEditors;
-        for(auto it = Opened_TextEditors.cbegin(); it != Opened_TextEditors.cend(); ++it)
-            if(it->Open)
-                FilePath_OpenedEditors.push_back(it->editor.GetPath());
-
-        json_data["root file"] = SelectedProjectPath.u8string();
-        json_data["total file"] = static_cast<size_t>(FilePath_OpenedEditors.size());
-        json_data["files"] = FilePath_OpenedEditors;
+        else
+            json_data[RECENT_FILES].push_back(new_data);
         
-        // std::ofstream file(file_path, std::ios::app);
-        // file << std::setw(4) << json_data << "\n\n";
-        // file.close();
+        if(json_data.empty())
+            return;
+
+        std::ofstream file(file_path, std::ios::trunc);
+        file << std::setw(4) << json_data << "\n\n";
+        file.close();
     }
 };
 
@@ -484,24 +484,20 @@ void LoadEditor(const std::string& file)
 
 void GetRecentlyOpenedProjects()
 {
-    fs::path current_exe_path = fs::current_path();
-    std::string file_path(current_exe_path.u8string() + "\\ArmSim.ini");
     std::map<std::string, std::set<std::string>> Application_data;
 
-    if(Application_data.empty())
+    const nlohmann::json data = ArmSimPro::LoadUserData();
+    if(data.contains(RECENT_FILES))
     {
-        std::ifstream file(file_path);
-        if (!file.is_open())
-            return;
-
-        std::string line;
-        while(std::getline(file, line))
+        const auto recent_projects = data[RECENT_FILES];
+        for(const auto& element : recent_projects)
         {
-            const auto data = ArmSimPro::LoadUserDataFrom_ini(line);
-            std::set<std::string> files(data.files.begin(), data.files.end());
-            
+            const std::string project_path = element[ROOT_PROJECT];
+            std::set<std::string> files;
+            for(const auto& file : element[OPENED_FILES])
+                files.insert(file);
+            Application_data[project_path] = files;
         }
-        file.close();
     }
 
     std::string prev_root_file;
@@ -529,10 +525,9 @@ void GetRecentlyOpenedProjects()
                         SelectedProjectPath = data.first;
                         
                         std::vector<std::future<void>> m_futures;
-                        for(const auto& file : data.second){
+                        for(const auto& file : data.second)
                             m_futures.push_back(std::async(std::launch::async, LoadEditor, file));
-                            
-                        }
+                        
                         for(auto& future : m_futures)
                             future.wait();
                     }
@@ -582,7 +577,7 @@ void WelcomPage()
 
         if(ButtonWithIcon("New Project...", ICON_CI_GIT_PULL_REQUEST, "Clone a remote repository to a local folder..."))
         {
-            
+
         }
 
         ImGui::NextColumn();
