@@ -17,3 +17,8 @@ target_include_directories( FileDialog
         Shell32.lib
         d3d11.lib 
 )
+
+target_link_libraries(
+    FileDialog
+    lwlog::lwlog
+)

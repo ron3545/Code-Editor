@@ -39,6 +39,7 @@ namespace fs = std::filesystem;
 #include "FileDialog/FileDialog.h"
 #include "IconFontHeaders/IconsCodicons.h"
 #include "IconFontHeaders/IconsMaterialDesignIcons.h"
+#include "FileDialog/FileHandler.h"
 #include "Utility.hpp"
 
 #include <nlohmann/json.hpp>
@@ -104,7 +105,6 @@ struct DirectoryNode
 
 static DirectoryNode project_root_node;
 
-static void RecursivelyAddDirectoryNodes(DirectoryNode& parentNode, fs::directory_iterator& directoryIterator);
 static DirectoryNode CreateDirectryNodeTreeFromPath(const fs::path& rootPath);
 static void ImplementDirectoryNode();
 static void SearchOnCodeEditor();
@@ -326,7 +326,7 @@ void ProjectWizard()
         float ok_cancel_width = 24 * 7;
         if(ImGui::Button("Cancel", ImVec2(ok_cancel_width / 2 - ImGui::GetStyle().ItemSpacing.x, 0.0f)) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape)))
             ImGui::CloseCurrentPopup();
-        
+         
         ImGui::SameLine();
         ImGui::Dummy(ImVec2(5, 0)); ImGui::SameLine();
         if(ImGui::Button("Finish", ImVec2(ok_cancel_width / 2 - ImGui::GetStyle().ItemSpacing.x, 0.0f)) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter)))
@@ -402,22 +402,43 @@ namespace  ArmSimPro
         return data;
     }
 
+    bool IsRootKeyExist(const std::string& root, const std::string& path)
+    {
+        std::ifstream config_file(path);
+        auto json_data = nlohmann::json::parse(config_file);
+        config_file.close();
+
+        if(json_data.contains(RECENT_FILES) && json_data[RECENT_FILES].is_array())
+        {
+            for(const auto& element : json_data[RECENT_FILES])
+            {
+                if(element[ROOT_PROJECT] == root)
+                    return true;
+            }
+            return false;
+        }
+        return false;
+    }
+
     void SaveUserData()
     {
         fs::path current_exe_path = fs::current_path();
         std::string file_path(current_exe_path.u8string() + "\\ArmSim.json");
         
+        if(SelectedProjectPath.empty() && Opened_TextEditors.empty())
+            return;
+
         std::vector<std::string> FilePath_OpenedEditors;
         for(auto it = Opened_TextEditors.cbegin(); it != Opened_TextEditors.cend(); ++it)
             if(it->Open)
                 FilePath_OpenedEditors.push_back(it->editor.GetPath());
 
+        nlohmann::json json_data; 
+
         nlohmann::json new_data;
         new_data[OPENED_FILES] = FilePath_OpenedEditors;
         new_data[ROOT_PROJECT] = SelectedProjectPath.u8string();
-        new_data[NUMBER_OPENED_FILE] = FilePath_OpenedEditors.size();
 
-        nlohmann::json json_data; 
         bool file_exist = fs::exists(fs::path(file_path));
         if(file_exist)
         {
@@ -425,11 +446,23 @@ namespace  ArmSimPro
             json_data = nlohmann::json::parse(config_file);
             config_file.close();
             
-            json_data[RECENT_FILES].push_back(new_data);
+            if(IsRootKeyExist(SelectedProjectPath.u8string(), file_path))
+            {
+                for(auto& element : json_data[RECENT_FILES])
+                {
+                    if(element[ROOT_PROJECT] == SelectedProjectPath.u8string())
+                    {
+                        element[OPENED_FILES] = FilePath_OpenedEditors;
+                        break;
+                    }
+                }
+            }
+            else
+                json_data[RECENT_FILES].push_back(new_data);
         }
         else
             json_data[RECENT_FILES].push_back(new_data);
-        
+
         if(json_data.empty())
             return;
 
@@ -474,17 +507,22 @@ void LoadEditor(const std::string& file)
         editor.SetText(str);
     }
 
-    ArmSimPro::TextEditor::Palette palette = editor.GetPalette();
-    palette[(int)ArmSimPro::TextEditor::PaletteIndex::Background] = ImGui::ColorConvertFloat4ToU32(child_col.GetCol());
-    palette[(int)ArmSimPro::TextEditor::PaletteIndex::Number] = ImGui::ColorConvertFloat4ToU32(RGBA(189, 219, 173, 255).GetCol());
-    //editor.SetPalette(palette);
+    // ArmSimPro::TextEditor::Palette palette = editor.GetPalette();
+    // palette[(int)ArmSimPro::TextEditor::PaletteIndex::Background] = ImGui::ColorConvertFloat4ToU32(child_col.GetCol());
+    // palette[(int)ArmSimPro::TextEditor::PaletteIndex::Number] = ImGui::ColorConvertFloat4ToU32(RGBA(189, 219, 173, 255).GetCol());
+    // editor.SetPalette(palette);
 
     Opened_TextEditors.push_back(ArmSimPro::TextEditorState(editor));
 }
 
 void GetRecentlyOpenedProjects()
 {
-    std::map<std::string, std::set<std::string>> Application_data;
+    static std::mutex RecentFile_Mutex;
+    std::lock_guard<std::mutex> lock(RecentFile_Mutex);
+
+    typedef std::string Root_Path;
+    typedef std::set<std::string> Prev_Files;
+    std::map<Root_Path, Prev_Files> Application_data;
 
     const nlohmann::json data = ArmSimPro::LoadUserData();
     if(data.contains(RECENT_FILES))
@@ -501,10 +539,9 @@ void GetRecentlyOpenedProjects()
     }
 
     std::string prev_root_file;
-    float posX = 120;
+    ImGui::SetCursorPosY(120);
     for(const auto& data : Application_data)
     {
-        ImGui::SetCursorPosY(posX);
         ImGui::PushFont(TextFont);
         {
             if(data.first != prev_root_file && !data.first.empty())
@@ -526,19 +563,22 @@ void GetRecentlyOpenedProjects()
                         
                         std::vector<std::future<void>> m_futures;
                         for(const auto& file : data.second)
-                            m_futures.push_back(std::async(std::launch::async, LoadEditor, file));
-                        
+                        {
+                            if(fs::exists(file))
+                                m_futures.push_back(std::async(std::launch::async, LoadEditor, file));
+                        }
+
                         for(auto& future : m_futures)
                             future.wait();
                     }
                     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
                     ImGui::SetItemTooltip(data.first.c_str());
                     ImGui::PopStyleColor();
+                    ImGui::Dummy(ImVec2(0, 11));
                 }
             }
         }
         ImGui::PopFont();
-        posX += 15.1254;
     }
 }
 
@@ -577,7 +617,7 @@ void WelcomPage()
 
         if(ButtonWithIcon("New Project...", ICON_CI_GIT_PULL_REQUEST, "Clone a remote repository to a local folder..."))
         {
-
+            // Not a priority for now
         }
 
         ImGui::NextColumn();
@@ -587,7 +627,8 @@ void WelcomPage()
                 ImGui::Text("Recent");
             ImGui::PopFont();
             
-            GetRecentlyOpenedProjects();
+            auto future = std::async(std::launch::async, GetRecentlyOpenedProjects);
+            future.wait();
         }
     ImGui::Columns();
 }

@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cassert>
 #include <chrono>
+#include <future>
+
 using namespace std::chrono_literals;
 
 namespace ArmSimPro
@@ -153,7 +155,13 @@ namespace ArmSimPro
             
             ImGui::BeginChild(Tool.button_name.c_str(), ImVec2(windowSize.x - splitter_thickness, windowSize.y - splitter_thickness), false, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoMove);
             if(Tool.tool.ptr_to_func)
-                Tool.tool.ptr_to_func();
+            {   
+                auto future = std::async(std::launch::async, [&](){
+                    std::lock_guard<std::mutex> lock(ToolItem_Mutex);
+                    Tool.tool.ptr_to_func(); 
+                });
+                future.wait();
+            }
             ImGui::EndChild();
             ImGui::PopStyleVar();
             ImGui::PopStyleColor();
@@ -170,10 +178,10 @@ namespace ArmSimPro
                 cursor = ImGuiMouseCursor_ResizeEW;
             ImGui::SetMouseCursor(cursor);
             //size limit
-            if(_primary_sidebar_width < 197.33)
-                _primary_sidebar_width = 197.33;
-            else if(_primary_sidebar_width > 579.33)
-                _primary_sidebar_width = 579.33;
+            if(_primary_sidebar_width < 197.33f)
+                _primary_sidebar_width = 197.33f;
+            else if(_primary_sidebar_width > 579.33f)
+                _primary_sidebar_width = 579.33f;
         }
         ImGui::PopStyleColor();
         ImGui::End();

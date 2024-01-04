@@ -13,7 +13,7 @@
 #include <unordered_map>
 #include <string>
 #include <functional>
-
+#include <mutex>
 
 namespace ArmSimPro
 {
@@ -71,6 +71,7 @@ namespace ArmSimPro
         };
 
     private:
+        std::mutex ToolItem_Mutex;
         const std::string _label;
         ImVec2 _tool_size;
         
