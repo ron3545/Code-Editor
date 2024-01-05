@@ -130,8 +130,20 @@ void FileHandler::PasteFile(const std::filesystem::path& target_path)
     }
 }
 
-void FileHandler::Rename(const std::string& selected_path, const std::string& new_name)
+void FileHandler::Rename(std::string& selected_path, const std::string& new_name)
 {
-    
+    try
+    {
+        fs::path old_path(selected_path);
+        auto parent_path = old_path.parent_path(); 
+        auto new_path = parent_path / new_name;
 
+        fs::rename(selected_path.c_str(), new_path.u8string().c_str());
+        selected_path = new_path.u8string();
+    }
+    catch(const std::exception& e)
+    {
+
+    }
+    
 }

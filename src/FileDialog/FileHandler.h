@@ -36,7 +36,7 @@ public:
     void PasteFile(const std::filesystem::path& target_path);
 
     //https://github.com/ocornut/imgui/issues/3730
-    void Rename(const std::string& selected_path, const std::string& new_name);
+    void Rename(std::string& selected_path, const std::string& new_name);
 private:
     FileHandler_PasteMode paste_mode; 
     ImFont* text_font;

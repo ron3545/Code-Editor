@@ -505,7 +505,8 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
                 if(ImGui::InputText("###rename", &buffer,   ImGuiInputTextFlags_AutoSelectAll    | 
                                                             ImGuiInputTextFlags_EnterReturnsTrue))
                 {
-                    
+                    FileHandler::GetInstance().Rename(parentNode.FullPath, buffer);
+                    parentNode.FileName = buffer;
                     ShouldRename = false;
                 }
                 ImGui::PopStyleColor(2);
