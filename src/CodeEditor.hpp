@@ -30,19 +30,23 @@ namespace fs = std::filesystem;
 #include "imgui/imgui.h"
 #include "imgui/imgui_internal.h"
 #include "imgui/imgui_stdlib.h"
+#include <nlohmann/json.hpp>
 
 #include "ToolBar/ToolBar.h"
 #include "ImageHandler/ImageHandler.h"
 #include "StatusBar/StatusBar.h"
 #include "Editor/CmdPanel.h"
 #include "Editor/TextEditor.h"
-#include "FileDialog/FileDialog.h"
+
 #include "IconFontHeaders/IconsCodicons.h"
 #include "IconFontHeaders/IconsMaterialDesignIcons.h"
+
 #include "FileDialog/FileHandler.h"
+#include "FileDialog/FileDialog.h"
+
+#include "Editor/DirectoryTree.h"
 #include "Utility.hpp"
 
-#include <nlohmann/json.hpp>
 
 const char* WELCOME_PAGE = "\tWelcome\t";
 constexpr wchar_t* SOFTWARE_NAME = L"ArmSim Pro";
@@ -93,22 +97,6 @@ bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
-//==================================================TREE VIEW OF DIRECTORY===================================================================
-struct DirectoryNode
-{
-	std::string FullPath;
-	std::string FileName;
-	std::vector<DirectoryNode> Children;
-	bool IsDirectory;
-    bool Selected;
-};
-
-static DirectoryNode project_root_node;
-
-static DirectoryNode CreateDirectryNodeTreeFromPath(const fs::path& rootPath);
-static void ImplementDirectoryNode();
-static void SearchOnCodeEditor();
-
 void EditorWithoutDockSpace(float main_menubar_height); 
 
 const char* ppnames[] = { "NULL", "PM_REMOVE",
@@ -164,7 +152,6 @@ enum DirStatus
     DirStatus_FailedToCreate,
     DirStatus_NameNotSpecified
 };
-const char* DirCreateLog[] = {"None","Project already exist.", "Project Created.", "Failed To create project.", "Project name not specified."};
 
 static DirStatus CreateProjectDirectory(const fs::path& path, const char* ProjectName, fs::path* out)
 {
@@ -188,20 +175,6 @@ static DirStatus CreatesDefaultProjectDirectory(const fs::path& NewProjectPath, 
         return DirStatus_FailedToCreate;
     }
     return CreateProjectDirectory(NewProjectPath, ProjectName, output_path);
-}
-
-std::string GetFileNameFromPath(const std::string& filePath) {
-    // Find the position of the last directory separator
-    size_t lastSeparatorPos = filePath.find_last_of("\\/");
-
-    // Check if a separator is found
-    if (lastSeparatorPos != std::string::npos) {
-        // Extract the substring starting from the position after the separator
-        return filePath.substr(lastSeparatorPos + 1);
-    }
-
-    // If no separator is found, return the original path
-    return filePath;
 }
 
 void OpenFileDialog(fs::path& path, const char* key)
@@ -288,6 +261,8 @@ namespace ArmSimPro
 
 void ProjectWizard()
 {
+    const char* DirCreateLog[] = {"None","Project already exist.", "Project Created.", "Failed To create project.", "Project name not specified."};
+
     ImGui::PushFont(TextFont);
     ImGui::TextWrapped("This wizard allows you to create new PlatformIO project. In the last case, you need to uncheck \"Use default location\" and specify path to chosen directory");
         static DirStatus DirCreateStatus = DirStatus_None;
@@ -386,7 +361,7 @@ bool ButtonWithIcon(const char* label, const char* icon, const char* definition)
     return clicked;
 }
 
-
+//========================================Loading and Saving User Data Helper Functions==============================================
 namespace  ArmSimPro
 {
     nlohmann::json LoadUserData()
@@ -471,6 +446,8 @@ namespace  ArmSimPro
         file.close();
     }
 };
+
+//==========================================================================================================================================
 
 static std::mutex LoadEditor_mutex;
 void LoadEditor(const std::string& file)
