@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.11)
 
 project(ARMSIMPRO_core LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
@@ -22,10 +22,7 @@ if(NOT lwlog_POPULATED)
   add_subdirectory(${lwlog_SOURCE_DIR} ${lwlog_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
-# https://github.com/microsoft/DirectXTK/wiki/Adding-the-DirectX-Tool-Kit
-add_subdirectory(External_Dependencies/DirectXTK ${CMAKE_BINARY_DIR}/bin/CMake/DirectXTK)
 add_subdirectory(imgui)
-
 add_subdirectory(ToolBar)
 add_subdirectory(StatusBar)
 add_subdirectory(Editor)
@@ -46,6 +43,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     d3d11.lib 
     dxgi.lib 
     d3dcompiler.lib
-    
-    DirectXTK
 )
