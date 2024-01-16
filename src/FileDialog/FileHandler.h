@@ -3,6 +3,18 @@
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_internal.h"
 
+struct DirectoryNode
+{
+	std::string FullPath;
+	std::string FileName;
+	std::vector<DirectoryNode> Children;
+	bool IsDirectory;
+    bool Selected;
+};
+
+void RecursivelyAddDirectoryNodes(DirectoryNode& parentNode, std::filesystem::directory_iterator directoryIterator);
+DirectoryNode CreateDirectryNodeTreeFromPath(const std::filesystem::path& rootPath);
+
 class FileHandler
 {
 private:
@@ -40,4 +52,7 @@ public:
 private:
     FileHandler_PasteMode paste_mode; 
     ImFont* text_font;
+
+    void AddNode(DirectoryNode& DirNode, const std::string& path_to_add);
+    void RemoveNode(DirectoryNode& DirNode, const std::string& path_to_remove);
 };

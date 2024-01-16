@@ -5,6 +5,36 @@
 
 namespace fs = std::filesystem;
 
+void RecursivelyAddDirectoryNodes(DirectoryNode& parentNode, std::filesystem::directory_iterator directoryIterator)
+{
+	for (const std::filesystem::directory_entry& entry : directoryIterator)
+	{
+		DirectoryNode& childNode = parentNode.Children.emplace_back();
+		childNode.FullPath = entry.path().u8string();
+		childNode.FileName = entry.path().filename().u8string();
+		if (childNode.IsDirectory = entry.is_directory(); childNode.IsDirectory)
+			RecursivelyAddDirectoryNodes(childNode, std::filesystem::directory_iterator(entry));
+	}
+
+	auto moveDirectoriesToFront = [](const DirectoryNode& a, const DirectoryNode& b) { return (a.IsDirectory > b.IsDirectory); };
+	std::sort(parentNode.Children.begin(), parentNode.Children.end(), moveDirectoriesToFront);
+}
+
+DirectoryNode CreateDirectryNodeTreeFromPath(const std::filesystem::path& rootPath)
+{   
+    static std::mutex dir_tree;
+    std::lock_guard<std::mutex> lock_dir_tree(dir_tree);
+    
+    DirectoryNode rootNode;
+	rootNode.FullPath = rootPath.u8string();
+	rootNode.FileName = rootPath.filename().u8string();
+
+	if (rootNode.IsDirectory = fs::is_directory(rootPath); rootNode.IsDirectory)
+        RecursivelyAddDirectoryNodes(rootNode, fs::directory_iterator(rootPath));
+	return rootNode;
+}
+
+//========================================CLASS IMPL===============================================================
 /**
  * true => success
  * false => failed | already exist 
@@ -145,5 +175,14 @@ void FileHandler::Rename(std::string& selected_path, const std::string& new_name
     {
 
     }
-    
+}
+
+void FileHandler::AddNode(DirectoryNode& DirNode, const std::string& path_to_add)
+{
+
+}
+
+void FileHandler::RemoveNode(DirectoryNode& DirNode, const std::string& path_to_remove)
+{
+
 }
