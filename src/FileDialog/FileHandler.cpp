@@ -57,7 +57,8 @@ bool FileHandler::CreateNewFile(const std::filesystem::path& path, const char* f
 */
 bool FileHandler::CreateNewFolder(const std::filesystem::path& path, const char* folder_name)
 {
-    if(!fs::exists(path / folder_name) && fs::create_directories(path / folder_name))
+    const std::filesystem::path new_path(path / folder_name);
+    if(!fs::exists(new_path) && fs::create_directories(new_path))
         return true;
     return false;
 }
@@ -150,27 +151,53 @@ void FileHandler::Rename(std::string& selected_path, const std::string& new_name
     selected_path = new_path.u8string();
 }
 
-//Recuursive search
-bool FileHandler::SearchNode(DirectoryNode& ParentNode, const std::string& path, SearchMode_ mode)
+bool FileHandler::Search_RemoveNode(DirectoryNode& ParentNode, const std::string& target_path)
 {
+    if(target_path.empty())
+        return false;
     
+    if(ParentNode.FullPath == target_path)
+        return true;
+    
+    auto it = ParentNode.Children.begin();
+    while(it != ParentNode.Children.end())
+    {
+        if(Search_RemoveNode(*it, target_path))
+            it = ParentNode.Children.erase(it);
+        else
+            ++it;
+    }
 }
 
-void FileHandler::AddNode(DirectoryNode& ParentNode, const std::string& path_to_add)
-{   
-    if(ParentNode.IsDirectory)
+bool FileHandler::Search_AddNode(DirectoryNode& ParentNode, const std::string& target_path, const DirectoryNode& to_add)
+{
+    if(to_add.FullPath.empty() || target_path.empty())
+        return false;   
+
+    if(ParentNode.FullPath == target_path)
     {
-        for(auto& child: ParentNode.Children)
-        {
-             
-        }
+        ParentNode.Children.push_back(to_add);
+
+        auto moveDirectoriesToFront = [](const DirectoryNode& a, const DirectoryNode& b) { return (a.IsDirectory > b.IsDirectory); };
+	    std::sort(ParentNode.Children.begin(), ParentNode.Children.end(), moveDirectoriesToFront);
+        return true;
     }
 
-    auto moveDirectoriesToFront = [](const DirectoryNode& a, const DirectoryNode& b) { return (a.IsDirectory > b.IsDirectory); };
-	std::sort(ParentNode.Children.begin(), ParentNode.Children.end(), moveDirectoriesToFront);
+    for(auto& ChildNode : ParentNode.Children)
+        if(Search_AddNode(ChildNode, target_path, to_add))
+            return true; //Target was found and successfully added new node
+    return false; //Target was not found
+}
+
+void FileHandler::AddNode(DirectoryNode& ParentNode, const std::string& target_path, const std::string& to_add, bool IsDirectory)
+{   
+    DirectoryNode new_node;
+    new_node.IsDirectory = IsDirectory;
+    new_node.FileName = to_add;
+    new_node.FullPath = target_path + "\\" + to_add;
 }
 
 void FileHandler::RemoveNode(DirectoryNode& ParentNode, const std::string& path_to_remove)
 {
-
+    Search_RemoveNode(ParentNode, path_to_remove);
 }
