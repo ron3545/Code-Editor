@@ -53,6 +53,13 @@ private:
     FileHandler_PasteMode paste_mode; 
     ImFont* text_font;
 
-    void AddNode(DirectoryNode& DirNode, const std::string& path_to_add);
-    void RemoveNode(DirectoryNode& DirNode, const std::string& path_to_remove);
+    enum class SearchMode_
+    {
+        SearchMode_AddNode,
+        SearchMode_DeleteNode
+    };
+
+    bool SearchNode(DirectoryNode& ParentNode, const std::string& path, SearchMode_ mode);
+    void AddNode(DirectoryNode& ParentNode, const std::string& path_to_add);
+    void RemoveNode(DirectoryNode& ParentNode, const std::string& path_to_remove);
 };

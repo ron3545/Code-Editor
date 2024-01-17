@@ -132,57 +132,45 @@ void FileHandler::PasteFile(const std::filesystem::path& target_path)
 
     switch(paste_mode)
     {
-    case FileHandler_PasteMode::FileHandlerMode_Copy:
-        {
-            try
-            {
-                fs::copy_file(src_file, target, (overwrite_file)? fs::copy_options::overwrite_existing : fs::copy_options::skip_existing);
-            }
-            catch(const std::exception& e)
-            {
-                
-            }
+    case FileHandler_PasteMode::FileHandlerMode_Copy:  
+        fs::copy_file(src_file, target, (overwrite_file)? fs::copy_options::overwrite_existing : fs::copy_options::skip_existing);
             
-        }return;
-    
     case FileHandler_PasteMode::FileHandlerMode_Cut:
-        {
-            try
-            {
-               fs::rename(src_file.u8string().c_str(), target.u8string().c_str()); 
-            }
-            catch(const std::exception& e)
-            {
-                
-            }
-            
-        }return;
+        fs::rename(src_file.u8string().c_str(), target.u8string().c_str()); 
     }
 }
 
 void FileHandler::Rename(std::string& selected_path, const std::string& new_name)
-{
-    try
-    {
-        fs::path old_path(selected_path);
-        auto parent_path = old_path.parent_path(); 
-        auto new_path = parent_path / new_name;
+{ 
+    fs::path old_path(selected_path);
+    auto parent_path = old_path.parent_path(); 
+    auto new_path = parent_path / new_name;
 
-        fs::rename(selected_path.c_str(), new_path.u8string().c_str());
-        selected_path = new_path.u8string();
-    }
-    catch(const std::exception& e)
-    {
-
-    }
+    fs::rename(selected_path.c_str(), new_path.u8string().c_str());
+    selected_path = new_path.u8string();
 }
 
-void FileHandler::AddNode(DirectoryNode& DirNode, const std::string& path_to_add)
+//Recuursive search
+bool FileHandler::SearchNode(DirectoryNode& ParentNode, const std::string& path, SearchMode_ mode)
 {
-
+    
 }
 
-void FileHandler::RemoveNode(DirectoryNode& DirNode, const std::string& path_to_remove)
+void FileHandler::AddNode(DirectoryNode& ParentNode, const std::string& path_to_add)
+{   
+    if(ParentNode.IsDirectory)
+    {
+        for(auto& child: ParentNode.Children)
+        {
+             
+        }
+    }
+
+    auto moveDirectoriesToFront = [](const DirectoryNode& a, const DirectoryNode& b) { return (a.IsDirectory > b.IsDirectory); };
+	std::sort(ParentNode.Children.begin(), ParentNode.Children.end(), moveDirectoriesToFront);
+}
+
+void FileHandler::RemoveNode(DirectoryNode& ParentNode, const std::string& path_to_remove)
 {
 
 }
