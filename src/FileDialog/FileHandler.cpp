@@ -39,7 +39,7 @@ DirectoryNode CreateDirectryNodeTreeFromPath(const std::filesystem::path& rootPa
  * true => success
  * false => failed | already exist 
 */
-bool FileHandler::CreateNewFile(const std::filesystem::path& path, const char* file_name)
+bool FileHandler::CreateNewFile(DirectoryNode& ParentNode, const std::filesystem::path& path, const char* file_name)
 {
     if(fs::exists(path / file_name))
         return false;
@@ -55,7 +55,7 @@ bool FileHandler::CreateNewFile(const std::filesystem::path& path, const char* f
  * true => success
  * false => failed | already exist 
 */
-bool FileHandler::CreateNewFolder(const std::filesystem::path& path, const char* folder_name)
+bool FileHandler::CreateNewFolder(DirectoryNode& ParentNode, const std::filesystem::path& path, const char* folder_name)
 {
     const std::filesystem::path new_path(path / folder_name);
     if(!fs::exists(new_path) && fs::create_directories(new_path))
@@ -63,23 +63,27 @@ bool FileHandler::CreateNewFolder(const std::filesystem::path& path, const char*
     return false;
 }
 
-bool FileHandler::DeleteSelectedFile(const std::filesystem::path& path)
+bool FileHandler::DeleteSelectedFile(DirectoryNode& ParentNode, const std::filesystem::path& path)
 {
     return fs::remove(path);
 }
 
-bool FileHandler::DeleteSelectedFolder(const std::filesystem::path& path)
+bool FileHandler::DeleteSelectedFolder(DirectoryNode& ParentNode, const std::filesystem::path& path)
 {
-    return fs::remove_all(path);
+    if(fs::remove_all(path)){
+        RemoveNode(ParentNode, path.u8string());
+        return true;
+    }
+    return false;
 }
 
-void FileHandler::CopyFile_Folder(const std::string& path)
+void FileHandler::CopyFile_Folder(DirectoryNode& ParentNode, const std::string& path)
 { 
     paste_mode = FileHandler_PasteMode::FileHandlerMode_Copy;
     ImGui::SetClipboardText(path.c_str());
 }
 
-void FileHandler::CutFile_Folder(const std::string& path)
+void FileHandler::CutFile_Folder(DirectoryNode& ParentNode, const std::string& path)
 {
     paste_mode = FileHandler_PasteMode::FileHandlerMode_Cut;
     ImGui::SetClipboardText(path.c_str());
@@ -95,7 +99,7 @@ std::string GetFileName(const std::string& path)
         return path;
 }
 
-void FileHandler::PasteFile(const std::filesystem::path& target_path)
+void FileHandler::PasteFile(DirectoryNode& ParentNode, const std::filesystem::path& target_path)
 {   
     bool overwrite_file = false;
     fs::path src_file = ImGui::GetClipboardText();
@@ -156,17 +160,17 @@ bool FileHandler::Search_RemoveNode(DirectoryNode& ParentNode, const std::string
     if(target_path.empty())
         return false;
     
+    auto it = std::remove_if(ParentNode.Children.begin(), ParentNode.Children.end(),
+                             [&](const DirectoryNode& child) { return child.FullPath == target_path; });
+    ParentNode.Children.erase(it, ParentNode.Children.end());
+
     if(ParentNode.FullPath == target_path)
         return true;
     
-    auto it = ParentNode.Children.begin();
-    while(it != ParentNode.Children.end())
-    {
-        if(Search_RemoveNode(*it, target_path))
-            it = ParentNode.Children.erase(it);
-        else
-            ++it;
-    }
+    for(auto& child : ParentNode.Children)
+        if(Search_RemoveNode(child, target_path))
+            return true;
+    return false;
 }
 
 bool FileHandler::Search_AddNode(DirectoryNode& ParentNode, const std::string& target_path, const DirectoryNode& to_add)
@@ -195,6 +199,7 @@ void FileHandler::AddNode(DirectoryNode& ParentNode, const std::string& target_p
     new_node.IsDirectory = IsDirectory;
     new_node.FileName = to_add;
     new_node.FullPath = target_path + "\\" + to_add;
+    Search_AddNode(ParentNode, target_path, new_node);
 }
 
 void FileHandler::RemoveNode(DirectoryNode& ParentNode, const std::string& path_to_remove)

@@ -37,15 +37,15 @@ public:
     }
     void SetFont(ImFont* font) { this->text_font = font; }
 
-    bool CreateNewFile(const std::filesystem::path& path, const char* file_name);
-    bool CreateNewFolder(const std::filesystem::path& path, const char* folder_name);
+    bool CreateNewFile(DirectoryNode& ParentNode, const std::filesystem::path& path, const char* file_name);
+    bool CreateNewFolder(DirectoryNode& ParentNode, const std::filesystem::path& path, const char* folder_name);
 
-    bool DeleteSelectedFile(const std::filesystem::path& path);
-    bool DeleteSelectedFolder(const std::filesystem::path& path);
+    bool DeleteSelectedFile(DirectoryNode& ParentNode, const std::filesystem::path& path);
+    bool DeleteSelectedFolder(DirectoryNode& ParentNode, const std::filesystem::path& path);
 
-    void CopyFile_Folder(const std::string& path);
-    void CutFile_Folder(const std::string& path);
-    void PasteFile(const std::filesystem::path& target_path);
+    void CopyFile_Folder(DirectoryNode& ParentNode, const std::string& path);
+    void CutFile_Folder(DirectoryNode& ParentNode, const std::string& path);
+    void PasteFile(DirectoryNode& ParentNode, const std::filesystem::path& target_path);
 
     //barowed from https://github.com/ocornut/imgui/issues/3730
     void Rename(std::string& selected_path, const std::string& new_name);

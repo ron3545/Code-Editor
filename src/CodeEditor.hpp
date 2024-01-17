@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <functional>
 #include <iterator>
+#include <functional>
 
 #include <filesystem>
 namespace fs = std::filesystem;
@@ -612,4 +613,37 @@ void WelcomPage()
             future.wait();
         }
     ImGui::Columns();
+}
+
+// Used for renaming and adding files/folders
+void NodeInputText(std::string& FileName, bool* state, float offsetX, std::function<void(const std::string&)> ptr_to_func)
+{
+    if(!ptr_to_func)
+        return;
+    
+    ImGui::SameLine();
+    ImGui::Indent(offsetX);
+    {
+        std::string buffer;
+        if(!FileName.empty())
+            buffer = FileName;
+        
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(5,0));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_col.GetCol());
+        ImGui::PushStyleColor(ImGuiCol_Border, RGBA(0, 120, 212, 255).GetCol());
+
+        ImGui::PushItemWidth(ImGui::GetWindowSize().x - (offsetX + 35));
+        if(ImGui::InputText("###rename", &buffer,   ImGuiInputTextFlags_AutoSelectAll    | 
+                                                            ImGuiInputTextFlags_EnterReturnsTrue))
+        {
+            ptr_to_func(buffer);
+            FileName = buffer;
+            *state = false;
+        }
+        ImGui::PopItemWidth();
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+    }
+    ImGui::Unindent(offsetX);
 }

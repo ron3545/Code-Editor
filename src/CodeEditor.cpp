@@ -400,8 +400,11 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
 {   
     static std::set<ImGuiID> selections_storage;
     static ImGuiID selection;
+
     static bool ShouldRename = false;
-    
+    static bool ShouldAddNewFolder = false;  //Only available when right cicking on directory tree
+    static bool ShouldAddNewFile = false;    //Only available when right cicking on directory tree
+
     ImGuiWindow* window = ImGui::GetCurrentWindow();
 
     ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_AllowOverlap;
@@ -411,11 +414,18 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
     {
     case true: //Node is directory
         {   
-            float offsetX = 0.0f; //FOR RENAMING
+            float offsetX = 0.0f; //FOR Input Text
             static std::string selected_folder;
 
             if(project_root_node.FileName == parentNode.FileName && project_root_node.FullPath == parentNode.FullPath)
                 node_flags |= ImGuiTreeNodeFlags_DefaultOpen;
+
+            if(ShouldAddNewFolder)
+            {
+                std::filesystem::path new_path(parentNode.FullPath);
+                std::string new_folder_name;
+
+            }
 
             ImGui::PushFont(FileTreeFont);
             bool right_clicked = false;
@@ -424,6 +434,9 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
             ImGui::PushFont(TextFont); 
             if(ImGui::IsItemClicked(ImGuiMouseButton_Right) || right_clicked){
                 ShouldRename = false;
+                ShouldAddNewFolder = false;
+                ShouldAddNewFile = false;
+
                 selected_folder = parentNode.FullPath;
                 ImGui::OpenPopup("Edit Folder");
             }
@@ -434,17 +447,17 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
                 auto clipText = ImGui::GetClipboardText();
 
                 const ArmSimPro::MenuItemData popup_items[] = {
-                    ArmSimPro::MenuItemData("\tNew File...\t", nullptr, nullptr, true, nullptr),
-                    ArmSimPro::MenuItemData("\tNew Folder...\t", nullptr, nullptr, true, nullptr),
+                    ArmSimPro::MenuItemData("\tNew File...\t", nullptr, nullptr, true, [&](){ ShouldAddNewFile = true; }),
+                    ArmSimPro::MenuItemData("\tNew Folder...\t", nullptr, nullptr, true, [&](){ ShouldAddNewFolder = true; }),
                     ArmSimPro::MenuItemData("\tReveal in File Explorer\t", nullptr, nullptr, true, nullptr),
 
-                    ArmSimPro::MenuItemData("\tCut\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().CutFile_Folder(parentNode.FullPath); }),
-                    ArmSimPro::MenuItemData("\tCopy\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().CopyFile_Folder(parentNode.FullPath); }),
-                    ArmSimPro::MenuItemData("\tPaste\t", nullptr, nullptr, (clipText != nullptr && strlen(clipText) > 0), [=](){ FileHandler::GetInstance().PasteFile(parentNode.FullPath); }),
+                    ArmSimPro::MenuItemData("\tCut\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().CutFile_Folder(project_root_node, parentNode.FullPath); }),
+                    ArmSimPro::MenuItemData("\tCopy\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().CopyFile_Folder(project_root_node, parentNode.FullPath); }),
+                    ArmSimPro::MenuItemData("\tPaste\t", nullptr, nullptr, (clipText != nullptr && strlen(clipText) > 0), [=](){ FileHandler::GetInstance().PasteFile(project_root_node, parentNode.FullPath); }),
                     //ArmSimPro::MenuItemData("\tCopy Relative Path\t", nullptr, nullptr, true, nullptr),
 
                     ArmSimPro::MenuItemData("\tRename...\t", nullptr, nullptr, true, [&](){ ShouldRename = true; }),
-                    ArmSimPro::MenuItemData("\tDelete\t", nullptr, nullptr, true, [](){ FileHandler::GetInstance().DeleteSelectedFolder(selected_folder); })
+                    ArmSimPro::MenuItemData("\tDelete\t", nullptr, nullptr, true, [](){ FileHandler::GetInstance().DeleteSelectedFolder(project_root_node, selected_folder); })
                 };
 
                 for(int i = 0; i < IM_ARRAYSIZE(popup_items); i++)
@@ -461,31 +474,11 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
             if((ImGui::IsItemClicked(ImGuiMouseButton_Left) && parentNode.FullPath != selected_folder) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape)))
                 ShouldRename = false;
 
-            // Sowinga renaming widget
+            // renaming widget
             if(ShouldRename && selected_folder == parentNode.FullPath &&  project_root_node.FullPath != selected_folder)
             {
                 offsetX = (opened)? ImGui::GetTreeNodeToLabelSpacing() - 20 : ImGui::GetTreeNodeToLabelSpacing();
-                ImGui::SameLine();
-                ImGui::Indent(offsetX);
-                std::string buffer = parentNode.FileName;
-
-                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(5,0));
-                ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1);
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_col.GetCol());
-                ImGui::PushStyleColor(ImGuiCol_Border, RGBA(0, 120, 212, 255).GetCol());
-
-                ImGui::PushItemWidth(ImGui::GetWindowSize().x - (offsetX + 35));
-                if(ImGui::InputText("###rename", &buffer,   ImGuiInputTextFlags_AutoSelectAll    | 
-                                                            ImGuiInputTextFlags_EnterReturnsTrue))
-                {
-                    FileHandler::GetInstance().Rename(parentNode.FullPath, buffer);
-                    parentNode.FileName = buffer;
-                    ShouldRename = false;
-                }
-                ImGui::PopItemWidth();
-                ImGui::PopStyleColor(2);
-                ImGui::PopStyleVar(2);
-                ImGui::Unindent(offsetX);
+                NodeInputText(parentNode.FileName, &ShouldRename, offsetX, [&](const std::string& buffer){ FileHandler::GetInstance().Rename(parentNode.FullPath, buffer); });
             }
             
             if (opened)
