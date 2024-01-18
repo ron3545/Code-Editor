@@ -102,9 +102,13 @@ std::string GetFileName(const std::string& path)
 void FileHandler::PasteFile(DirectoryNode& ParentNode, const std::filesystem::path& target_path)
 {   
     bool overwrite_file = false;
-    fs::path src_file = ImGui::GetClipboardText();
+    fs::path src_file = ImGui::GetClipboardText(); 
 
-    fs::path target = target_path / src_file.filename();
+    if(src_file.empty() || target_path.empty())
+        return;
+
+    const fs::path target = target_path / src_file.filename();
+
     if(fs::exists(target))
         ImGui::OpenPopup("File Exist");
 
@@ -135,18 +139,50 @@ void FileHandler::PasteFile(DirectoryNode& ParentNode, const std::filesystem::pa
         ImGui::EndPopup();
     }
 
+    //To Do: Fix copy and copy_file
     switch(paste_mode)
     {
-    case FileHandler_PasteMode::FileHandlerMode_Copy:  
-        fs::copy_file(src_file, target, (overwrite_file)? fs::copy_options::overwrite_existing : fs::copy_options::skip_existing);
+        case FileHandler_PasteMode::FileHandlerMode_Copy: { 
+            try
+            {
+                const bool IsDirectory = std::filesystem::is_directory(target);
+                const bool success = fs::copy_file(  src_file, target, 
+                                        (overwrite_file)?  
+                                        fs::copy_options::overwrite_existing : fs::copy_options::skip_existing);
+                
+                AddNode(ParentNode, target_path.u8string(), src_file.filename().u8string(), IsDirectory);
+            }
+            catch(const std::exception& e)
+            {
+                std::filesystem::path current_path(std::filesystem::current_path() / "ArmSimPro_Log.txt");
+                auto log_file = std::make_shared<lwlog::file_logger>("FILE", current_path.u8string());
+                log_file->error(e.what());
+            }
+        }break;
             
-    case FileHandler_PasteMode::FileHandlerMode_Cut:
-        fs::rename(src_file.u8string().c_str(), target.u8string().c_str()); 
+        case FileHandler_PasteMode::FileHandlerMode_Cut: {
+            try
+            {
+                // Cut File
+                fs::rename(src_file.u8string().c_str(), target.u8string().c_str()); 
+                RemoveNode(ParentNode, src_file.u8string());
+                AddNode(ParentNode, target_path.u8string(), src_file.filename().u8string(), std::filesystem::is_directory(target));
+            }
+            catch(const std::exception& e)
+            {
+                std::filesystem::path current_path(std::filesystem::current_path() / "ArmSimPro_Log.txt");
+                auto log_file = std::make_shared<lwlog::file_logger>("FILE", current_path.u8string());
+                log_file->error(e.what());
+            }
+        }break;
     }
 }
 
 void FileHandler::Rename(std::string& selected_path, const std::string& new_name)
 { 
+    if(selected_path.empty())
+        return;
+
     fs::path old_path(selected_path);
     auto parent_path = old_path.parent_path(); 
     auto new_path = parent_path / new_name;

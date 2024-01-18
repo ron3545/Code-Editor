@@ -419,16 +419,11 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
 
             if(project_root_node.FileName == parentNode.FileName && project_root_node.FullPath == parentNode.FullPath)
                 node_flags |= ImGuiTreeNodeFlags_DefaultOpen;
-
-            if(ShouldAddNewFolder)
-            {
-                std::filesystem::path new_path(parentNode.FullPath);
-                std::string new_folder_name;
-
-            }
-
+            
             ImGui::PushFont(FileTreeFont);
             bool right_clicked = false;
+            if((ShouldAddNewFolder || ShouldAddNewFile) && selected_folder == parentNode.FullPath)
+                ImGui::SetNextItemOpen(true);
             bool opened = ImGui::TreeNodeEx(parentNode.FileName.c_str(), node_flags);
 
             ImGui::PushFont(TextFont); 
@@ -471,18 +466,25 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
             }
             ImGui::PopFont();
 
-            if((ImGui::IsItemClicked(ImGuiMouseButton_Left) && parentNode.FullPath != selected_folder) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape)))
-                ShouldRename = false;
-
             // renaming widget
             if(ShouldRename && selected_folder == parentNode.FullPath &&  project_root_node.FullPath != selected_folder)
             {
-                offsetX = (opened)? ImGui::GetTreeNodeToLabelSpacing() - 20 : ImGui::GetTreeNodeToLabelSpacing();
+                offsetX = (opened)? ImGui::GetTreeNodeToLabelSpacing() - 30 : ImGui::GetTreeNodeToLabelSpacing();
                 NodeInputText(parentNode.FileName, &ShouldRename, offsetX, [&](const std::string& buffer){ FileHandler::GetInstance().Rename(parentNode.FullPath, buffer); });
             }
             
             if (opened)
             {   
+                if(ShouldAddNewFolder && selected_folder == parentNode.FullPath )
+                {
+                    std::filesystem::path new_path(parentNode.FullPath);
+                    std::string new_folder_name;
+
+                    ImGui::Dummy(ImVec2(0,0));
+                    auto AddFolder = [&](const std::string& buffer){ };
+                    NodeInputText(new_folder_name, &ShouldAddNewFolder, ImGui::GetTreeNodeToLabelSpacing(), AddFolder, true);
+                }
+
                 right_clicked = ImGui::IsItemClicked(ImGuiMouseButton_Right);
                 for (DirectoryNode& childNode : parentNode.Children)
                     RecursivelyDisplayDirectoryNode(childNode);
