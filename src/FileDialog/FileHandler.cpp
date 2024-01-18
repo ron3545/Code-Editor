@@ -139,7 +139,10 @@ void FileHandler::PasteFile(DirectoryNode& ParentNode, const std::filesystem::pa
         ImGui::EndPopup();
     }
 
-    //To Do: Fix copy and copy_file
+/** To Do: 
+     * Fix the FileHandlerMode_Copy -> Should be able to distinguish directory and a file before copying
+     * Fix the AddNode -> Should be able to copy the whole DirectoryNode including its child nodes
+    */
     switch(paste_mode)
     {
         case FileHandler_PasteMode::FileHandlerMode_Copy: { 

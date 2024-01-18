@@ -446,9 +446,9 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
                     ArmSimPro::MenuItemData("\tNew Folder...\t", nullptr, nullptr, true, [&](){ ShouldAddNewFolder = true; }),
                     ArmSimPro::MenuItemData("\tReveal in File Explorer\t", nullptr, nullptr, true, nullptr),
 
-                    ArmSimPro::MenuItemData("\tCut\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().CutFile_Folder(project_root_node, parentNode.FullPath); }),
-                    ArmSimPro::MenuItemData("\tCopy\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().CopyFile_Folder(project_root_node, parentNode.FullPath); }),
-                    ArmSimPro::MenuItemData("\tPaste\t", nullptr, nullptr, (clipText != nullptr && strlen(clipText) > 0), [=](){ FileHandler::GetInstance().PasteFile(project_root_node, parentNode.FullPath); }),
+                    ArmSimPro::MenuItemData("\tCut\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().CutFile_Folder(project_root_node, selected_folder); }),
+                    ArmSimPro::MenuItemData("\tCopy\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().CopyFile_Folder(project_root_node, selected_folder); }),
+                    ArmSimPro::MenuItemData("\tPaste\t", nullptr, nullptr, (clipText != nullptr && strlen(clipText) > 0), [=](){ FileHandler::GetInstance().PasteFile(project_root_node, selected_folder); }),
                     //ArmSimPro::MenuItemData("\tCopy Relative Path\t", nullptr, nullptr, true, nullptr),
 
                     ArmSimPro::MenuItemData("\tRename...\t", nullptr, nullptr, true, [&](){ ShouldRename = true; }),
