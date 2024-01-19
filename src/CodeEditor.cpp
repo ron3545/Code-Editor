@@ -477,12 +477,9 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
             {   
                 if(ShouldAddNewFolder && selected_folder == parentNode.FullPath )
                 {
-                    std::filesystem::path new_path(parentNode.FullPath);
-                    std::string new_folder_name;
-
                     ImGui::Dummy(ImVec2(0,0));
-                    auto AddFolder = [&](const std::string& buffer){ };
-                    NodeInputText(new_folder_name, &ShouldAddNewFolder, ImGui::GetTreeNodeToLabelSpacing(), AddFolder, true);
+                    auto AddFolder = [&](const std::string& buffer){ FileHandler::GetInstance().CreateNewFolder(project_root_node, selected_folder, buffer.c_str()); };
+                    NodeInputText(&ShouldAddNewFolder, ImGui::GetTreeNodeToLabelSpacing(), AddFolder, true);
                 }
 
                 right_clicked = ImGui::IsItemClicked(ImGuiMouseButton_Right);
@@ -888,6 +885,127 @@ void EditorWithoutDockSpace(float main_menubar_height)
         }
     }
 }
+
+//===================================================Used for renaming and adding files/folders============================================================
+void NodeInputText(std::string& FileName, bool* state, float offsetX, std::function<void(const std::string&)> ptr_to_func, bool IsDirectory)
+{
+    if(!ptr_to_func)
+        return;
+    
+    //Just for visual clarification only for the user to determin that he/she is creating a directory node
+    if(IsDirectory)
+    {
+        ImGuiWindow* window = ImGui::GetCurrentWindow();
+        if (window->SkipItems)
+            return;
+        
+        ImGuiContext& g = *GImGui;
+        const ImGuiStyle& style = g.Style;
+
+        const ImVec2 label_size = ImGui::CalcTextSize(FileName.c_str(), NULL, false);
+        const ImVec2 padding = style.FramePadding;
+        const float frame_height = ImMax(ImMin(window->DC.CurrLineSize.y, g.FontSize + style.FramePadding.y * 2), label_size.y + padding.y * 2);
+
+        const float text_offset_x = g.FontSize + (padding.x);           // Collapser arrow width + Spacing
+        const float text_offset_y = ImMax(padding.y, window->DC.CurrLineTextBaseOffset);                    // Latch before ItemSize changes it
+        const float text_width = g.FontSize + (label_size.x > 0.0f ? label_size.x + padding.x * 2 : 0.0f);
+        ImVec2 text_pos(window->DC.CursorPos.x + text_offset_x, window->DC.CursorPos.y + text_offset_y);
+
+        ImGui::ItemSize(ImVec2(text_width, frame_height), padding.y);
+        ImGui::RenderArrow(window->DrawList, ImVec2(text_pos.x - text_offset_x + padding.x, text_pos.y), ImGui::GetColorU32(ImVec4(1,1,1,1)), ImGuiDir_Right, 0.70f);
+    }
+    
+    ImGui::SameLine();
+    ImGui::Indent(offsetX);
+    {
+        std::string buffer;
+        if(!FileName.empty())
+            buffer = FileName;
+    
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(5,0));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_col.GetCol());
+        ImGui::PushStyleColor(ImGuiCol_Border, RGBA(0, 120, 212, 255).GetCol());
+
+        ImGui::PushItemWidth(ImGui::GetWindowSize().x - (offsetX + 60));
+        if(ImGui::InputText("###input", &buffer,   ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue))
+        {
+            if(!buffer.empty())
+                ptr_to_func(buffer);
+            FileName = buffer;
+            *state = false;
+        }
+
+        // Close the input text when there is any activities outside the input text box
+        if (!ImGui::IsItemHovered() && !ImGui::IsItemActive() &&
+            (ImGui::IsAnyItemActive() || ImGui::IsAnyItemFocused() || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape)))) 
+            *state = false;
+
+        ImGui::PopItemWidth();
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+    }
+    ImGui::Unindent(offsetX);
+}
+
+void NodeInputText(bool* state, float offsetX, std::function<void(const std::string&)> ptr_to_func, bool IsDirectory)
+{
+   if(!ptr_to_func)
+        return;
+    
+    //Just for visual clarification only for the user to determin that he/she is creating a directory node
+    if(IsDirectory)
+    {
+        ImGuiWindow* window = ImGui::GetCurrentWindow();
+        if (window->SkipItems)
+            return;
+        
+        ImGuiContext& g = *GImGui;
+        const ImGuiStyle& style = g.Style;
+
+        const ImVec2 label_size = ImGui::CalcTextSize(" ", NULL, false);
+        const ImVec2 padding = style.FramePadding;//ImVec2(style.FramePadding.x, ImMin(window->DC.CurrLineTextBaseOffset, style.FramePadding.y));
+        const float frame_height = ImMax(ImMin(window->DC.CurrLineSize.y, g.FontSize + style.FramePadding.y * 2), label_size.y + padding.y * 2);
+
+        const float text_offset_x = g.FontSize + (padding.x);           // Collapser arrow width + Spacing
+        const float text_offset_y = ImMax(padding.y, window->DC.CurrLineTextBaseOffset);                    // Latch before ItemSize changes it
+        const float text_width = g.FontSize + (label_size.x > 0.0f ? label_size.x + padding.x * 2 : 0.0f);
+        ImVec2 text_pos(window->DC.CursorPos.x + text_offset_x, window->DC.CursorPos.y + text_offset_y);
+
+        ImGui::ItemSize(ImVec2(text_width, frame_height), padding.y);
+        ImGui::RenderArrow(window->DrawList, ImVec2(text_pos.x - text_offset_x + padding.x, text_pos.y), ImGui::GetColorU32(ImVec4(1,1,1,1)), ImGuiDir_Right, 0.70f);
+    }
+    
+    ImGui::SameLine();
+    ImGui::Indent(offsetX);
+    {
+        std::string buffer;
+    
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(5,0));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_col.GetCol());
+        ImGui::PushStyleColor(ImGuiCol_Border, RGBA(0, 120, 212, 255).GetCol());
+
+        ImGui::PushItemWidth(ImGui::GetWindowSize().x - (offsetX + 60));
+        if(ImGui::InputText("###input", &buffer,   ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue))
+        {  
+            if(!buffer.empty())
+                ptr_to_func(buffer);
+            *state = false;
+        }
+
+        // Close the input text when there is any activities outside the input text box
+        if (!ImGui::IsItemHovered() && !ImGui::IsItemActive() &&
+            (ImGui::IsAnyItemActive() || ImGui::IsAnyItemFocused() || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape)))) 
+            *state = false;
+
+        ImGui::PopItemWidth();
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+    }
+    ImGui::Unindent(offsetX);
+}
+
 //================================================================================================================================
 bool CreateDeviceD3D(HWND hWnd)
 {

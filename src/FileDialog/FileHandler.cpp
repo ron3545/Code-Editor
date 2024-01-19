@@ -58,8 +58,10 @@ bool FileHandler::CreateNewFile(DirectoryNode& ParentNode, const std::filesystem
 bool FileHandler::CreateNewFolder(DirectoryNode& ParentNode, const std::filesystem::path& path, const char* folder_name)
 {
     const std::filesystem::path new_path(path / folder_name);
-    if(!fs::exists(new_path) && fs::create_directories(new_path))
+    if(!fs::exists(new_path) && fs::create_directories(new_path)){
+        AddNode(ParentNode, path.u8string(), folder_name, std::filesystem::is_directory(new_path));
         return true;
+    }
     return false;
 }
 
