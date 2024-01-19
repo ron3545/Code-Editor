@@ -71,7 +71,7 @@ bool FileHandler::DeleteSelectedFile(DirectoryNode& ParentNode, const std::files
 bool FileHandler::DeleteSelectedFolder(DirectoryNode& ParentNode, const std::filesystem::path& path)
 {
     if(fs::remove_all(path)){
-        RemoveNode(ParentNode, path.u8string());
+        Search_RemoveNode(ParentNode, path.u8string());
         return true;
     }
     return false;
@@ -99,7 +99,7 @@ std::string GetFileName(const std::string& path)
         return path;
 }
 
-void FileHandler::PasteFile(DirectoryNode& ParentNode, const std::filesystem::path& target_path)
+void FileHandler::PasteFile(DirectoryNode& ParentNode, const std::filesystem::path& target_path, bool IsDirectory)
 {   
     bool overwrite_file = false;
     fs::path src_file = ImGui::GetClipboardText(); 
@@ -147,13 +147,15 @@ void FileHandler::PasteFile(DirectoryNode& ParentNode, const std::filesystem::pa
     {
         case FileHandler_PasteMode::FileHandlerMode_Copy: { 
             try
-            {
-                const bool IsDirectory = std::filesystem::is_directory(target);
-                const bool success = fs::copy_file(  src_file, target, 
-                                        (overwrite_file)?  
-                                        fs::copy_options::overwrite_existing : fs::copy_options::skip_existing);
+            {                
+                if(IsDirectory)
+                    fs::copy(src_file, target);
+                else
+                    fs::copy_file(  src_file, target, (overwrite_file)?  
+                                    fs::copy_options::overwrite_existing : fs::copy_options::skip_existing);
                 
-                AddNode(ParentNode, target_path.u8string(), src_file.filename().u8string(), IsDirectory);
+                DirectoryNode new_node = CreateDirectryNodeTreeFromPath(target);
+                Search_AddNode(ParentNode, target_path.u8string(), new_node);
             }
             catch(const std::exception& e)
             {
@@ -168,8 +170,10 @@ void FileHandler::PasteFile(DirectoryNode& ParentNode, const std::filesystem::pa
             {
                 // Cut File
                 fs::rename(src_file.u8string().c_str(), target.u8string().c_str()); 
-                RemoveNode(ParentNode, src_file.u8string());
-                AddNode(ParentNode, target_path.u8string(), src_file.filename().u8string(), std::filesystem::is_directory(target));
+                Search_RemoveNode(ParentNode, src_file.u8string());
+
+                DirectoryNode new_node = CreateDirectryNodeTreeFromPath(target);
+                Search_AddNode(ParentNode, target_path.u8string(), new_node);
             }
             catch(const std::exception& e)
             {
@@ -239,9 +243,4 @@ void FileHandler::AddNode(DirectoryNode& ParentNode, const std::string& target_p
     new_node.FileName = to_add;
     new_node.FullPath = target_path + "\\" + to_add;
     Search_AddNode(ParentNode, target_path, new_node);
-}
-
-void FileHandler::RemoveNode(DirectoryNode& ParentNode, const std::string& path_to_remove)
-{
-    Search_RemoveNode(ParentNode, path_to_remove);
 }

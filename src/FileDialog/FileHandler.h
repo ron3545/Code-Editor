@@ -45,7 +45,7 @@ public:
 
     void CopyFile_Folder(DirectoryNode& ParentNode, const std::string& path);
     void CutFile_Folder(DirectoryNode& ParentNode, const std::string& path);
-    void PasteFile(DirectoryNode& ParentNode, const std::filesystem::path& target_path);
+    void PasteFile(DirectoryNode& ParentNode, const std::filesystem::path& target_path, bool IsDirectory);
 
     //barowed from https://github.com/ocornut/imgui/issues/3730
     void Rename(std::string& selected_path, const std::string& new_name);
@@ -53,10 +53,7 @@ private:
     FileHandler_PasteMode paste_mode; 
     ImFont* text_font;
 
+    void AddNode(DirectoryNode& ParentNode, const std::string& target_path, const std::string& to_add, bool IsDirectory);
     bool Search_AddNode(DirectoryNode& ParentNode, const std::string& target_path, const DirectoryNode& to_add); 
     bool Search_RemoveNode(DirectoryNode& ParentNode, const std::string& target_path);
-
-    //Should be called after a file/directory has been removed/added; This is just to update the DirectoryNode
-    void AddNode(DirectoryNode& ParentNode, const std::string& target_path, const std::string& to_add, bool IsDirectory);
-    void RemoveNode(DirectoryNode& ParentNode, const std::string& path_to_remove);
 };
