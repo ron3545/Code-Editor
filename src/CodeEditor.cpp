@@ -487,6 +487,7 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
                     FileHandler::GetInstance().Paste(project_root_node, payload_data, parentNode.FullPath);
                 }
                 ImGui::EndDragDropTarget();
+                
             }
 //======================================================================================================================================
       
