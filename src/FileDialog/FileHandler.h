@@ -43,9 +43,11 @@ public:
     bool DeleteSelectedFile(DirectoryNode& ParentNode, const std::filesystem::path& path);
     bool DeleteSelectedFolder(DirectoryNode& ParentNode, const std::filesystem::path& path);
 
-    void CopyFile_Folder(DirectoryNode& ParentNode, const std::string& path);
-    void CutFile_Folder(DirectoryNode& ParentNode, const std::string& path);
-    void PasteFile(DirectoryNode& ParentNode, const std::filesystem::path& target_path, bool IsDirectory);
+    void Copy(DirectoryNode& ParentNode, const std::string& path);
+    void Cut(DirectoryNode& ParentNode, const std::string& path);
+
+    void Paste(DirectoryNode& ParentNode, const std::filesystem::path& target_path, bool IsDirectory);
+    void Paste(DirectoryNode& ParentNode, const std::filesystem::path& src_file, const std::filesystem::path& target_file);
 
     //barowed from https://github.com/ocornut/imgui/issues/3730
     void Rename(std::string& selected_path, const std::string& new_name);

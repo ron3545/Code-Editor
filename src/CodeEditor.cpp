@@ -401,6 +401,10 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
     static std::set<ImGuiID> selections_storage;
     static ImGuiID selection;
 
+    static std::string selected_folder;
+    static std::string selected_file;
+    static std::string selected_path; // For drag and drop or moving folders/files to other directories
+
     static bool ShouldRename = false;
     static bool ShouldAddNewFolder = false;  //Only available when right cicking on directory tree
     static bool ShouldAddNewFile = false;    //Only available when right cicking on directory tree
@@ -415,41 +419,41 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
     case true: //Node is directory
         {   
             float offsetX = 0.0f; //FOR Input Text
-            static std::string selected_folder;
 
             if(project_root_node.FileName == parentNode.FileName && project_root_node.FullPath == parentNode.FullPath)
                 node_flags |= ImGuiTreeNodeFlags_DefaultOpen;
             
             ImGui::PushFont(FileTreeFont);
-            bool right_clicked = false;
             if((ShouldAddNewFolder || ShouldAddNewFile) && selected_folder == parentNode.FullPath)
                 ImGui::SetNextItemOpen(true);
+
             bool opened = ImGui::TreeNodeEx(parentNode.FileName.c_str(), node_flags);
 
+            if(ImGui::IsItemClicked(ImGuiMouseButton_Left))
+                selected_path = parentNode.FullPath;
+
             ImGui::PushFont(TextFont); 
-            if(ImGui::IsItemClicked(ImGuiMouseButton_Right) || right_clicked){
+            if(ImGui::IsItemClicked(ImGuiMouseButton_Right)){
                 ShouldRename = false;
                 ShouldAddNewFolder = false;
                 ShouldAddNewFile = false;
 
+                selected_file.clear();
                 selected_folder = parentNode.FullPath;
                 ImGui::OpenPopup("Edit Folder");
             }
 
             if(ImGui::BeginPopupContextItem("Edit Folder")) 
             {
-                bool has_clipText = false;
                 auto clipText = ImGui::GetClipboardText();
 
                 const ArmSimPro::MenuItemData popup_items[] = {
                     ArmSimPro::MenuItemData("\tNew File...\t", nullptr, nullptr, true, [&](){ ShouldAddNewFile = true; }),
                     ArmSimPro::MenuItemData("\tNew Folder...\t", nullptr, nullptr, true, [&](){ ShouldAddNewFolder = true; }),
-                    ArmSimPro::MenuItemData("\tReveal in File Explorer\t", nullptr, nullptr, true, nullptr),
 
-                    ArmSimPro::MenuItemData("\tCut\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().CutFile_Folder(project_root_node, selected_folder); }),
-                    ArmSimPro::MenuItemData("\tCopy\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().CopyFile_Folder(project_root_node, selected_folder); }),
-                    ArmSimPro::MenuItemData("\tPaste\t", nullptr, nullptr, (clipText != nullptr && strlen(clipText) > 0), [=](){ FileHandler::GetInstance().PasteFile(project_root_node, selected_folder, true); }),
-                    //ArmSimPro::MenuItemData("\tCopy Relative Path\t", nullptr, nullptr, true, nullptr),
+                    ArmSimPro::MenuItemData("\tCut\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().Cut(project_root_node, selected_folder); }),
+                    ArmSimPro::MenuItemData("\tCopy\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().Copy(project_root_node, selected_folder); }),
+                    ArmSimPro::MenuItemData("\tPaste\t", nullptr, nullptr, (clipText != nullptr && strlen(clipText) > 0), [=](){ FileHandler::GetInstance().Paste(project_root_node, selected_folder, true); }),
 
                     ArmSimPro::MenuItemData("\tRename...\t", nullptr, nullptr, true, [&](){ ShouldRename = true; }),
                     ArmSimPro::MenuItemData("\tDelete\t", nullptr, nullptr, true, [](){ FileHandler::GetInstance().DeleteSelectedFolder(project_root_node, selected_folder); })
@@ -472,23 +476,45 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
                 offsetX = (opened)? ImGui::GetTreeNodeToLabelSpacing() - 30 : ImGui::GetTreeNodeToLabelSpacing();
                 NodeInputText(parentNode.FileName, &ShouldRename, offsetX, [&](const std::string& buffer){ FileHandler::GetInstance().Rename(parentNode.FullPath, buffer); });
             }
-            
+           
+//==========================Drag and Drop of Files; For moving files/folders only======================================================
+            if (ImGui::BeginDragDropTarget())
+            {
+                if(const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_PATH"))
+                {
+                    IM_ASSERT(payload->DataSize == sizeof(std::string));
+                    const std::string payload_data = *(const std::string*)payload->Data;
+                    FileHandler::GetInstance().Paste(project_root_node, payload_data, parentNode.FullPath);
+                }
+                ImGui::EndDragDropTarget();
+            }
+//======================================================================================================================================
+      
+
             if (opened)
             {   
                 if(ShouldAddNewFolder && selected_folder == parentNode.FullPath )
                 {
+                    ShouldAddNewFile = false;
                     ImGui::Dummy(ImVec2(0,0));
                     auto AddFolder = [&](const std::string& buffer){ FileHandler::GetInstance().CreateNewFolder(project_root_node, selected_folder, buffer.c_str()); };
                     NodeInputText(&ShouldAddNewFolder, ImGui::GetTreeNodeToLabelSpacing(), AddFolder, true);
                 }
 
-                right_clicked = ImGui::IsItemClicked(ImGuiMouseButton_Right);
+                if(ShouldAddNewFile && selected_folder == parentNode.FullPath )
+                {
+                    ShouldAddNewFolder = false;
+                    ImGui::Dummy(ImVec2(0,0));
+                    auto AddFile = [&](const std::string& buffer){ FileHandler::GetInstance().CreateNewFile(project_root_node, selected_folder, buffer.c_str()); };
+                    NodeInputText(&ShouldAddNewFile, ImGui::GetTreeNodeToLabelSpacing(), AddFile, false);
+                }
+
                 for (DirectoryNode& childNode : parentNode.Children)
                     RecursivelyDisplayDirectoryNode(childNode);
 
                 ImGui::TreePop();
             }
-            ImGui::PopFont();
+            ImGui::PopFont();  
         } break;
     
     case false: //Node is a file
@@ -496,15 +522,15 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
             node_flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
             ImGuiID pressed_id = window->GetID(parentNode.FullPath.c_str());
 
-            if(pressed_id == selection || selections_storage.find(pressed_id) != selections_storage.end())
+            if(!ShouldRename && (pressed_id == selection || selections_storage.find(pressed_id) != selections_storage.end()))
                 node_flags |= ImGuiTreeNodeFlags_Selected;
 
             ImGui::PushFont(FileTreeFont);
             ImGui::TreeNodeEx(parentNode.FileName.c_str(), node_flags);
             ImGui::PopFont();
+            
             if(ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
             {   
-                ShouldRename = false;
                 if(ImGui::GetIO().KeyCtrl)
                     selections_storage.insert(pressed_id);
                 else{
@@ -520,36 +546,69 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
                         task.wait();
                     }
                 }
+
+                selected_path = parentNode.FullPath;
             }    
             //right click
             else if(ImGui::IsItemClicked(ImGuiMouseButton_Right) && !ImGui::IsItemToggledOpen()){
                 ShouldRename = false;
+                selected_folder.clear();
+                selected_file = parentNode.FullPath;
                 ImGui::OpenPopup("Edit File");
             }
             
-            ImGui::PushFont(DefaultFont);
+            ImGui::PushFont(TextFont);
             if(ImGui::BeginPopup("Edit File"))
             {
-                // s => Seperator
-                const char* popup_items[]   = {"\tCut\t", "\tCopy\t", "s", "\tCopy Path\t", "\tCopy Relative Path\t", "s", "\tRename...\t", "\tDelete\t"};
-                const char* key_shortcuts[] = {"Ctrl+X", "Ctrl+C", "Shift+Alt+C", "Ctrl+K Ctrl+Shift+C", "F2", "Delete"}; 
-                int k = 0;
-                for(int i = 0; i < IM_ARRAYSIZE(popup_items); i++)
-                {
-                    if(strcmp(popup_items[i], "s") == 0){
+                auto clipText = ImGui::GetClipboardText();
+
+                const ArmSimPro::MenuItemData items[] = {
+                    ArmSimPro::MenuItemData("\tCut\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().Cut(project_root_node, parentNode.FullPath); }),
+                    ArmSimPro::MenuItemData("\tCopy\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().Copy(project_root_node, parentNode.FullPath); }),
+                    ArmSimPro::MenuItemData("\tPaste\t", nullptr, nullptr, (clipText != nullptr && strlen(clipText) > 0), [=](){ FileHandler::GetInstance().Paste(project_root_node, parentNode.FullPath, true); }),
+
+                    ArmSimPro::MenuItemData("\tRename...\t", nullptr, nullptr, true, [&](){ ShouldRename = true; }),
+                    ArmSimPro::MenuItemData("\tDelete\t", nullptr, nullptr, true, [&](){ FileHandler::GetInstance().DeleteSelectedFile(project_root_node, parentNode.FullPath); })
+                };
+
+                for(int i = 0; i < IM_ARRAYSIZE(items); i++)
+                {  
+                    if(i == 3 || i == 7)
                         ImGui::Separator();
-                        continue;
-                    }
-                    ImGui::MenuItem(popup_items[i], key_shortcuts[k]);
-                    k += 1;
+        
+                    ArmSimPro::MenuItem(items[i], true);
                 }
                 ImGui::EndPopup();
             }
             ImGui::PopFont();
 
+            // renaming widget
+            if(ShouldRename && selected_file == parentNode.FullPath)
+            {
+                float offsetX = ImGui::GetTreeNodeToLabelSpacing();
+                NodeInputText(parentNode.FileName, &ShouldRename, offsetX, [&](const std::string& buffer){ FileHandler::GetInstance().Rename(parentNode.FullPath, buffer); });
+            }
         } break;
     }
 	ImGui::PopID();
+
+//==========================Drag and Drop of Files; For moving files/folders only======================================================
+    ImGui::PushFont(TextFont);
+    if(ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+    {
+        std::string file_name;
+        size_t lastSeparatorPos = selected_path.find_last_of("\\/");
+        if (lastSeparatorPos != std::string::npos) 
+            // Extract the substring starting from the position after the separator
+            file_name = selected_path.substr(lastSeparatorPos + 1);
+        else
+            file_name = selected_path;
+
+        ImGui::SetDragDropPayload("DND_PATH", &selected_path, sizeof(std::string));
+        ImGui::Text(file_name.c_str());
+        ImGui::EndDragDropSource();
+    }
+    ImGui::PopFont();
 }
 
 void ImplementDirectoryNode()
@@ -693,15 +752,11 @@ void RenderTextEditors()
                 ++task; 
             else
             {
-                try{
-                    auto result = task->get();
-                    const bool ShouldClose = !std::get<0>(result); //returns false when it's time to close widget
-                    if(ShouldClose)
-                        ToDelete.push_back(std::get<1>(result));
-                }
-                catch(const std::exception& e){
-                    //write a logger class for this to log errors
-                }
+                auto result = task->get();
+                const bool ShouldClose = !std::get<0>(result); //returns false when it's time to close widget
+                if(ShouldClose)
+                    ToDelete.push_back(std::get<1>(result));
+            
                 task = m_futures.erase(task); 
             }
         } // end loop
