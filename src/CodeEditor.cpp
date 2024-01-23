@@ -286,7 +286,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
                             ArmSimPro::MenuItemData("\tDelete", "Del", nullptr, (!ro && (focused_editor != nullptr && IsWindowShowed)? focused_editor->HasSelection() : false), [&](){focused_editor->Delete();}),
                             ArmSimPro::MenuItemData("\tPaste", "Ctrl+V", nullptr, (!ro && ImGui::GetClipboardText() != nullptr), [&](){focused_editor->Paste();}),
                             //,seperator here
-                            ArmSimPro::MenuItemData("\tSelect all", nullptr, nullptr, focused_editor != nullptr && IsWindowShowed, [&](){focused_editor->SetSelection(ArmSimPro::TextEditor::Coordinates(), ArmSimPro::TextEditor::Coordinates(focused_editor->GetTotalLines(), 0));})
+                            ArmSimPro::MenuItemData("\tSelect all", nullptr, nullptr, focused_editor != nullptr && IsWindowShowed, [&](){focused_editor->SetSelection(ArmSimPro::Coordinates(), ArmSimPro::Coordinates(focused_editor->GetTotalLines(), 0));})
                         };
                         
                         for(unsigned int i = 0; i < IM_ARRAYSIZE(menu_item_arr); i++)
@@ -305,6 +305,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
                 horizontal_tool_bar->SetToolBar(main_menubar_height + 10);
                 vertical_tool_bar->SetToolBar(horizontal_tool_bar->GetThickness(), status_bar->GetHeight() + 17);
 
+//===================================================STATUS BAR==============================================================================================
                 status_bar->BeginStatusBar();
                 {
                     float width = ImGui::GetWindowWidth();
@@ -314,14 +315,20 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
                     {
                         static ImVec2 textSize; 
                         if(textSize.x == NULL)
-                            textSize = ImGui::CalcTextSize(buffer); //this is a bottleneck function. should prevent it from always calculatin
+                            textSize = ImGui::CalcTextSize(buffer);
                         ImGui::SetCursorPosX(width - (textSize.x - 650));
                         ImGui::Text(current_editor.c_str());
                     }
                 }
                 status_bar->EndStatusBar();
+//===========================================================================================================================================================
+            const char* username = std::getenv("USERNAME");
+            fs::path organizationPath;
+            if (username != nullptr)
+                organizationPath = "C:\\Program Files\\" + std::string(username);
 
-                cmd_panel->SetPanel(100, vertical_tool_bar->GetTotalWidth());
+            cmd_panel->SetPanel((SelectedProjectPath.empty())? organizationPath : SelectedProjectPath, 100, vertical_tool_bar->GetTotalWidth());
+            
             ImGui::PopFont(); //default font
 
             auto future = std::async(std::launch::async, EditorWithoutDockSpace, main_menubar_height);
@@ -487,10 +494,8 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
                     FileHandler::GetInstance().Paste(project_root_node, payload_data, parentNode.FullPath);
                 }
                 ImGui::EndDragDropTarget();
-                
             }
 //======================================================================================================================================
-      
 
             if (opened)
             {   
@@ -815,7 +820,7 @@ void EditorWithoutDockSpace(float main_menubar_height)
             ImGui::PushStyleColor(ImGuiCol_Tab, bg_col.GetCol());
             if(Opened_TextEditors.empty() && project_root_node.FileName.empty() && project_root_node.FullPath.empty() || show_welcome)
             {
-                if(ImGui::BeginTabItem(WELCOME_PAGE, &show_welcome)){
+                if(ImGui::BeginTabItem(WELCOME_PAGE)){
                     ImGui::PushStyleColor(ImGuiCol_ChildBg, child_col.GetCol());
                     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 12.5);
                     ImGui::BeginChild(WELCOME_PAGE, ImVec2(width, height), false, ImGuiWindowFlags_NoDecoration);
@@ -991,6 +996,7 @@ void NodeInputText(std::string& FileName, bool* state, float offsetX, std::funct
             FileName = buffer;
             *state = false;
         }
+        ImGui::PopItemWidth();
 
         // Close the input text when there is any activities outside the input text box
         if (!ImGui::IsItemHovered() && !ImGui::IsItemActive() &&
@@ -1049,7 +1055,7 @@ void NodeInputText(bool* state, float offsetX, std::function<void(const std::str
                 ptr_to_func(buffer);
             *state = false;
         }
-
+        ImGui::PopItemWidth();
         // Close the input text when there is any activities outside the input text box
         if (!ImGui::IsItemHovered() && !ImGui::IsItemActive() &&
             (ImGui::IsAnyItemActive() || ImGui::IsAnyItemFocused() || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape)))) 

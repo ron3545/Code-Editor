@@ -516,9 +516,13 @@ void GetRecentlyOpenedProjects()
         for(const auto& element : recent_projects)
         {
             const std::string project_path = element[ROOT_PROJECT];
+            if(!std::filesystem::exists(project_path))
+                continue;
+
             std::set<std::string> files;
             for(const auto& file : element[OPENED_FILES])
-                files.insert(file);
+                    files.insert(file);
+            
             Application_data[project_path] = files;
         }
     }
