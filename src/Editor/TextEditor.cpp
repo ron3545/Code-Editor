@@ -180,12 +180,12 @@ namespace  ArmSimPro
         return result;
     }
 
-    TextEditor::Coordinates TextEditor::GetActualCursorCoordinates() const
+    Coordinates TextEditor::GetActualCursorCoordinates() const
     {
         return SanitizeCoordinates(mState.mCursorPosition);
     }
 
-    TextEditor::Coordinates TextEditor::SanitizeCoordinates(const Coordinates & aValue) const
+    Coordinates TextEditor::SanitizeCoordinates(const Coordinates & aValue) const
     {
         auto line = aValue.mLine;
         auto column = aValue.mColumn;
@@ -390,7 +390,7 @@ namespace  ArmSimPro
         ++mUndoIndex;
     }
 
-    TextEditor::Coordinates TextEditor::ScreenPosToCoordinates(const ImVec2& aPosition) const
+    Coordinates TextEditor::ScreenPosToCoordinates(const ImVec2& aPosition) const
     {
         ImVec2 origin = ImGui::GetCursorScreenPos();
         ImVec2 local(aPosition.x - origin.x, aPosition.y - origin.y);
@@ -442,7 +442,7 @@ namespace  ArmSimPro
         return SanitizeCoordinates(Coordinates(lineNo, columnCoord));
     }
 
-    TextEditor::Coordinates TextEditor::FindWordStart(const Coordinates & aFrom) const
+    Coordinates TextEditor::FindWordStart(const Coordinates & aFrom) const
     {
         Coordinates at = aFrom;
         if (at.mLine >= (int)mLines.size())
@@ -476,7 +476,7 @@ namespace  ArmSimPro
         return Coordinates(at.mLine, GetCharacterColumn(at.mLine, cindex));
     }
 
-    TextEditor::Coordinates TextEditor::FindWordEnd(const Coordinates & aFrom) const
+    Coordinates TextEditor::FindWordEnd(const Coordinates & aFrom) const
     {
         Coordinates at = aFrom;
         if (at.mLine >= (int)mLines.size())
@@ -509,7 +509,7 @@ namespace  ArmSimPro
         return Coordinates(aFrom.mLine, GetCharacterColumn(aFrom.mLine, cindex));
     }
 
-    TextEditor::Coordinates TextEditor::FindNextWord(const Coordinates & aFrom) const
+    Coordinates TextEditor::FindNextWord(const Coordinates & aFrom) const
     {
         Coordinates at = aFrom;
         if (at.mLine >= (int)mLines.size())
@@ -2250,13 +2250,13 @@ namespace  ArmSimPro
     void TextEditor::Undo(int aSteps)
     {
         while (CanUndo() && aSteps-- > 0)
-            mUndoBuffer[--mUndoIndex].Undo(this);
+            mUndoBuffer[--mUndoIndex].Undo(this, &mState);
     }
 
     void TextEditor::Redo(int aSteps)
     {
         while (CanRedo() && aSteps-- > 0)
-            mUndoBuffer[mUndoIndex++].Redo(this);
+            mUndoBuffer[mUndoIndex++].Redo(this, &mState);
     }
 
     const TextEditor::Palette & TextEditor::GetDarkPalette()
@@ -2715,13 +2715,13 @@ namespace  ArmSimPro
 
     TextEditor::UndoRecord::UndoRecord(
         const std::string& aAdded,
-        const TextEditor::Coordinates aAddedStart,
-        const TextEditor::Coordinates aAddedEnd,
+        const Coordinates aAddedStart,
+        const Coordinates aAddedEnd,
         const std::string& aRemoved,
-        const TextEditor::Coordinates aRemovedStart,
-        const TextEditor::Coordinates aRemovedEnd,
-        TextEditor::EditorState& aBefore,
-        TextEditor::EditorState& aAfter)
+        const Coordinates aRemovedStart,
+        const Coordinates aRemovedEnd,
+        EditorState& aBefore,
+        EditorState& aAfter)
         : mAdded(aAdded)
         , mAddedStart(aAddedStart)
         , mAddedEnd(aAddedEnd)
@@ -2735,7 +2735,7 @@ namespace  ArmSimPro
         assert(mRemovedStart <= mRemovedEnd);
     }
 
-    void TextEditor::UndoRecord::Undo(TextEditor * aEditor)
+    void Editor::UndoRecord::Undo(Editor* aEditor, EditorState* mState)
     {
         if (!mAdded.empty())
         {
@@ -2750,12 +2750,12 @@ namespace  ArmSimPro
             aEditor->Colorize(mRemovedStart.mLine - 1, mRemovedEnd.mLine - mRemovedStart.mLine + 2);
         }
 
-        aEditor->mState = mBefore;
+        mState = &mBefore;
         aEditor->EnsureCursorVisible();
 
     }
 
-    void TextEditor::UndoRecord::Redo(TextEditor * aEditor)
+    void Editor::UndoRecord::Redo(Editor* aEditor, EditorState* mState)
     {
         if (!mRemoved.empty())
         {
@@ -2770,7 +2770,7 @@ namespace  ArmSimPro
             aEditor->Colorize(mAddedStart.mLine - 1, mAddedEnd.mLine - mAddedStart.mLine + 1);
         }
 
-        aEditor->mState = mAfter;
+        mState = &mAfter;
         aEditor->EnsureCursorVisible();
     }
 

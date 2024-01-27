@@ -218,12 +218,21 @@ void FileHandler::Rename(std::string& selected_path, const std::string& new_name
     if(selected_path.empty())
         return;
 
-    fs::path old_path(selected_path);
-    auto parent_path = old_path.parent_path(); 
-    auto new_path = parent_path / new_name;
+    try
+    {
+        fs::path old_path(selected_path);
+        auto parent_path = old_path.parent_path(); 
+        auto new_path = parent_path / new_name;
 
-    fs::rename(selected_path.c_str(), new_path.u8string().c_str());
-    selected_path = new_path.u8string();
+        fs::rename(selected_path.c_str(), new_path.u8string().c_str());
+        selected_path = new_path.u8string();
+    }
+    catch(const std::exception& e)
+    {
+        std::filesystem::path current_path(std::filesystem::current_path() / "ArmSimPro_Log.txt");
+        auto log_file = std::make_shared<lwlog::file_logger>("FILE", current_path.u8string());
+        log_file->error(e.what());
+    }
 }
 
 bool FileHandler::Search_RemoveNode(DirectoryNode& ParentNode, const std::string& target_path)
