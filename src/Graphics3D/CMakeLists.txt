@@ -13,6 +13,10 @@ find_package(directxtk CONFIG REQUIRED)
 
 add_library(Graphics
     Graphics3D.cpp
+    pch.cpp
+    DeviceResourcesPC.cpp
+    StepTimer.h
+    RenderTexture.cpp
 )
 
 target_include_directories( Graphics

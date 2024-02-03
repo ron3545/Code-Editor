@@ -46,7 +46,7 @@ namespace fs = std::filesystem;
 #include "FileDialog/FileDialog.h"
 #include "Utility.hpp"
 
-#include "Graphics3D/Graphics3D.h"
+//#include "Graphics3D/Graphics3D.h"
 
 const char* WELCOME_PAGE = "\tWelcome\t";
 constexpr wchar_t* SOFTWARE_NAME = L"ArmSim Pro";

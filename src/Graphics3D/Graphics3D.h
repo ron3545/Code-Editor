@@ -1,35 +1,28 @@
 #pragma once
-#include <sdkddkver.h>
-#include <Windows.h>
-#include <d3d11.h>
+#include "DeviceResourcesPC.h"
+#include "StepTimer.h"
+#include "RenderTexture.h"
 
-#include "BufferHelpers.h"
-#include "CommonStates.h"
-#include "DDSTextureLoader.h"
-#include "DirectXHelpers.h"
-#include "Effects.h"
-#include "GamePad.h"
-#include "GeometricPrimitive.h"
-#include "GraphicsMemory.h"
-#include "Keyboard.h"
-#include "Model.h"
-#include "Mouse.h"
-#include "PostProcess.h"
-#include "PrimitiveBatch.h"
-#include "ScreenGrab.h"
-#include "SimpleMath.h"
-#include "SpriteBatch.h"
-#include "SpriteFont.h"
-#include "VertexTypes.h"
-#include "WICTextureLoader.h"
-
-class GraphicsHandler
+class GraphicsHandler : public DX::IDeviceNotify
 {
 public:
-    GraphicsHandler( HWND hWnd );
+    GraphicsHandler( HWND hWnd, ID3D11Device* device, const char* model_path ) noexcept(false);
+
     GraphicsHandler( const GraphicsHandler& ) = delete;
     GraphicsHandler& operator=( const GraphicsHandler& ) = delete;
+
+    GraphicsHandler( GraphicsHandler& ) = delete;
+    GraphicsHandler& operator=( GraphicsHandler& ) = delete;
+
     ~GraphicsHandler();
+
+    // IDeviceNotify
+    void OnDeviceLost() override;
+    void OnDeviceRestored() override;
+
+private:
+    void CreateDeviceDependentResources();
+    void CreateWindowSizeDependentResources();
 
 private:
     DirectX::SimpleMath::Matrix m_world;
@@ -39,4 +32,8 @@ private:
     std::unique_ptr<DirectX::CommonStates> m_states;
     std::unique_ptr<DirectX::IEffectFactory> m_fxFactory;
     std::unique_ptr<DirectX::Model> m_model;
+
+    // Rendering loop timer.
+    DX::StepTimer                                   m_timer;
+
 };

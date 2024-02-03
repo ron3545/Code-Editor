@@ -13,7 +13,6 @@ std::unique_ptr< ArmSimPro::ToolBar > horizontal_tool_bar;
 std::unique_ptr< ArmSimPro::StatusBar > status_bar;
 std::unique_ptr< ArmSimPro::CmdPanel > cmd_panel;
 
-//std::unique_ptr< GraphicsHandler > graphics;
 //========================================================================================================================================
 bool shouldSimulate = false;
 
@@ -91,25 +90,25 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     auto load_icons = std::async(std::launch::async, [&]()
     {
         std::lock_guard<std::mutex> lock(icons_lock);
-        IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/ON/Upload.png", &Compile_image.ON_textureID, &Compile_image.width, &Compile_image.height));
-        IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/OFF/Upload.png", &Compile_image.OFF_textureID));
+        IM_ASSERT(LoadTextureFromFile(ICONS"/ON/Upload.png", &Compile_image.ON_textureID, &Compile_image.width, &Compile_image.height));
+        IM_ASSERT(LoadTextureFromFile(ICONS"/OFF/Upload.png", &Compile_image.OFF_textureID));
 
-        IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/ON/Verify.png", &Verify_image.ON_textureID, &Verify_image.width, &Verify_image.height));
-        IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/OFF/Verify.png", &Verify_image.OFF_textureID));
+        IM_ASSERT(LoadTextureFromFile(ICONS"/ON/Verify.png", &Verify_image.ON_textureID, &Verify_image.width, &Verify_image.height));
+        IM_ASSERT(LoadTextureFromFile(ICONS"/OFF/Verify.png", &Verify_image.OFF_textureID));
 
-        IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/ON/Folder.png", &Folder_image.ON_textureID, &Folder_image.width, &Folder_image.height));
-        IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/OFF/Folder.png", &Folder_image.OFF_textureID));
+        IM_ASSERT(LoadTextureFromFile(ICONS"/ON/Folder.png", &Folder_image.ON_textureID, &Folder_image.width, &Folder_image.height));
+        IM_ASSERT(LoadTextureFromFile(ICONS"/OFF/Folder.png", &Folder_image.OFF_textureID));
 
-        IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/ON/Debug.png", &Debug_image.ON_textureID, &Debug_image.width, &Debug_image.height));
-        IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/OFF/Debug.png", &Debug_image.OFF_textureID));
+        IM_ASSERT(LoadTextureFromFile(ICONS"/ON/Debug.png", &Debug_image.ON_textureID, &Debug_image.width, &Debug_image.height));
+        IM_ASSERT(LoadTextureFromFile(ICONS"/OFF/Debug.png", &Debug_image.OFF_textureID));
 
-        IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/ON/RobotArm.png", &Robot_image.ON_textureID, &Robot_image.width, &Robot_image.height));
-        IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/OFF/RobotArm.png", &Robot_image.OFF_textureID));
+        IM_ASSERT(LoadTextureFromFile(ICONS"/ON/RobotArm.png", &Robot_image.ON_textureID, &Robot_image.width, &Robot_image.height));
+        IM_ASSERT(LoadTextureFromFile(ICONS"/OFF/RobotArm.png", &Robot_image.OFF_textureID));
 
-        IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/ON/Search.png", &Search_image.ON_textureID, &Search_image.width, &Search_image.height));
-        IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/OFF/Search.png", &Search_image.OFF_textureID));
+        IM_ASSERT(LoadTextureFromFile(ICONS"/ON/Search.png", &Search_image.ON_textureID, &Search_image.width, &Search_image.height));
+        IM_ASSERT(LoadTextureFromFile(ICONS"/OFF/Search.png", &Search_image.OFF_textureID));
 
-        IM_ASSERT(LoadTextureFromFile("../../../Utils/icons/process-error.png", &ErroSymbol.textureID, &ErroSymbol.width, &ErroSymbol.height));
+        IM_ASSERT(LoadTextureFromFile(ICONS"/process-error.png", &ErroSymbol.textureID, &ErroSymbol.width, &ErroSymbol.height));
     });
     load_icons.wait();
 
@@ -155,7 +154,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 
     status_bar = std::make_unique< ArmSimPro::StatusBar >("status", 30, horizontal_tool_bar->GetbackgroundColor());
     cmd_panel = std::make_unique< ArmSimPro::CmdPanel >("Command Line", status_bar->GetHeight(), bg_col, highlighter_col);
-
 //==================================================Texture for File Dialog==============================================================  
     
     ArmSimPro::FileDialog::Instance().CreateTexture = [](uint8_t* data, int w, int h, char fmt){
@@ -338,14 +336,17 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
             auto future = std::async(std::launch::async, EditorWithoutDockSpace, main_menubar_height);
             future.wait();
 
+//================================================Simulation====================================================================================================
             if(shouldSimulate)
             {
                 ImGui::SetNextWindowSize(ImVec2(600,600));
-                if(ImGui::Begin("3D Model", &shouldSimulate))
+                ImGui::Begin("Simulation", &shouldSimulate);
                 {
-                    ImGui::End();
+                    
                 }
+                ImGui::End();
             }
+//===============================================================================================================================================================
         }
         ImGui::Render();
         const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
@@ -374,13 +375,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     horizontal_tool_bar.reset();
     cmd_panel.reset();
     status_bar.reset();
-    //graphics.reset();
 
     SafeDelete<ImFont>(DefaultFont);
     SafeDelete<ImFont>(CodeEditorFont);
     SafeDelete<ImFont>(FileTreeFont);
     SafeDelete<ImFont>(StatusBarFont);
     SafeDelete<ImFont>(TextFont);
+    
     return 0;
 }
 
