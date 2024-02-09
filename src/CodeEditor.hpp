@@ -58,13 +58,13 @@ static const char* DroidSansMono_Font   = "../../../Utils/Fonts/DroidSansMono.tt
 static const char* Menlo_Regular_Font   = "../../../Utils/Fonts/Menlo-Regular.ttf";
 static const char* MONACO_Font          = "../../../Utils/Fonts/MONACO.TTF";  
 //=======================================================Variables==========================================================================
-static bool auto_save = false;
+static bool auto_save = true;
 
 static fs::path SelectedProjectPath; 
 static fs::path NewProjectDir; 
 
 static std::string selected_window_path, prev_selected_window_path; // for editing
-static std::string current_editor;
+static std::string current_editor, found_selected_editor;
 
 typedef std::vector<ArmSimPro::TextEditorState> TextEditors;
 static TextEditors Opened_TextEditors;  //Storage for all the instances of text editors that has been opened
@@ -138,6 +138,16 @@ const char* idecls[] =
     "IDXGISwapChain", "ID3D11RenderTargetView", "ID3D11Texture2D", "class TextEditor" };
 
 //===================================================HELPER FUNCTIONS=========================================================================================================
+std::string Path_To_String(const std::filesystem::path& path)
+{
+    return path.u8string();
+}
+
+std::wstring Path_To_Wstring(const std::filesystem::path& path)
+{
+    auto str = path.u8string();
+    return std::wstring(str.begin(), str.end());
+}
 
 int GetTextEditorIndex(const std::string txt_editor_path)
 {
@@ -619,6 +629,28 @@ void WelcomPage()
 }
 
 //===================================================Used for renaming and adding files/folders============================================================
+void RenderArrow(ImGuiDir dir)
+{
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return;
+    
+    ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+
+    const ImVec2 label_size = ImGui::CalcTextSize(" ", NULL, false);
+    const ImVec2 padding = style.FramePadding;//ImVec2(style.FramePadding.x, ImMin(window->DC.CurrLineTextBaseOffset, style.FramePadding.y));
+    const float frame_height = ImMax(ImMin(window->DC.CurrLineSize.y, g.FontSize + style.FramePadding.y * 2), label_size.y + padding.y * 2);
+
+    const float text_offset_x = g.FontSize + (padding.x);           // Collapser arrow width + Spacing
+    const float text_offset_y = ImMax(padding.y, window->DC.CurrLineTextBaseOffset);                    // Latch before ItemSize changes it
+    const float text_width = g.FontSize + (label_size.x > 0.0f ? label_size.x + padding.x * 2 : 0.0f);
+    ImVec2 text_pos(window->DC.CursorPos.x + text_offset_x, window->DC.CursorPos.y + text_offset_y);
+
+    ImGui::ItemSize(ImVec2(text_width, frame_height), padding.y);
+    ImGui::RenderArrow(window->DrawList, ImVec2(text_pos.x - text_offset_x + padding.x, text_pos.y), ImGui::GetColorU32(ImVec4(1,1,1,1)), dir, 0.70f);
+}
+
 void NodeInputText(std::string& FileName, bool* state, float offsetX, std::function<void(const std::string&)> ptr_to_func, bool IsDirectory = false)
 {
     if(!ptr_to_func)
@@ -626,26 +658,7 @@ void NodeInputText(std::string& FileName, bool* state, float offsetX, std::funct
     
     //Just for visual clarification only for the user to determin that he/she is creating a directory node
     if(IsDirectory)
-    {
-        ImGuiWindow* window = ImGui::GetCurrentWindow();
-        if (window->SkipItems)
-            return;
-        
-        ImGuiContext& g = *GImGui;
-        const ImGuiStyle& style = g.Style;
-
-        const ImVec2 label_size = ImGui::CalcTextSize(FileName.c_str(), NULL, false);
-        const ImVec2 padding = style.FramePadding;
-        const float frame_height = ImMax(ImMin(window->DC.CurrLineSize.y, g.FontSize + style.FramePadding.y * 2), label_size.y + padding.y * 2);
-
-        const float text_offset_x = g.FontSize + (padding.x);           // Collapser arrow width + Spacing
-        const float text_offset_y = ImMax(padding.y, window->DC.CurrLineTextBaseOffset);                    // Latch before ItemSize changes it
-        const float text_width = g.FontSize + (label_size.x > 0.0f ? label_size.x + padding.x * 2 : 0.0f);
-        ImVec2 text_pos(window->DC.CursorPos.x + text_offset_x, window->DC.CursorPos.y + text_offset_y);
-
-        ImGui::ItemSize(ImVec2(text_width, frame_height), padding.y);
-        ImGui::RenderArrow(window->DrawList, ImVec2(text_pos.x - text_offset_x + padding.x, text_pos.y), ImGui::GetColorU32(ImVec4(1,1,1,1)), ImGuiDir_Right, 0.70f);
-    }
+        RenderArrow(ImGuiDir_Right);
     
     ImGui::SameLine();
     ImGui::Indent(offsetX);
@@ -687,26 +700,7 @@ void NodeInputText(bool* state, float offsetX, std::function<void(const std::str
     
     //Just for visual clarification only for the user to determin that he/she is creating a directory node
     if(IsDirectory)
-    {
-        ImGuiWindow* window = ImGui::GetCurrentWindow();
-        if (window->SkipItems)
-            return;
-        
-        ImGuiContext& g = *GImGui;
-        const ImGuiStyle& style = g.Style;
-
-        const ImVec2 label_size = ImGui::CalcTextSize(" ", NULL, false);
-        const ImVec2 padding = style.FramePadding;//ImVec2(style.FramePadding.x, ImMin(window->DC.CurrLineTextBaseOffset, style.FramePadding.y));
-        const float frame_height = ImMax(ImMin(window->DC.CurrLineSize.y, g.FontSize + style.FramePadding.y * 2), label_size.y + padding.y * 2);
-
-        const float text_offset_x = g.FontSize + (padding.x);           // Collapser arrow width + Spacing
-        const float text_offset_y = ImMax(padding.y, window->DC.CurrLineTextBaseOffset);                    // Latch before ItemSize changes it
-        const float text_width = g.FontSize + (label_size.x > 0.0f ? label_size.x + padding.x * 2 : 0.0f);
-        ImVec2 text_pos(window->DC.CursorPos.x + text_offset_x, window->DC.CursorPos.y + text_offset_y);
-
-        ImGui::ItemSize(ImVec2(text_width, frame_height), padding.y);
-        ImGui::RenderArrow(window->DrawList, ImVec2(text_pos.x - text_offset_x + padding.x, text_pos.y), ImGui::GetColorU32(ImVec4(1,1,1,1)), ImGuiDir_Right, 0.70f);
-    }
+        RenderArrow(ImGuiDir_Right);
     
     ImGui::SameLine();
     ImGui::Indent(offsetX);
@@ -736,4 +730,121 @@ void NodeInputText(bool* state, float offsetX, std::function<void(const std::str
         ImGui::PopStyleVar(2);
     }
     ImGui::Unindent(offsetX);
+}
+
+void Show_Find_Replace_Panel(ImGuiWindowFlags window_flags, float main_menubar_height)
+{   
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lock(mutex);
+
+    ImGuiIO& io = ImGui::GetIO();
+    auto ctrl = io.KeyCtrl;
+
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    static bool show_find_replace_panel = false;
+
+    if(Opened_TextEditors.empty())
+        return;
+
+    static ArmSimPro::TextEditor * focused_editor = nullptr;
+    if((selected_window_path != prev_selected_window_path)){
+        prev_selected_window_path = selected_window_path;
+        auto iterator = std::find(Opened_TextEditors.begin(), Opened_TextEditors.end(), selected_window_path); 
+        if(iterator != Opened_TextEditors.cend())
+            focused_editor = &(iterator->editor);
+    }
+
+    if(ctrl && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_F)) && focused_editor != nullptr && focused_editor->IsEditorFocused())
+        show_find_replace_panel = true;
+    
+    if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape)))
+        show_find_replace_panel = false;
+
+    if(show_find_replace_panel)
+    {   
+        static unsigned int panel_height = 40;
+        const float PanelWidth = 466;
+        ImVec2 size,panel_pos;
+
+        {
+            ImGuiViewportP* viewportp = (ImGuiViewportP*)(void*)(viewport);
+            ImRect available_rect = viewportp->GetBuildWorkRect();
+
+            panel_pos = available_rect.Min;
+            panel_pos[ImGuiAxis_Y] = available_rect.Max[ImGuiAxis_Y] - (panel_height + main_menubar_height);
+            panel_pos[ImGuiAxis_X] = available_rect.Max[ImGuiAxis_X] - (PanelWidth + 30);
+
+            size = available_rect.GetSize();
+            size[ImGuiAxis_Y] = panel_height;
+        }
+
+        ImGui::SetNextWindowSize(ImVec2(PanelWidth, panel_height));
+        ImGui::SetNextWindowPos(panel_pos, ImGuiCond_Always);
+
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, bg_col.GetCol());
+        ImGui::Begin("Search and Replace", NULL, window_flags);
+        {
+            static bool isPressed = false;
+            static std::string buffer;
+
+            ImGui::PushFont(TextFont);
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,255,255,255));
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(49,49,49,255));
+                ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(24, 24, 24,255));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(24, 24, 24,255));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(24, 24, 24,255));
+
+                if(ImGui::ArrowButton("##drop_down", (isPressed)? ImGuiDir_Down : ImGuiDir_Right))
+                    isPressed = !isPressed;
+                
+                ImGui::SameLine();
+
+                ImGui::PushItemWidth(260);
+                if(ImGui::InputTextWithHint("##Search", "Search Word on Files", &buffer, ImGuiInputTextFlags_EnterReturnsTrue) && !SelectedProjectPath.empty())
+                {
+
+                }
+                ImGui::PopItemWidth();
+                ImGui::PopStyleColor(5);
+
+                ImGui::SameLine();
+                ImGui::PushFont(DefaultFont);
+                ImGui::Text("No results");
+                ImGui::PopFont();
+
+                ImGui::SameLine();
+                if(ImGui::ArrowButton("##move uo", ImGuiDir_Up))
+                {
+
+                }
+
+                ImGui::SameLine();
+                if(ImGui::ArrowButton("##move down", ImGuiDir_Down))
+                {
+
+                }
+
+                if(isPressed)
+                {
+                    panel_height = 70;
+                    const int indent = 32;
+                    ImGui::Indent(indent);
+                    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,255,255,255));
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(49,49,49,255));
+                    if(ImGui::InputTextWithHint("##Replace", "Replace Word on Files", &buffer, ImGuiInputTextFlags_EnterReturnsTrue) && !SelectedProjectPath.empty())
+                    {
+                        
+                    }
+                    ImGui::PopStyleColor(2);
+                    ImGui::Unindent(indent);
+                }
+                else
+                    panel_height = 40;
+
+                
+            ImGui::PopFont();
+        }
+        ImGui::End();
+        ImGui::PopStyleColor();   
+    }
 }

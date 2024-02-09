@@ -2383,9 +2383,6 @@ namespace  ArmSimPro
             Coordinates(mState.mCursorPosition.mLine, lineLength));
     }
 
-    void TextEditor::ProcessInputs()
-    {
-    }
 
     void TextEditor::Colorize(int aFromLine, int aLines)
     {

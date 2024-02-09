@@ -1,12 +1,20 @@
 #include "FileHandler.h"
-#include <fstream>
-#include <cstdio>
 #include "lwlog.h"
+
+#include <fstream>
+#include <sstream>
+#include <cstdio>
+#include <future>
+#include <cstdio>
+#include <algorithm>
+#include <functional>
+#include <iomanip>
+#include <string_view>
 
 namespace fs = std::filesystem;
 
 void RecursivelyAddDirectoryNodes(DirectoryNode& parentNode, std::filesystem::directory_iterator directoryIterator)
-{
+{   
 	for (const std::filesystem::directory_entry& entry : directoryIterator)
 	{
 		DirectoryNode& childNode = parentNode.Children.emplace_back();
@@ -253,6 +261,103 @@ bool FileHandler::Search_RemoveNode(DirectoryNode& ParentNode, const std::string
     return false;
 }
 
+std::vector<std::filesystem::path> FileHandler::GetFileList(const std::filesystem::path &project_path)
+{
+    static std::mutex getFile_mutex;
+    std::lock_guard<std::mutex> lock(getFile_mutex);
+
+    std::vector<std::filesystem::path> Files;
+    for(std::filesystem::recursive_directory_iterator end, dir(project_path); dir != end; ++dir)
+    {
+        if(dir->path().filename() == "build" || dir->path().filename() == ".git")
+            continue;
+
+        if(!dir->is_directory())
+            Files.push_back(dir->path());
+    }
+    return Files;
+}
+
+std::map<std::filesystem::path, std::vector<FileHandler::FileHandler_SearchKeyOnFile>> FileHandler::Search_String_On_Files(const std::filesystem::path &project_path, const std::string &key)
+{   
+    std::lock_guard<std::mutex> lock(search_mutex);
+    if(key.empty())
+        return std::map<std::filesystem::path, std::vector<FileHandler::FileHandler_SearchKeyOnFile>>();
+
+    std::map<std::filesystem::path, std::vector<FileHandler::FileHandler_SearchKeyOnFile>> result;
+
+    std::vector<std::filesystem::path> Files; 
+    auto file_list_future = std::async(std::launch::async, &FileHandler::GetFileList, this, project_path);
+    file_list_future.wait();
+    Files = file_list_future.get();
+
+    if(Files.empty())
+        return std::map<std::filesystem::path, std::vector<FileHandler::FileHandler_SearchKeyOnFile>>();
+
+    //Launch tasks on seperate threads.
+    std::vector<std::future<std::tuple<std::filesystem::path, FileHandler::SearchedKeys>>> futures;
+    for(const auto& file : Files)
+        futures.push_back(std::async(std::launch::async, &FileHandler::Search_Needle_On_Haystack, this, file, key));
+
+    //wait for the task to finish and capture their output
+    while(!futures.empty())
+    {
+        auto task = futures.begin();
+        while(task != futures.end())
+        {
+            // check the status of each tasks 
+            std::future_status task_stat = task->wait_for(std::chrono::milliseconds(5));
+            if(task_stat == std::future_status::timeout)
+                ++task; 
+            else
+            {
+                auto data = task->get();
+                result[std::get<0>(data)] = std::get<1>(data);
+                task = futures.erase(task); 
+            }
+        }
+    }
+
+    return result;
+}
+
+std::tuple<std::filesystem::path, FileHandler::SearchedKeys> FileHandler::Search_Needle_On_Haystack(const std::filesystem::path& path, const std::string& key)
+{   
+    static std::mutex search_mutex;
+    std::lock_guard<std::mutex> lock(search_mutex);
+
+    const std::string_view needle(key);
+
+    SearchedKeys contains_key;
+
+    //ToDo: Make the reading file faster using this: https://stackoverflow.com/questions/17925051/fast-textfile-reading-in-c
+    //ToDo: Remeve the use of boost library for boyer moore algorithm. Use this instead:  https://en.cppreference.com/w/cpp/utility/functional/boyer_moore_horspool_searcher
+    FILE* file = fopen(path.u8string().c_str(), "r");
+    if(!file)
+        return std::tuple<std::filesystem::path, SearchedKeys>();
+        
+    size_t m_lineNumber = 0;
+    int m_occurrences = 0;
+
+    const int bufferSize = 256;
+    char buffer[bufferSize];
+    while(fgets(buffer, bufferSize, file))
+    {   
+        ++m_lineNumber;
+
+        const std::string_view haystack(buffer);
+        auto it = std::search(haystack.begin(), haystack.end(),
+                              std::boyer_moore_horspool_searcher(needle.begin(), needle.end()));
+        if(it != haystack.end())
+        {
+            ++m_occurrences;
+            contains_key.push_back(FileHandler_SearchKeyOnFile(m_lineNumber, m_occurrences, buffer));
+        }
+    }
+    fclose(file);
+    return std::make_tuple(path, contains_key);
+}
+
 bool FileHandler::Search_AddNode(DirectoryNode& ParentNode, const std::string& target_path, const DirectoryNode& to_add)
 {
     if(to_add.FullPath.empty() || target_path.empty())
@@ -281,3 +386,6 @@ void FileHandler::AddNode(DirectoryNode& ParentNode, const std::string& target_p
     new_node.FullPath = target_path + "\\" + to_add;
     Search_AddNode(ParentNode, target_path, new_node);
 }
+
+
+

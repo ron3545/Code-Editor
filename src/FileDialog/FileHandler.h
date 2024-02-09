@@ -1,5 +1,10 @@
 #pragma once
 #include <filesystem>
+#include <vector>
+#include <map>
+#include <mutex>
+
+
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_internal.h"
 
@@ -30,6 +35,21 @@ public:
     FileHandler(FileHandler const&) = delete;
     void operator=(FileHandler const&) = delete;
 
+    struct FileHandler_SearchKeyOnFile
+    {
+        size_t m_lineNumber;
+        int m_occurrences;
+        std::string m_Line;
+
+        FileHandler_SearchKeyOnFile(size_t lineNumber,
+                                    int occurrences,
+                                    std::string Line)
+        : m_lineNumber(lineNumber), m_occurrences(occurrences), m_Line(Line)
+        {}
+
+        FileHandler_SearchKeyOnFile() {}
+    };
+
     static FileHandler& GetInstance()
     {
         static FileHandler instance; // Guaranteed to be destroyed. Only initiated once
@@ -51,9 +71,16 @@ public:
 
     //barowed from https://github.com/ocornut/imgui/issues/3730
     void Rename(std::string& selected_path, const std::string& new_name);
+
+    typedef std::vector<FileHandler::FileHandler_SearchKeyOnFile> SearchedKeys;
+    std::map<std::filesystem::path, std::vector<FileHandler_SearchKeyOnFile>> Search_String_On_Files(const std::filesystem::path& project_path, const std::string& key); 
+    std::tuple<std::filesystem::path, SearchedKeys> Search_Needle_On_Haystack(const std::filesystem::path& path, const std::string& key);
+
+    std::vector<std::filesystem::path> GetFileList(const std::filesystem::path &project_path);
 private:
     FileHandler_PasteMode paste_mode; 
     ImFont* text_font;
+    std::mutex mutex_class, search_mutex;
 
     void AddNode(DirectoryNode& ParentNode, const std::string& target_path, const std::string& to_add, bool IsDirectory);
     bool Search_AddNode(DirectoryNode& ParentNode, const std::string& target_path, const DirectoryNode& to_add); 

@@ -30,7 +30,6 @@ add_subdirectory(ToolBar)
 add_subdirectory(StatusBar)
 add_subdirectory(Editor)
 add_subdirectory(FileDialog)
-add_subdirectory(Graphics3D)
 
 add_executable(${PROJECT_NAME} WIN32  CodeEditor.cpp)
 
@@ -40,7 +39,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     ToolBar
     Editor
     FileDialog
-    Graphics
     
     nlohmann_json::nlohmann_json
     lwlog::lwlog

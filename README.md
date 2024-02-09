@@ -16,6 +16,8 @@ The ArmSimPro Code Editor is a versatile text editor designed specifically for p
 ## Note:
 I usually develop on my own, so there could be bad design patterns and bugs that you may see. If you see some bugs or bad design paterns don't hesitate to post an issue. 
 
+- The software needs boost libraries. You can download it here: https://github.com/boostorg/cmake
+
 ## Features
 #### Code Editing
 - Syntax highlighting for various programming languages, facilitating easy code reading and editing.

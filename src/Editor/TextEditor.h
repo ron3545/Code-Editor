@@ -333,7 +333,7 @@ namespace ArmSimPro
 
         bool IsTextChanged() const { return this->mTextChanged; } 
         bool IsCursorPositionChanged() const { return this->mCursorPositionChanged; }
-        bool IsChildWindowFocused() const  { return isChildWindowFocus; }
+        bool IsEditorFocused() const  { return isChildWindowFocus; }
         bool IsColorizerEnabled() const { return this->mColorizerEnabled; }
 
         void SetColorizerEnable(bool aValue);
@@ -396,7 +396,6 @@ namespace ArmSimPro
         void SetRegexList(const std::string& first, const PaletteIndex& second);
         void RenderMainEditor(ImDrawList* drawList, int lineNo, ImVec2& cursorScreenPos, ImVec2& contentSize, float *longest, float scrollX, float spaceSize, char *buf, size_t buf_size = 16);
 
-        void ProcessInputs();
         void Colorize(int aFromLine = 0, int aCount = -1) override;
         void ColorizeRange(int aFromLine = 0, int aToLine = 0) override;
         void ColorizeInternal() override;
