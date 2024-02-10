@@ -15,6 +15,9 @@ std::unique_ptr< ArmSimPro::CmdPanel > cmd_panel;
 
 //========================================================================================================================================
 bool shouldSimulate = false;
+const char* WELCOME_PAGE = "\tWelcome\t";
+constexpr wchar_t* SOFTWARE_NAME = L"ArmSim Pro";
+const char* LOGO = "";
 
        HWND                     hwnd = NULL;
        ID3D11Device*            g_pd3dDevice = nullptr; //should be non-static. Other translation units will be using this
@@ -24,6 +27,11 @@ static UINT                     g_ResizeWidth = 0, g_ResizeHeight = 0;
 static ID3D11RenderTargetView*  g_mainRenderTargetView = nullptr;
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+bool CreateDeviceD3D(HWND hWnd);
+void CleanupDeviceD3D();
+void CreateRenderTarget();
+void CleanupRenderTarget();
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
@@ -471,11 +479,14 @@ void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
                 node_flags |= ImGuiTreeNodeFlags_DefaultOpen;
             
             ImGui::PushFont(FileTreeFont);
-            if((ShouldAddNewFolder || ShouldAddNewFile) && selected_folder == parentNode.FullPath)
-                ImGui::SetNextItemOpen(true);
+
+            const bool isRootProject = (ShouldAddNewFolder || ShouldAddNewFile) && selected_folder == parentNode.FullPath;
+            bool isChildOpen = false;
+            if(isRootProject)
+                ImGui::SetNextItemOpen(true);  
 
             bool opened = ImGui::TreeNodeEx(parentNode.FileName.c_str(), node_flags);
-
+            
             if(ImGui::IsItemClicked(ImGuiMouseButton_Left))
                 selected_path = parentNode.FullPath;
 
@@ -1103,3 +1114,4 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     return ::DefWindowProcW(hWnd, msg, wParam, lParam);
 }
+

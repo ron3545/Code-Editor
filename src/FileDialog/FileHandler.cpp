@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <string_view>
 
+
 namespace fs = std::filesystem;
 
 void RecursivelyAddDirectoryNodes(DirectoryNode& parentNode, std::filesystem::directory_iterator directoryIterator)
@@ -330,8 +331,6 @@ std::tuple<std::filesystem::path, FileHandler::SearchedKeys> FileHandler::Search
 
     SearchedKeys contains_key;
 
-    //ToDo: Make the reading file faster using this: https://stackoverflow.com/questions/17925051/fast-textfile-reading-in-c
-    //ToDo: Remeve the use of boost library for boyer moore algorithm. Use this instead:  https://en.cppreference.com/w/cpp/utility/functional/boyer_moore_horspool_searcher
     FILE* file = fopen(path.u8string().c_str(), "r");
     if(!file)
         return std::tuple<std::filesystem::path, SearchedKeys>();
@@ -351,7 +350,8 @@ std::tuple<std::filesystem::path, FileHandler::SearchedKeys> FileHandler::Search
         if(it != haystack.end())
         {
             ++m_occurrences;
-            contains_key.push_back(FileHandler_SearchKeyOnFile(m_lineNumber, m_occurrences, buffer));
+            size_t offset = it - haystack.end();
+            contains_key.push_back(FileHandler_SearchKeyOnFile(m_lineNumber, offset, m_occurrences, buffer));
         }
     }
     fclose(file);

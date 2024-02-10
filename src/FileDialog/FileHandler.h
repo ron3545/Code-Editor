@@ -37,14 +37,15 @@ public:
 
     struct FileHandler_SearchKeyOnFile
     {
-        size_t m_lineNumber;
+        size_t m_lineNumber, m_offset;
         int m_occurrences;
         std::string m_Line;
 
         FileHandler_SearchKeyOnFile(size_t lineNumber,
+                                    size_t offset,
                                     int occurrences,
                                     std::string Line)
-        : m_lineNumber(lineNumber), m_occurrences(occurrences), m_Line(Line)
+        : m_lineNumber(lineNumber), m_offset(offset), m_occurrences(occurrences), m_Line(Line)
         {}
 
         FileHandler_SearchKeyOnFile() {}

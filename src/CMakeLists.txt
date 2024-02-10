@@ -26,6 +26,7 @@ if(NOT lwlog_POPULATED)
 endif()
 
 add_subdirectory(imgui)
+add_subdirectory(CodeEditor)
 add_subdirectory(ToolBar)
 add_subdirectory(StatusBar)
 add_subdirectory(Editor)
