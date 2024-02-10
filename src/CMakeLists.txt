@@ -10,9 +10,6 @@ set(CMAKE_PREFIX_PATH "C:/DEV/vcpkg/installed/x64-windows/share")  #pakage manag
 include(FetchContent)
 set(FETCHCONTENT_UPDATES_DISCONNECTED TRUE)
 
-FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
-FetchContent_MakeAvailable(json)
-
 # https://github.com/ChristianPanov/lwlog/issues/19
 FetchContent_Declare(lwlog
   GIT_REPOSITORY https://github.com/ChristianPanov/lwlog
@@ -36,13 +33,7 @@ add_executable(${PROJECT_NAME} WIN32  CodeEditor.cpp)
 
 target_link_libraries(${PROJECT_NAME} PUBLIC 
     imgui 
-    StatusBar
-    ToolBar
-    Editor
-    FileDialog
-    
-    nlohmann_json::nlohmann_json
+    CodeEditor
     lwlog::lwlog
-
     d3d11.lib 
 )

@@ -21,5 +21,9 @@ target_include_directories( CodeEditor
 target_link_libraries(CodeEditor
     
     #${Boost_LIBRARIES}
+    StatusBar
+    ToolBar
+    Editor
+    FileDialog
     nlohmann_json::nlohmann_json
 )

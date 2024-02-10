@@ -1,5 +1,28 @@
 #include "Editor.hpp"
 
+namespace ArmSimPro
+{
+    struct MenuItemData{
+        const char *label, *shortcut;
+        bool *selected, enable;
+        std::function<void()> ToExec;
+
+        MenuItemData() {}
+        MenuItemData(const char* Label, const char* Shortcut, bool* Selected, bool isEnable, std::function<void()> ptr_to_func)
+            : label(Label), shortcut(Shortcut), selected(Selected), enable(isEnable), ToExec(ptr_to_func)
+        {}
+    };
+
+    void MenuItem(const MenuItemData& data, bool is_func_valid)
+    { 
+        if(ImGui::MenuItem(data.label, data.shortcut, data.selected, data.enable))
+        {
+            if(data.ToExec && is_func_valid)
+                data.ToExec();
+        }
+    }
+}
+
 CodeEditor::CodeEditor( const char *Consolas_Font, 
                         const char *DroidSansMono_Font, 
                         const char *Menlo_Regular_Font, 
@@ -9,7 +32,8 @@ CodeEditor::CodeEditor( const char *Consolas_Font,
         m_Menlo_Regular_Font(Menlo_Regular_Font),
         m_MONACO_Font(MONACO_Font),
         auto_save(true),
-        UseDefault_Location(true)
+        UseDefault_Location(true),
+        ShouldCloseEditor(false)
 {
 
 }
@@ -100,7 +124,7 @@ void CodeEditor::InitializeEditor()
     cmd_panel = std::make_unique< ArmSimPro::CmdPanel >("Command Line", status_bar->GetHeight(), bg_col, highlighter_col);
 }
 
-bool CodeEditor::RunEditor()
+void CodeEditor::RunEditor()
 {
     // Create a project
     if(!SelectedProjectPath.empty() && project_root_node.FileName.empty() && project_root_node.FullPath.empty()){
@@ -119,8 +143,10 @@ bool CodeEditor::RunEditor()
                 if (ImGui::MenuItem("\tNew Window", "CTRL+Shift+N")) { ShellExecute(NULL, L"open", Path_To_Wstring(std::filesystem::current_path() / "ARMSIMPRO_core.exe").c_str(), NULL, NULL, SW_SHOWDEFAULT); }
                 ImGui::Separator();
                 ImGui::MenuItem("\tAuto Save", "", &auto_save);
-                if (ImGui::MenuItem("\tQuit", "CTRL+Q")) 
-                    return false;
+                if (ImGui::MenuItem("\tQuit", "CTRL+Q")){
+                    SaveUserData();
+                    ShouldCloseEditor = true;
+                }
                 
                 ImGui::EndMenu();
             }
@@ -195,8 +221,6 @@ bool CodeEditor::RunEditor()
 
     auto future = std::async(std::launch::async, &CodeEditor::EditorWithoutDockSpace, this, main_menubar_height);
     future.wait();
-//===============================================================================================================================================================
-    return true;
 }
 
 CodeEditor::DirStatus CodeEditor::CreateProjectDirectory(const fs::path& path, const char* ProjectName, fs::path* out)

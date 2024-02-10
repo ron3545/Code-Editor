@@ -54,29 +54,6 @@
 
 namespace fs = std::filesystem;
 
-namespace ArmSimPro
-{
-    struct MenuItemData{
-        const char *label, *shortcut;
-        bool *selected, enable;
-        std::function<void()> ToExec;
-
-        MenuItemData() {}
-        MenuItemData(const char* Label, const char* Shortcut, bool* Selected, bool isEnable, std::function<void()> ptr_to_func)
-            : label(Label), shortcut(Shortcut), selected(Selected), enable(isEnable), ToExec(ptr_to_func)
-        {}
-    };
-
-    void MenuItem(const MenuItemData& data, bool is_func_valid)
-    { 
-        if(ImGui::MenuItem(data.label, data.shortcut, data.selected, data.enable))
-        {
-            if(data.ToExec && is_func_valid)
-                data.ToExec();
-        }
-    }
-}
-
 class CodeEditor
 {
 private:
@@ -86,18 +63,18 @@ private:
     const char* m_MONACO_Font;
 
     bool auto_save;
+    bool UseDefault_Location;
+    bool ShouldCloseEditor;
 
     fs::path SelectedProjectPath; 
     fs::path NewProjectDir; 
 
     std::string selected_window_path, prev_selected_window_path; // for editing
     std::string current_editor, found_selected_editor;
-
+    std::string Project_Name; 
+    
     typedef std::vector<ArmSimPro::TextEditorState> TextEditors;
     TextEditors Opened_TextEditors;  //Storage for all the instances of text editors that has been opened
-    
-    std::string Project_Name; 
-    bool UseDefault_Location;
 
     const RGBA bg_col = RGBA(24, 24, 24, 255);
     const RGBA highlighter_col = RGBA(0, 120, 212, 255);
@@ -124,7 +101,7 @@ private:
     DirectoryNode project_root_node;
 
 //======================================CLASS DECLARATION================================================================================
-    std::unique_ptr< ArmSimPro::ToolBar > vertical_tool_bar ;
+    std::unique_ptr< ArmSimPro::ToolBar > vertical_tool_bar;
     std::unique_ptr< ArmSimPro::ToolBar > horizontal_tool_bar;
     std::unique_ptr< ArmSimPro::StatusBar > status_bar;
     std::unique_ptr< ArmSimPro::CmdPanel > cmd_panel;
@@ -157,8 +134,16 @@ public:
                const char* MONACO_Font);
 
     ~CodeEditor();
+
+
     void InitializeEditor();
-    bool RunEditor();
+    void RunEditor();
+    void SaveUserData();
+
+    nlohmann::json LoadUserData();
+    ImVec4 GetClearColor() const { return clear_color; }
+    
+    bool ShouldEditorClose() const { return ShouldCloseEditor; }
 
 private:
 //=======================================Directory Tree===================================================================================================
@@ -197,14 +182,9 @@ private:
     bool ShouldShowWelcomePage();
     bool ButtonWithIconEx(const char* label, const char* icon = nullptr, const char* definition = nullptr);
     bool ButtonWithIcon(const char* label, const char* icon, const char* definition);
+    bool IsRootKeyExist(const std::string& root, const std::string& path);
 
     std::wstring Path_To_Wstring(const std::filesystem::path& path);
 
     int GetTextEditorIndex(const std::string txt_editor_path);
-
-//========================================Loading and Saving User Data Helper Functions==============================================
-    nlohmann::json LoadUserData();
-    bool IsRootKeyExist(const std::string& root, const std::string& path);
-    void SaveUserData();
-//==========================================================================================================================================
 };
