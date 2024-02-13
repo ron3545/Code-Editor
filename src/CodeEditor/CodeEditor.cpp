@@ -1,4 +1,4 @@
-#include "Editor.hpp"
+#include "CodeEditor.hpp"
 
 namespace ArmSimPro
 {
@@ -816,7 +816,7 @@ std::tuple<bool, std::string> CodeEditor::RenderTextEditorEx(   TextEditors::ite
 
 void CodeEditor::SearchOnCodeEditor()
 {
-    static std::string buffer;
+    static std::string search_buffer, replace_buffer;
 
     ImGui::Dummy(ImVec2(0.0f, 13.05f));
     ImGui::Dummy(ImVec2(5.0f, 13.05f));
@@ -838,48 +838,47 @@ void CodeEditor::SearchOnCodeEditor()
             ImGui::SameLine();
 
             static std::map<std::filesystem::path, std::vector<FileHandler::FileHandler_SearchKeyOnFile>> search_results;
-            if(ImGui::InputTextWithHint("##Search", "Search Word on source files", &buffer, ImGuiInputTextFlags_EnterReturnsTrue) && !SelectedProjectPath.empty())
+            if(ImGui::InputTextWithHint("##Search", "Search Word on source files", &search_buffer, ImGuiInputTextFlags_EnterReturnsTrue) && !SelectedProjectPath.empty())
             {
                 search_results.clear();
 
-                auto future = std::async(std::launch::async, [&](){
-                    return FileHandler::GetInstance().Search_String_On_Files(SelectedProjectPath, buffer);
-                });
-                future.wait();
-
-                search_results = future.get();
+                auto result = FileHandler::GetInstance().Search_String_On_Files(SelectedProjectPath, search_buffer);
+                if(!result.empty())
+                    search_results.insert(result.begin(), result.end());
             }
 
-            ImGui::BeginChild("Show data");
+            if(isPressed)
             {
-                if(isPressed)
+                const int indent = 39;
+                ImGui::Indent(indent);
+                if(ImGui::InputTextWithHint("##Replace", "Replace Word on Files", &replace_buffer, ImGuiInputTextFlags_EnterReturnsTrue) && !SelectedProjectPath.empty())
                 {
-                    const int indent = 39;
-                    ImGui::Indent(indent);
-                    if(ImGui::InputTextWithHint("##Replace", "Replace Word on Files", &buffer, ImGuiInputTextFlags_EnterReturnsTrue) && !SelectedProjectPath.empty())
-                    {
-                            
-                    }
-                    ImGui::Unindent(indent);
+                        
                 }
-
-                if(!search_results.empty())
-                {
-                    ImGui::PushFont(DefaultFont);
-                    for(const auto& search_result : search_results)
-                    {
-                        bool opened = ImGui::TreeNodeEx(search_result.first.filename().u8string().c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_AllowOverlap);
-
-                        if(opened)
-                        {
-                            
-                            ImGui::TreePop();
-                        }
-                    }
-                    ImGui::PopFont();
-                }
+                ImGui::Unindent(indent);
             }
-            ImGui::EndChild();
+
+            if(!search_results.empty())
+            {
+                ImGui::BeginChild("Show data");
+                {
+                    {
+                        ImGui::PushFont(DefaultFont);
+                        for(const auto& search_result : search_results)
+                        {
+                            bool opened = ImGui::TreeNodeEx(search_result.first.filename().u8string().c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_AllowOverlap);
+
+                            if(opened)
+                            {
+                                
+                                ImGui::TreePop();
+                            }
+                        }
+                        ImGui::PopFont();
+                    }
+                }
+                ImGui::EndChild();
+            }
 
         ImGui::PopItemWidth();
         ImGui::PopStyleColor(5);
@@ -1022,6 +1021,7 @@ void CodeEditor::LoadEditor(const std::string& file)
         t.seekg(0, std::ios::beg);
         str.assign((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
+        t.close();
         editor.SetText(str);
     }
 

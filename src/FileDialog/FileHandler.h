@@ -81,9 +81,12 @@ public:
 private:
     FileHandler_PasteMode paste_mode; 
     ImFont* text_font;
-    std::mutex mutex_class, search_mutex;
+
+    std::mutex mutex_class, search_mutex, getLines_mutex;
 
     void AddNode(DirectoryNode& ParentNode, const std::string& target_path, const std::string& to_add, bool IsDirectory);
     bool Search_AddNode(DirectoryNode& ParentNode, const std::string& target_path, const DirectoryNode& to_add); 
     bool Search_RemoveNode(DirectoryNode& ParentNode, const std::string& target_path);
+
+    std::vector<std::string> GetLines_From_LoadedString(const std::string& data);
 };

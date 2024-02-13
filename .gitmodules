@@ -1,0 +1,8 @@
+[submodule "src/External_Dependencies/mio"]
+	path = src/External_Dependencies/mio
+	url = https://github.com/mandreyel/mio.git
+	branch = master
+[submodule "src/FileDialog/mio"]
+	path = src/FileDialog/mio
+	url = https://github.com/mandreyel/mio.git
+	branch = master

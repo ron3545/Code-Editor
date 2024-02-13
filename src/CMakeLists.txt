@@ -29,7 +29,7 @@ add_subdirectory(StatusBar)
 add_subdirectory(Editor)
 add_subdirectory(FileDialog)
 
-add_executable(${PROJECT_NAME} WIN32  CodeEditor.cpp)
+add_executable(${PROJECT_NAME} WIN32  ArmSimPro.cpp)
 
 target_link_libraries(${PROJECT_NAME} PUBLIC 
     imgui 

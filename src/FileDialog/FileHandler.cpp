@@ -262,6 +262,7 @@ bool FileHandler::Search_RemoveNode(DirectoryNode& ParentNode, const std::string
     return false;
 }
 
+
 std::vector<std::filesystem::path> FileHandler::GetFileList(const std::filesystem::path &project_path)
 {
     static std::mutex getFile_mutex;
@@ -281,16 +282,19 @@ std::vector<std::filesystem::path> FileHandler::GetFileList(const std::filesyste
 
 std::map<std::filesystem::path, std::vector<FileHandler::FileHandler_SearchKeyOnFile>> FileHandler::Search_String_On_Files(const std::filesystem::path &project_path, const std::string &key)
 {   
-    std::lock_guard<std::mutex> lock(search_mutex);
     if(key.empty())
         return std::map<std::filesystem::path, std::vector<FileHandler::FileHandler_SearchKeyOnFile>>();
 
-    std::map<std::filesystem::path, std::vector<FileHandler::FileHandler_SearchKeyOnFile>> result;
+    static std::string prev_path;
+    static std::vector<std::filesystem::path> Files; 
 
-    std::vector<std::filesystem::path> Files; 
-    auto file_list_future = std::async(std::launch::async, &FileHandler::GetFileList, this, project_path);
-    file_list_future.wait();
-    Files = file_list_future.get();
+    if(project_path.u8string() != prev_path) //execute once
+    {
+        prev_path = project_path.u8string();
+        auto file_list_future = std::async(std::launch::async, &FileHandler::GetFileList, this, project_path);
+        file_list_future.wait();
+        Files = file_list_future.get();
+    }
 
     if(Files.empty())
         return std::map<std::filesystem::path, std::vector<FileHandler::FileHandler_SearchKeyOnFile>>();
@@ -300,6 +304,7 @@ std::map<std::filesystem::path, std::vector<FileHandler::FileHandler_SearchKeyOn
     for(const auto& file : Files)
         futures.push_back(std::async(std::launch::async, &FileHandler::Search_Needle_On_Haystack, this, file, key));
 
+    std::map<std::filesystem::path, std::vector<FileHandler::FileHandler_SearchKeyOnFile>> result;
     //wait for the task to finish and capture their output
     while(!futures.empty())
     {
@@ -313,7 +318,11 @@ std::map<std::filesystem::path, std::vector<FileHandler::FileHandler_SearchKeyOn
             else
             {
                 auto data = task->get();
-                result[std::get<0>(data)] = std::get<1>(data);
+                auto key = std::get<0>(data);
+                auto searched = std::get<1>(data);
+
+                if(!key.empty() || !searched.empty())
+                    result[std::get<0>(data)] = std::get<1>(data);
                 task = futures.erase(task); 
             }
         }
@@ -322,40 +331,56 @@ std::map<std::filesystem::path, std::vector<FileHandler::FileHandler_SearchKeyOn
     return result;
 }
 
+std::vector<std::string> FileHandler::GetLines_From_LoadedString(const std::string &data)
+{   
+    std::lock_guard<std::mutex> lock(getLines_mutex);
+
+    std::string line;
+    std::vector<std::string> Lines;
+
+    for(const auto& chr : data)
+    {
+        if(chr != '\r' && chr == '\n')
+        {
+            Lines.push_back(line);
+            line.clear();
+        }
+        else
+            line += chr;
+    }
+
+    return Lines;
+}
+
 std::tuple<std::filesystem::path, FileHandler::SearchedKeys> FileHandler::Search_Needle_On_Haystack(const std::filesystem::path& path, const std::string& key)
 {   
-    static std::mutex search_mutex;
     std::lock_guard<std::mutex> lock(search_mutex);
-
-    const std::string_view needle(key);
 
     SearchedKeys contains_key;
 
-    FILE* file = fopen(path.u8string().c_str(), "r");
-    if(!file)
-        return std::tuple<std::filesystem::path, SearchedKeys>();
-        
-    size_t m_lineNumber = 0;
-    int m_occurrences = 0;
+   
 
-    const int bufferSize = 256;
-    char buffer[bufferSize];
-    while(fgets(buffer, bufferSize, file))
-    {   
-        ++m_lineNumber;
+    
+    
+    // auto Lines_Future = std::async(std::launch::async, &FileHandler::GetLines_From_LoadedString, this, str);
 
-        const std::string_view haystack(buffer);
-        auto it = std::search(haystack.begin(), haystack.end(),
-                              std::boyer_moore_horspool_searcher(needle.begin(), needle.end()));
-        if(it != haystack.end())
-        {
-            ++m_occurrences;
-            size_t offset = it - haystack.end();
-            contains_key.push_back(FileHandler_SearchKeyOnFile(m_lineNumber, offset, m_occurrences, buffer));
-        }
-    }
-    fclose(file);
-    return std::make_tuple(path, contains_key);
+    // std::vector<std::string> Lines = Lines_Future.get();
+
+
+    
+    // ++m_lineNumber;
+
+    // const std::string_view haystack(buffer);
+    // auto it = std::search(haystack.begin(), haystack.end(),
+    //                       std::boyer_moore_horspool_searcher(needle.begin(), needle.end()));
+    // if(it != haystack.end())
+    // {
+    //     ++m_occurrences;
+    //     size_t offset = it - haystack.end();
+    //     contains_key.push_back(FileHandler_SearchKeyOnFile(m_lineNumber, offset, m_occurrences, buffer));
+    // }
+    return std::tuple<std::filesystem::path, FileHandler::SearchedKeys>();
+    // return std::make_tuple(path, contains_key);
 }
 
 bool FileHandler::Search_AddNode(DirectoryNode& ParentNode, const std::string& target_path, const DirectoryNode& to_add)

@@ -1,6 +1,6 @@
 
 add_library( CodeEditor
-    Editor.cpp
+    CodeEditor.cpp
 )
 
 include(FetchContent)

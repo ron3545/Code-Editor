@@ -1063,7 +1063,7 @@ namespace  ArmSimPro
 
             switch(glyph.mChar)
             {
-                case '\t': //Draws Tab 
+                case '\t': //Draws Arrow Tab 
                 {
                     auto oldX = bufferOffset.x;
                     bufferOffset.x = (1.0f + std::floor((1.0f + bufferOffset.x) / (float(mTabSize) * spaceSize))) * (float(mTabSize) * spaceSize);
@@ -1071,30 +1071,29 @@ namespace  ArmSimPro
 
                     if (mShowWhitespaces)
                     {
-                        //const auto s = ImGui::GetFontSize();
-                        //const auto x1 = textScreenPos.x + oldX + 1.0f;
-                        //const auto x2 = textScreenPos.x + bufferOffset.x - 1.0f;
-                        //const auto y = textScreenPos.y + bufferOffset.y + s * 0.5f;
-                        //const ImVec2 p1(x1, y);
-                        //const ImVec2 p2(x2, y);
-                        //const ImVec2 p3(x2 - s * 0.2f, y - s * 0.2f);
-                        //const ImVec2 p4(x2 - s * 0.2f, y + s * 0.2f);
-                        //drawList->AddLine(p1, p2, 0x90909090);
-                        //drawList->AddLine(p2, p3, 0x90909090);
-                        //drawList->AddLine(p2, p4, 0x90909090);
-                                                            
+                        const auto s = ImGui::GetFontSize();
+                        const auto x1 = textScreenPos.x + oldX + 1.0f;
+                        const auto x2 = textScreenPos.x + bufferOffset.x - 1.0f;
+                        const auto y = textScreenPos.y + bufferOffset.y + s * 0.5f;
+                        const ImVec2 p1(x1, y);
+                        const ImVec2 p2(x2, y);
+                        const ImVec2 p3(x2 - s * 0.2f, y - s * 0.2f);
+                        const ImVec2 p4(x2 - s * 0.2f, y + s * 0.2f);
+                        drawList->AddLine(p1, p2, 0x90909090);
+                        drawList->AddLine(p2, p3, 0x90909090);
+                        drawList->AddLine(p2, p4, 0x90909090);                               
                     }
                 } break;
 
-                //Draw Spacing
+                //Draw dot Spacing
                 case ' ':
                 {
                     if (mShowWhitespaces)
                     {
-                        //const auto s = ImGui::GetFontSize();
-                        //const auto x = textScreenPos.x + bufferOffset.x + spaceSize * 0.5f;
-                        //const auto y = textScreenPos.y + bufferOffset.y + s * 0.5f;
-                        //drawList->AddCircleFilled(ImVec2(x, y), 1.5f, 0x80808080, 4);
+                        const auto s = ImGui::GetFontSize();
+                        const auto x = textScreenPos.x + bufferOffset.x + spaceSize * 0.5f;
+                        const auto y = textScreenPos.y + bufferOffset.y + s * 0.5f;
+                        drawList->AddCircleFilled(ImVec2(x, y), 1.5f, 0x80808080, 4);
                     }
                     bufferOffset.x += spaceSize;
                     i++;
@@ -1276,7 +1275,6 @@ namespace  ArmSimPro
 
     void TextEditor::SetText(const std::string & aText)
     {   
-        
         mLines.clear();
         mLines.emplace_back(Line());
         for(auto& chr : aText){
