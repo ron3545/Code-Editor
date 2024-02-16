@@ -1,4 +1,5 @@
 #include "CodeEditor.hpp"
+#include <shellapi.h>
 
 namespace ArmSimPro
 {
@@ -124,6 +125,66 @@ void CodeEditor::InitializeEditor()
     cmd_panel = std::make_unique< ArmSimPro::CmdPanel >("Command Line", status_bar->GetHeight(), bg_col, highlighter_col);
 }
 
+float CodeEditor::SetupMenuTab()
+{
+    float main_menubar_height;
+    if(ImGui::BeginMainMenuBar())
+    {   
+        if (ImGui::BeginMenu("File"))
+        {
+            if (ImGui::MenuItem("\tNew Window", "CTRL+Shift+N")) { ShellExecute(NULL, L"open", Path_To_Wstring(std::filesystem::current_path() / "ARMSIMPRO_core.exe").c_str(), NULL, NULL, SW_SHOWDEFAULT); }
+            ImGui::Separator();
+            ImGui::MenuItem("\tAuto Save", "", &auto_save);
+            if (ImGui::MenuItem("\tQuit", "CTRL+Q")){
+                SaveUserData();
+                ShouldCloseEditor = true;
+            }
+            
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Edit"))
+        {   
+            static ArmSimPro::TextEditor *focused_editor = nullptr;
+            if((selected_window_path != prev_selected_window_path) && !Opened_TextEditors.empty()){
+                prev_selected_window_path = selected_window_path;
+                auto iterator = std::find(Opened_TextEditors.begin(), Opened_TextEditors.end(), selected_window_path); 
+                if(iterator != Opened_TextEditors.cend())
+                    focused_editor = &(iterator->editor);
+            }
+            
+            bool IsWindowShowed = (focused_editor != nullptr)? true : false;
+            bool NoEditor_Selected = Opened_TextEditors.empty() || (focused_editor != nullptr && IsWindowShowed)? true : false;
+            bool ro = (focused_editor != nullptr && IsWindowShowed)? focused_editor->IsReadOnly() : true;
+
+            ArmSimPro::MenuItemData menu_item_arr[] = {
+                ArmSimPro::MenuItemData("\tUndo", "CTRL+Z", nullptr, (!ro && (focused_editor != nullptr && IsWindowShowed)? focused_editor->CanUndo() : false), [&](){focused_editor->Undo();}),
+                ArmSimPro::MenuItemData("\tRedo", "CTRL+Y", nullptr, (!ro && (focused_editor != nullptr && IsWindowShowed)? focused_editor->CanRedo() : false), [&](){focused_editor->Redo();}),
+                //, seperator here
+                ArmSimPro::MenuItemData("\tCut", "CTRL+X", nullptr, (!ro && (focused_editor != nullptr && IsWindowShowed)? focused_editor->HasSelection() : false), [&](){focused_editor->Cut();}),
+                ArmSimPro::MenuItemData("\tCopy", "CTRL+C", nullptr, (!ro && (focused_editor != nullptr && IsWindowShowed)?  focused_editor->HasSelection() : false), [&](){focused_editor->Copy();}),
+                ArmSimPro::MenuItemData("\tDelete", "Del", nullptr, (!ro && (focused_editor != nullptr && IsWindowShowed)? focused_editor->HasSelection() : false), [&](){focused_editor->Delete();}),
+                ArmSimPro::MenuItemData("\tPaste", "Ctrl+V", nullptr, (!ro && ImGui::GetClipboardText() != nullptr), [&](){focused_editor->Paste();}),
+                //,seperator here
+                ArmSimPro::MenuItemData("\tSelect all", nullptr, nullptr, focused_editor != nullptr && IsWindowShowed, [&](){focused_editor->SetSelection(ArmSimPro::Coordinates(), ArmSimPro::Coordinates(focused_editor->GetTotalLines(), 0));})
+            };
+            
+            for(unsigned int i = 0; i < IM_ARRAYSIZE(menu_item_arr); i++)
+            {
+                ArmSimPro::MenuItem(menu_item_arr[i], true);
+                if(i == 1 || i == 5)
+                    ImGui::Separator();
+            }
+            ImGui::EndMenu();
+        }
+
+        main_menubar_height = ImGui::GetWindowHeight();
+        ImGui::EndMainMenuBar();
+    }
+    return main_menubar_height;
+}
+
+
 void CodeEditor::RunEditor()
 {
     // Create a project
@@ -135,61 +196,8 @@ void CodeEditor::RunEditor()
     OpenFileDialog(SelectedProjectPath, "SelectProject");
 
     ImGui::PushFont(DefaultFont);
-        float main_menubar_height;
-        if(ImGui::BeginMainMenuBar())
-        {   
-            if (ImGui::BeginMenu("File"))
-            {
-                if (ImGui::MenuItem("\tNew Window", "CTRL+Shift+N")) { ShellExecute(NULL, L"open", Path_To_Wstring(std::filesystem::current_path() / "ARMSIMPRO_core.exe").c_str(), NULL, NULL, SW_SHOWDEFAULT); }
-                ImGui::Separator();
-                ImGui::MenuItem("\tAuto Save", "", &auto_save);
-                if (ImGui::MenuItem("\tQuit", "CTRL+Q")){
-                    SaveUserData();
-                    ShouldCloseEditor = true;
-                }
-                
-                ImGui::EndMenu();
-            }
-
-            if (ImGui::BeginMenu("Edit"))
-            {   
-                static ArmSimPro::TextEditor *focused_editor = nullptr;
-                if((selected_window_path != prev_selected_window_path) && !Opened_TextEditors.empty()){
-                    prev_selected_window_path = selected_window_path;
-                    auto iterator = std::find(Opened_TextEditors.begin(), Opened_TextEditors.end(), selected_window_path); 
-                    if(iterator != Opened_TextEditors.cend())
-                        focused_editor = &(iterator->editor);
-                }
-                
-                bool IsWindowShowed = (focused_editor != nullptr)? true : false;
-                bool NoEditor_Selected = Opened_TextEditors.empty() || (focused_editor != nullptr && IsWindowShowed)? true : false;
-                bool ro = (focused_editor != nullptr && IsWindowShowed)? focused_editor->IsReadOnly() : true;
-
-                ArmSimPro::MenuItemData menu_item_arr[] = {
-                    ArmSimPro::MenuItemData("\tUndo", "CTRL+Z", nullptr, (!ro && (focused_editor != nullptr && IsWindowShowed)? focused_editor->CanUndo() : false), [&](){focused_editor->Undo();}),
-                    ArmSimPro::MenuItemData("\tRedo", "CTRL+Y", nullptr, (!ro && (focused_editor != nullptr && IsWindowShowed)? focused_editor->CanRedo() : false), [&](){focused_editor->Redo();}),
-                    //, seperator here
-                    ArmSimPro::MenuItemData("\tCut", "CTRL+X", nullptr, (!ro && (focused_editor != nullptr && IsWindowShowed)? focused_editor->HasSelection() : false), [&](){focused_editor->Cut();}),
-                    ArmSimPro::MenuItemData("\tCopy", "CTRL+C", nullptr, (!ro && (focused_editor != nullptr && IsWindowShowed)?  focused_editor->HasSelection() : false), [&](){focused_editor->Copy();}),
-                    ArmSimPro::MenuItemData("\tDelete", "Del", nullptr, (!ro && (focused_editor != nullptr && IsWindowShowed)? focused_editor->HasSelection() : false), [&](){focused_editor->Delete();}),
-                    ArmSimPro::MenuItemData("\tPaste", "Ctrl+V", nullptr, (!ro && ImGui::GetClipboardText() != nullptr), [&](){focused_editor->Paste();}),
-                    //,seperator here
-                    ArmSimPro::MenuItemData("\tSelect all", nullptr, nullptr, focused_editor != nullptr && IsWindowShowed, [&](){focused_editor->SetSelection(ArmSimPro::Coordinates(), ArmSimPro::Coordinates(focused_editor->GetTotalLines(), 0));})
-                };
-                
-                for(unsigned int i = 0; i < IM_ARRAYSIZE(menu_item_arr); i++)
-                {
-                    ArmSimPro::MenuItem(menu_item_arr[i], true);
-                    if(i == 1 || i == 5)
-                        ImGui::Separator();
-                }
-                ImGui::EndMenu();
-            }
-
-            main_menubar_height = ImGui::GetWindowHeight();
-            ImGui::EndMainMenuBar();
-        }
-
+        
+        float main_menubar_height = SetupMenuTab();
         horizontal_tool_bar->SetToolBar(main_menubar_height + 10);
         vertical_tool_bar->SetToolBar(horizontal_tool_bar->GetThickness(), status_bar->GetHeight() + 17);
 
@@ -589,9 +597,10 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
                     });
                     Opened_TextEditors.erase(it, Opened_TextEditors.end());
                 }
-                auto future = std::async(std::launch::async, &CodeEditor::RenderTextEditors, this);
-                future.wait();
+                
+                RenderTextEditors();
             }
+            
             else
             {
                 current_editor.clear();
@@ -603,12 +612,8 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
     ImGui::PopStyleColor(2);
     ImGui::End();
 
-    {
-        auto future = std::async(   std::launch::async, &CodeEditor::Show_Find_Replace_Panel, this,
-                                    window_flags, 
-                                    (cmd_panel->GetCurretnHeight() + MainPanelSize.y - horizontal_tool_bar->GetThickness() + 10) - main_menubar_height);
-        future.wait();
-    }
+    Show_Find_Replace_Panel(window_flags, 
+                            (cmd_panel->GetCurretnHeight() + MainPanelSize.y - horizontal_tool_bar->GetThickness() + 10) - main_menubar_height);
 
 //=================================================For Reminding to save work===========================================================================================
     if(auto_save)
@@ -628,7 +633,6 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
             }
         }
     }
-
     // Display a confirmation UI
     if(!close_queue.empty())
     {
@@ -724,8 +728,6 @@ void CodeEditor::DisplayContents(TextEditors::iterator it)
 
 void CodeEditor::RenderTextEditors()
 {
-    std::lock_guard<std::mutex> lock(Editor_Mutex);
-
     std::vector<std::future<std::tuple<bool, std::string>>> m_futures;
     std::vector<std::string> ToDelete;
     // devide each tabs into chunks and start rendering concurently
@@ -837,14 +839,15 @@ void CodeEditor::SearchOnCodeEditor()
             
             ImGui::SameLine();
 
-            static std::map<std::filesystem::path, std::vector<FileHandler::FileHandler_SearchKeyOnFile>> search_results;
+            static std::set<std::filesystem::path> search_results;
             if(ImGui::InputTextWithHint("##Search", "Search Word on source files", &search_buffer, ImGuiInputTextFlags_EnterReturnsTrue) && !SelectedProjectPath.empty())
             {
                 search_results.clear();
-
+                
                 auto result = FileHandler::GetInstance().Search_String_On_Files(SelectedProjectPath, search_buffer);
+
                 if(!result.empty())
-                    search_results.insert(result.begin(), result.end());
+                    search_results = result;
             }
 
             if(isPressed)
@@ -866,7 +869,7 @@ void CodeEditor::SearchOnCodeEditor()
                         ImGui::PushFont(DefaultFont);
                         for(const auto& search_result : search_results)
                         {
-                            bool opened = ImGui::TreeNodeEx(search_result.first.filename().u8string().c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_AllowOverlap);
+                            bool opened = ImGui::TreeNodeEx(search_result.filename().u8string().c_str(), ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_AllowOverlap);
 
                             if(opened)
                             {
@@ -1259,8 +1262,6 @@ void CodeEditor::NodeInputText(bool* state, float offsetX, std::function<void(co
 
 void CodeEditor::Show_Find_Replace_Panel(ImGuiWindowFlags window_flags, float main_menubar_height)
 {
-    std::lock_guard<std::mutex> lock(Show_Find_Replace_Panel_Mutex);
-
     ImGuiIO& io = ImGui::GetIO();
     auto ctrl = io.KeyCtrl;
 

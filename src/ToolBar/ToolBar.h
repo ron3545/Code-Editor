@@ -71,7 +71,7 @@ namespace ArmSimPro
         };
 
     private:
-        std::mutex ToolItem_Mutex;
+        std::mutex ToolItem_Mutex, ToolBar_mutex;
         const std::string _label;
         ImVec2 _tool_size;
         
@@ -101,7 +101,7 @@ namespace ArmSimPro
         ~ToolBar() {}
 
         void AppendTool(const char* name, ImageData image, std::function<void()> ptr_to_func, bool NoHighlight = false, bool ActiveOnRun = false);
-        
+
         void SetToolBar(float top_margin = 0, float bottom_marigin = 8);
         void SetPaddingBefore(const char* buttonID, float space);
         void SetSpacing(float val) {_spacing = val;}

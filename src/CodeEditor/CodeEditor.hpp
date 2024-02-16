@@ -45,7 +45,7 @@
 #include "../IconFontHeaders/IconsCodicons.h"
 #include "../IconFontHeaders/IconsMaterialDesignIcons.h"
 
-#include "../FileDialog/FileHandler.h"
+#include "FileHandler.h"
 #include "../FileDialog/FileDialog.h"
 #include "Utility.hpp"
 
@@ -109,11 +109,10 @@ private:
 //====================================CLASS MUTEXES=======================================================================================
     std::mutex LoadEditor_mutex;
     std::mutex opened_editor;
-    std::mutex Show_Find_Replace_Panel_Mutex;
     std::mutex RecentFile_Mutex;
-    std::mutex Editor_Mutex;
     std::mutex editor_mutex;
     std::mutex icons_lock;
+    std::mutex CodeEditor_mutex;
 
 //===============================================================================================================================================
 
@@ -160,6 +159,7 @@ private:
                                                         ImGuiTabItemFlags flag = ImGuiTabItemFlags_None, bool autosave = false);
     
 //=========================================================================================================================================================
+    float SetupMenuTab();
 
     void SearchOnCodeEditor();
     void OpenFileDialog(fs::path& path, const char* key);

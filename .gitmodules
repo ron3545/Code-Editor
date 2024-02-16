@@ -6,3 +6,15 @@
 	path = src/FileDialog/mio
 	url = https://github.com/mandreyel/mio.git
 	branch = master
+[submodule "src/External_Dependency/mio"]
+	path = src/External_Dependency/mio
+	url = https://github.com/mandreyel/mio.git
+	branch = master
+[submodule "src/FileDialog/Dependency/mio"]
+	path = src/FileDialog/Dependency/mio
+	url = https://github.com/mandreyel/mio.git
+	branch = master
+[submodule "src/Dependencies/mio"]
+	path = src/Dependencies/mio
+	url = https://github.com/mandreyel/mio.git
+	branch = master

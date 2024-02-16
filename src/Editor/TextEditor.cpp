@@ -1243,36 +1243,6 @@ namespace  ArmSimPro
         mWithinRender = false;
     }
 
-    // bool TextEditor::Render(const ImVec2& aSize, bool aBorder, bool noMove)
-    // {   
-    //     if(!IsWindowShown)
-    //         return false;
-
-    //     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
-    //     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(5.0f, 10.0f));
-    //     ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
-    //     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImGui::ColorConvertU32ToFloat4(mPalette[(int)PaletteIndex::Background]));
-    //     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, _window_bg_col);
-    //     ImGui::PushStyleColor(ImGuiCol_Tab, _window_bg_col);
-    //     ImGui::PushStyleColor(ImGuiCol_TitleBg, _window_bg_col);
-    //     IsWindowOpen = ImGui::Begin(aTitle.c_str(), &IsWindowShown); //ImGuiWindowFlags_NoMove
-    //     bool isdocked = false;
-    //     if(IsWindowOpen)
-    //     {
-    //         this->isWindowFocused = (ImGui::IsWindowFocused() || isChildWindowFocus) && IsWindowOpen;
-
-    //         RenderChild(aSize, aBorder);
-
-    //         // if(ImGui::IsWindowDocked() && IsWindowShown && IsWindowOpen )
-    //         //     isWindowShouldDock = !isWindowShouldDock;
-    //         ImGui::End();
-    //     }
-    //     else ImGui::End();
-    //     ImGui::PopStyleColor(4);
-    //     ImGui::PopStyleVar(3);
-    //     return true;
-    // }
-
     void TextEditor::SetText(const std::string & aText)
     {   
         mLines.clear();
