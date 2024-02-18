@@ -838,16 +838,11 @@ void CodeEditor::SearchOnCodeEditor()
                 isPressed = !isPressed;
             
             ImGui::SameLine();
-
-            static std::set<std::filesystem::path> search_results;
+ 
             if(ImGui::InputTextWithHint("##Search", "Search Word on source files", &search_buffer, ImGuiInputTextFlags_EnterReturnsTrue) && !SelectedProjectPath.empty())
             {
-                search_results.clear();
-                
-                auto result = FileHandler::GetInstance().Search_String_On_Files(SelectedProjectPath, search_buffer);
-
-                if(!result.empty())
-                    search_results = result;
+                SearchedFiles.clear(); //make sure to get new result every enter
+                SearchedFiles = Search::GetInstance().Search_String_On_Files(SelectedProjectPath, search_buffer);
             }
 
             if(isPressed)
@@ -861,32 +856,59 @@ void CodeEditor::SearchOnCodeEditor()
                 ImGui::Unindent(indent);
             }
 
-            if(!search_results.empty())
-            {
-                ImGui::BeginChild("Show data");
-                {
-                    {
-                        ImGui::PushFont(DefaultFont);
-                        for(const auto& search_result : search_results)
-                        {
-                            bool opened = ImGui::TreeNodeEx(search_result.filename().u8string().c_str(), ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_AllowOverlap);
-
-                            if(opened)
-                            {
-                                
-                                ImGui::TreePop();
-                            }
-                        }
-                        ImGui::PopFont();
-                    }
-                }
-                ImGui::EndChild();
-            }
+        DisplayTree();        
 
         ImGui::PopItemWidth();
         ImGui::PopStyleColor(5);
     }
     ImGui::PopFont();
+}
+
+void CodeEditor::DisplayTree()
+{
+    ImGui::BeginChild("Show data");
+    {
+        for(const auto& file : SearchedFiles)
+            ShowSearchResultTree(file);
+    }
+    ImGui::EndChild();
+}
+
+void CodeEditor::ShowSearchResultTree(const std::filesystem::path& file)
+{
+    ImGui::PushFont(DefaultFont);
+
+    bool opened = ImGui::TreeNodeEx(file.filename().u8string().c_str(), ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_AllowOverlap);
+
+    if(opened)
+    {
+        float offsetX = ImGui::GetWindowSize().x - (ImGui::GetTreeNodeToLabelSpacing() + 40) ;
+        ImGui::SameLine();
+        ImGui::Indent(offsetX);
+            ImGui::PushStyleColor(ImGuiCol_TextSelectedBg, RGBA(97, 97, 97, 255).GetCol());
+            ImGui::Text("%d", file);
+            ImGui::PopStyleColor();
+        ImGui::Unindent(offsetX);
+
+
+
+        ImGui::TreePop();
+    }
+    
+    ImGui::PopFont();
+}
+
+void CodeEditor::GetAllLinesFromSearchedResult(const std::filesystem::path& path, const std::string& key)
+{
+    auto future = std::async(std::launch::async, [&](){
+        return Search::GetInstance().Search_Needle_On_Haystack(path, key);
+    });
+    Search::Handler_SearchKeyOnFile result = future.get();
+
+    static std::mutex getter_mutex;
+    std::lock_guard<std::mutex> lock(getter_mutex);
+
+    SearchResults[path] = result;
 }
 
 void CodeEditor::OpenFileDialog(fs::path& path, const char* key)
@@ -1447,7 +1469,16 @@ int CodeEditor::GetTextEditorIndex(const std::string txt_editor_path)
     else
         index = -1;
     return index;
-}   
+}
+
+void CodeEditor::FilesHintWithKeys(const std::filesystem::path &path, const Search::Handler_KeyLocation& line)
+{
+    ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap;
+    node_flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+
+    //ImGui::TreeNodeEx(line.m_Line.c_str(), node_flags);
+
+}
 
 //========================================Loading and Saving User Data Helper Functions==============================================
 nlohmann::json CodeEditor::LoadUserData()

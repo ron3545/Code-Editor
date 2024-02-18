@@ -45,8 +45,10 @@
 #include "../IconFontHeaders/IconsCodicons.h"
 #include "../IconFontHeaders/IconsMaterialDesignIcons.h"
 
-#include "FileHandler.h"
+#include "../FileDialog/FileHandler.h"
 #include "../FileDialog/FileDialog.h"
+
+#include "../Algorithms/Search.h"
 #include "Utility.hpp"
 
 #include <unordered_set>
@@ -79,8 +81,10 @@ private:
     const RGBA bg_col = RGBA(24, 24, 24, 255);
     const RGBA highlighter_col = RGBA(0, 120, 212, 255);
     const RGBA child_col = RGBA(31,31,31,255);
+    const ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f); 
 
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f); 
+    std::map<std::filesystem::path, Search::Handler_SearchKeyOnFile> SearchResults;
+    std::set<std::filesystem::path> SearchedFiles;
 
     ImageData Compile_image;
     ImageData Verify_image;
@@ -125,7 +129,6 @@ private:
         DirStatus_NameNotSpecified
     };
 
-
 public:
     CodeEditor(const char* Consolas_Font, 
                const char* DroidSansMono_Font,
@@ -162,6 +165,10 @@ private:
     float SetupMenuTab();
 
     void SearchOnCodeEditor();
+    void DisplayTree();
+    void ShowSearchResultTree(const std::filesystem::path& files);
+    void GetAllLinesFromSearchedResult(const std::filesystem::path& path, const std::string& key);
+
     void OpenFileDialog(fs::path& path, const char* key);
     void ProjectWizard();
 
@@ -185,6 +192,7 @@ private:
     bool IsRootKeyExist(const std::string& root, const std::string& path);
 
     std::wstring Path_To_Wstring(const std::filesystem::path& path);
-
     int GetTextEditorIndex(const std::string txt_editor_path);
+
+    void FilesHintWithKeys(const std::filesystem::path& path, const Search::Handler_KeyLocation& line);
 };

@@ -10,8 +10,6 @@
 #include <iomanip>
 #include <string_view>
 
-#include <mio/mmap.hpp>
-
 namespace fs = std::filesystem;
 
 void RecursivelyAddDirectoryNodes(DirectoryNode& parentNode, std::filesystem::directory_iterator directoryIterator)
@@ -256,96 +254,6 @@ bool FileHandler::Search_RemoveNode(DirectoryNode& ParentNode, const std::string
         if(Search_RemoveNode(child, target_path))
             return true;
     return false;
-}
-
-
-std::vector<std::filesystem::path> FileHandler::GetFileList(const std::filesystem::path &project_path)
-{
-    static std::mutex getFile_mutex;
-    std::lock_guard<std::mutex> lock(getFile_mutex);
-
-    std::vector<std::filesystem::path> Files;
-    for(std::filesystem::recursive_directory_iterator end, dir(project_path); dir != end; ++dir)
-    {
-        if(dir->path().filename() == "build" || dir->path().filename() == ".git")
-            continue;
-
-        if(!dir->is_directory())
-            Files.push_back(dir->path());
-    }
-    return Files;
-}
-
-std::set<std::filesystem::path>  FileHandler::Search_String_On_Files(const std::filesystem::path &project_path, const std::string &key)
-{   
-    if(key.empty())
-        return std::set<std::filesystem::path> ();
-
-    static std::string prev_path;
-    static std::vector<std::filesystem::path> Files; 
-
-    std::set<std::filesystem::path>  result;
-    if(project_path.u8string() != prev_path) //execute once
-    {
-        prev_path = project_path.u8string();
-        auto file_list_future = std::async(std::launch::async, &FileHandler::GetFileList, this, project_path);
-        Files = file_list_future.get();
-    }
-
-    if(Files.empty())
-        return std::set<std::filesystem::path> ();
-
-    //Launch tasks on seperate threads.
-    std::vector<std::future<void>> futures;
-    for(const auto& file : Files)
-        futures.push_back(std::async(std::launch::async, &FileHandler::AddFiles, this, &result, file, key));
-
-    return result;
-}
-
-void FileHandler::AddFiles(std::set<std::filesystem::path>* dest, const std::filesystem::path& path, const std::string& key)
-{
-    std::error_code error;
-    mio::mmap_source ro_mmap;
-    ro_mmap.map(path.u8string().c_str(), error);
-
-    std::string data(ro_mmap.begin(), ro_mmap.end());
-    
-    auto it = std::search(data.begin(), data.end(),
-                          std::boyer_moore_searcher(key.begin(), key.end()));
-    
-    std::lock_guard<std::mutex> lock(key_on_file_mutex);
-    if(it != data.end())
-        dest->insert(path);
-}
-
-std::filesystem::path FileHandler::Search_Needle_On_Haystack(const std::filesystem::path& path, const std::string& key)
-{   
-    std::lock_guard<std::mutex> lock(search_mutex);
-
-    SearchedKeys contains_key;
-
-    std::error_code error;
-    mio::mmap_source ro_mmap;
-    ro_mmap.map(path.u8string().c_str(), error);
-
-    // typedef std::vector<char> Line;
-    // typedef std::vector<Line> Lines;
-    
-    // Lines lines;
-
-    // lines.emplace_back(Line());
-    // for(auto& chr : ro_mmap){
-    //     switch(chr)
-    //     {
-    //         case '\r': break;
-    //         case '\n':  lines.emplace_back(Line());
-    //         default: lines.back().emplace_back(chr);
-    //     }
-    // }
-
-    // return std::make_tuple(path, contains_key);
-    return path;
 }
 
 bool FileHandler::Search_AddNode(DirectoryNode& ParentNode, const std::string& target_path, const DirectoryNode& to_add)

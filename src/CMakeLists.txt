@@ -13,6 +13,7 @@ add_subdirectory(ToolBar)
 add_subdirectory(StatusBar)
 add_subdirectory(Editor)
 add_subdirectory(FileDialog)
+add_subdirectory(Algorithms)
 add_subdirectory(Dependencies)
 
 add_executable(${PROJECT_NAME} WIN32  ArmSimPro.cpp)
@@ -21,5 +22,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     imgui 
     CodeEditor
     d3d11.lib 
+    Algo
     mio
 )

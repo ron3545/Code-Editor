@@ -2,6 +2,9 @@
 add_library( FileDialog
     FileDialog.cpp
     FileDialog.h
+
+    FileHandler.cpp
+    FileHandler.h
 )
 
 target_include_directories(FileDialog PUBLIC

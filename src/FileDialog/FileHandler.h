@@ -36,27 +36,12 @@ public:
     FileHandler(FileHandler const&) = delete;
     void operator=(FileHandler const&) = delete;
 
-    struct FileHandler_SearchKeyOnFile
-    {
-        size_t m_lineNumber, m_offset;
-        int m_occurrences;
-        std::string m_Line;
-
-        FileHandler_SearchKeyOnFile(size_t lineNumber,
-                                    size_t offset,
-                                    int occurrences,
-                                    std::string Line)
-        : m_lineNumber(lineNumber), m_offset(offset), m_occurrences(occurrences), m_Line(Line)
-        {}
-
-        FileHandler_SearchKeyOnFile() {}
-    };
-
     static FileHandler& GetInstance()
     {
         static FileHandler instance; // Guaranteed to be destroyed. Only initiated once
         return instance;
     }
+
     void SetFont(ImFont* font) { this->text_font = font; }
 
     bool CreateNewFile(DirectoryNode& ParentNode, const std::filesystem::path& path, const char* file_name);
@@ -73,22 +58,13 @@ public:
 
     //barowed from https://github.com/ocornut/imgui/issues/3730
     void Rename(std::string& selected_path, const std::string& new_name);
-
-    typedef std::vector<FileHandler::FileHandler_SearchKeyOnFile> SearchedKeys;
-    std::set<std::filesystem::path> Search_String_On_Files(const std::filesystem::path& project_path, const std::string& key); 
-    std::filesystem::path Search_Needle_On_Haystack(const std::filesystem::path& path, const std::string& key);
-
-    std::vector<std::filesystem::path> GetFileList(const std::filesystem::path &project_path);
 private:
+
     FileHandler_PasteMode paste_mode; 
     ImFont* text_font;
 
-    std::mutex mutex_class, search_mutex, key_on_file_mutex, search_files_mutex;
-
     void AddNode(DirectoryNode& ParentNode, const std::string& target_path, const std::string& to_add, bool IsDirectory);
-
+    
     bool Search_AddNode(DirectoryNode& ParentNode, const std::string& target_path, const DirectoryNode& to_add); 
     bool Search_RemoveNode(DirectoryNode& ParentNode, const std::string& target_path);
-
-    void AddFiles(std::set<std::filesystem::path>* dest, const std::filesystem::path& path, const std::string& key);
 };
