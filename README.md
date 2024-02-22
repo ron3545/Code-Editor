@@ -1,8 +1,12 @@
 # ArmSimPro Code Editor
 
+![image](https://github.com/ron3545/Code-Editor/assets/86136180/78c26967-0624-4966-92f7-6df45ca9d976)
 
 
-https://github.com/ron3545/Code-Editor/assets/86136180/55a5ce6f-b848-4670-b6ad-94cf10afdb99
+
+https://github.com/ron3545/Code-Editor/assets/86136180/9e385664-3607-48e1-a6a7-000e7c6b014b
+
+
 
 
 ## Build on Release
