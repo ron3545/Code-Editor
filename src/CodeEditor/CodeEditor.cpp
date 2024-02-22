@@ -233,13 +233,24 @@ void CodeEditor::RunEditor()
 
 CodeEditor::DirStatus CodeEditor::CreateProjectDirectory(const fs::path& path, const char* ProjectName, fs::path* out)
 {
-    *out = path / ProjectName;
-    if(fs::exists(*out))
+    const fs::path temp = path / ProjectName;
+    if(fs::exists(temp))
         return DirStatus_AlreadyExist;
     
-    //Create Directory
-    if(fs::create_directory(*out))
-        return DirStatus_Created;
+    try
+    {
+        //Create Project Directory
+        if(fs::create_directory(temp)){
+            *out = temp;
+            FileHandler::GetInstance().CreateWholeProjectDirectory(temp);
+            return DirStatus_Created;
+        }
+    }
+    catch(const std::exception& e)
+    {
+        //Do nothing
+    }
+    
     return DirStatus_FailedToCreate;
 }
 
@@ -819,6 +830,7 @@ std::tuple<bool, std::string> CodeEditor::RenderTextEditorEx(   TextEditors::ite
 void CodeEditor::SearchOnCodeEditor()
 {
     static std::string search_buffer, replace_buffer;
+    static std::set<std::filesystem::path> SearchedFiles;
 
     ImGui::Dummy(ImVec2(0.0f, 13.05f));
     ImGui::Dummy(ImVec2(5.0f, 13.05f));
@@ -839,24 +851,26 @@ void CodeEditor::SearchOnCodeEditor()
             
             ImGui::SameLine();
  
-            if(ImGui::InputTextWithHint("##Search", "Search Word on source files", &search_buffer, ImGuiInputTextFlags_EnterReturnsTrue) && !SelectedProjectPath.empty())
+            if(ImGui::InputTextWithHint("##Search This", "Search Word on source files", &search_buffer, ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll) && !SelectedProjectPath.empty())
             {
                 SearchedFiles.clear(); //make sure to get new result every enter
-                SearchedFiles = Search::GetInstance().Search_String_On_Files(SelectedProjectPath, search_buffer);
+                SearchResults.clear();
+
+                Search::GetInstance().Search_String_On_Files(SelectedProjectPath, search_buffer, &SearchedFiles);
             }
 
             if(isPressed)
             {
                 const int indent = 39;
                 ImGui::Indent(indent);
-                if(ImGui::InputTextWithHint("##Replace", "Replace Word on Files", &replace_buffer, ImGuiInputTextFlags_EnterReturnsTrue) && !SelectedProjectPath.empty())
+                if(ImGui::InputTextWithHint("##Replace This", "Replace Word on Files", &replace_buffer, ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll) && !SelectedProjectPath.empty())
                 {
                         
                 }
                 ImGui::Unindent(indent);
             }
 
-        DisplayTree();        
+        DisplayTree(SearchedFiles, search_buffer); 
 
         ImGui::PopItemWidth();
         ImGui::PopStyleColor(5);
@@ -864,33 +878,47 @@ void CodeEditor::SearchOnCodeEditor()
     ImGui::PopFont();
 }
 
-void CodeEditor::DisplayTree()
+void CodeEditor::DisplayTree(const std::set<std::filesystem::path>& SearchedFiles, const std::string& key)
 {
-    ImGui::BeginChild("Show data");
+    ImGui::BeginChild("Show Search Result");
     {
         for(const auto& file : SearchedFiles)
-            ShowSearchResultTree(file);
+            ShowSearchResultTree(file, key);
     }
     ImGui::EndChild();
 }
 
-void CodeEditor::ShowSearchResultTree(const std::filesystem::path& file)
+void CodeEditor::ShowLinesFromSearchedResult(const std::filesystem::path& path)
+{
+    ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+    const auto result = SearchResults[path];
+    
+}
+
+void CodeEditor::ShowSearchResultTree(const std::filesystem::path& file, const std::string& key)
 {
     ImGui::PushFont(DefaultFont);
 
     bool opened = ImGui::TreeNodeEx(file.filename().u8string().c_str(), ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_AllowOverlap);
 
     if(opened)
-    {
-        float offsetX = ImGui::GetWindowSize().x - (ImGui::GetTreeNodeToLabelSpacing() + 40) ;
+    {   
+        auto future = std::async(std::launch::async, &CodeEditor::GetAllLinesFromSearchedResult, this, file, key);
+
+        float offsetX = ImGui::GetWindowSize().x - (ImGui::GetTreeNodeToLabelSpacing() + 70);
         ImGui::SameLine();
         ImGui::Indent(offsetX);
             ImGui::PushStyleColor(ImGuiCol_TextSelectedBg, RGBA(97, 97, 97, 255).GetCol());
-            ImGui::Text("%d", file);
+
+            unsigned int occurances = 0;
+            if(!SearchResults.empty())
+                occurances = SearchResults[file].m_KeyLocation.size();
+            ImGui::Text("%d", occurances);
             ImGui::PopStyleColor();
         ImGui::Unindent(offsetX);
 
-
+        if(!SearchResults.empty() && SearchResults.find(file) != SearchResults.end())
+            ShowLinesFromSearchedResult(file);
 
         ImGui::TreePop();
     }
@@ -900,15 +928,11 @@ void CodeEditor::ShowSearchResultTree(const std::filesystem::path& file)
 
 void CodeEditor::GetAllLinesFromSearchedResult(const std::filesystem::path& path, const std::string& key)
 {
-    auto future = std::async(std::launch::async, [&](){
-        return Search::GetInstance().Search_Needle_On_Haystack(path, key);
-    });
-    Search::Handler_SearchKeyOnFile result = future.get();
-
     static std::mutex getter_mutex;
     std::lock_guard<std::mutex> lock(getter_mutex);
 
-    SearchResults[path] = result;
+    if(SearchResults.find(path) == SearchResults.end()) //prevents the function to constatnly updates the dictionary as it will result in lagging
+        SearchResults[path] = Search::GetInstance().Search_Needle_On_Haystack(path, key);
 }
 
 void CodeEditor::OpenFileDialog(fs::path& path, const char* key)
@@ -1011,6 +1035,9 @@ void CodeEditor::ProjectWizard()
             else if(!Project_Name.empty())
                 if((DirCreateStatus = CreateProjectDirectory(NewProjectDir, Project_Name.c_str(), &SelectedProjectPath)) == DirStatus_Created)
                     ImGui::CloseCurrentPopup();
+
+            if(DirCreateStatus != DirStatus_Created && DirCreateStatus != DirStatus_None && DirCreateStatus != DirStatus_NameNotSpecified)
+                Project_Name.clear();
         }
     ImGui::PopFont();
 }

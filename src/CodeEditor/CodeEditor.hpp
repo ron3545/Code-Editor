@@ -84,7 +84,6 @@ private:
     const ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f); 
 
     std::map<std::filesystem::path, Search::Handler_SearchKeyOnFile> SearchResults;
-    std::set<std::filesystem::path> SearchedFiles;
 
     ImageData Compile_image;
     ImageData Verify_image;
@@ -165,8 +164,9 @@ private:
     float SetupMenuTab();
 
     void SearchOnCodeEditor();
-    void DisplayTree();
-    void ShowSearchResultTree(const std::filesystem::path& files);
+    void DisplayTree(const std::set<std::filesystem::path>& SearchedFiles, const std::string& key);
+    void ShowLinesFromSearchedResult(const std::filesystem::path& path);
+    void ShowSearchResultTree(const std::filesystem::path& files, const std::string& key);
     void GetAllLinesFromSearchedResult(const std::filesystem::path& path, const std::string& key);
 
     void OpenFileDialog(fs::path& path, const char* key);
@@ -196,3 +196,5 @@ private:
 
     void FilesHintWithKeys(const std::filesystem::path& path, const Search::Handler_KeyLocation& line);
 };
+
+

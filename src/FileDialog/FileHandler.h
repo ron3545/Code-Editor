@@ -56,6 +56,8 @@ public:
     void Paste(DirectoryNode& ParentNode, const std::filesystem::path& target_path, bool IsDirectory);
     void Paste(DirectoryNode& ParentNode, const std::filesystem::path& src_file, const std::filesystem::path& target_file);
 
+    void CreateWholeProjectDirectory(const std::filesystem::path& project_dir);
+
     //barowed from https://github.com/ocornut/imgui/issues/3730
     void Rename(std::string& selected_path, const std::string& new_name);
 private:
@@ -67,4 +69,6 @@ private:
     
     bool Search_AddNode(DirectoryNode& ParentNode, const std::string& target_path, const DirectoryNode& to_add); 
     bool Search_RemoveNode(DirectoryNode& ParentNode, const std::string& target_path);
+
+    void CreateMainCPPFile(const std::filesystem::path& path);
 };

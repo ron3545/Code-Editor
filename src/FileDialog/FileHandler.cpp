@@ -217,6 +217,22 @@ void FileHandler::Paste(DirectoryNode& ParentNode, const std::filesystem::path& 
     }
 }
 
+void FileHandler::CreateWholeProjectDirectory(const std::filesystem::path &project_dir)
+{
+    /** Project Directory layout:
+     *      Root Project Directory
+     *          includes
+     *              [for libraries]
+     *          src
+     *              main.cpp
+    */
+
+    std::filesystem::create_directory(project_dir / "includes");
+
+    if(std::filesystem::create_directory(project_dir/"src"))
+        CreateMainCPPFile(project_dir/"src");
+}
+
 void FileHandler::Rename(std::string& selected_path, const std::string& new_name)
 { 
     if(selected_path.empty())
@@ -254,6 +270,14 @@ bool FileHandler::Search_RemoveNode(DirectoryNode& ParentNode, const std::string
         if(Search_RemoveNode(child, target_path))
             return true;
     return false;
+}
+
+void FileHandler::CreateMainCPPFile(const std::filesystem::path &path)
+{
+    std::ofstream outputFile(path / "main.cpp");
+        const std::string file_contents= "#include <ArmSimPro.hpp>\n\nint main()\n{\n}";
+        outputFile << file_contents;
+    outputFile.close();
 }
 
 bool FileHandler::Search_AddNode(DirectoryNode& ParentNode, const std::string& target_path, const DirectoryNode& to_add)
