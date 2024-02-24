@@ -333,7 +333,7 @@ namespace ArmSimPro
 
         bool IsTextChanged() const { return this->mTextChanged; } 
         bool IsCursorPositionChanged() const { return this->mCursorPositionChanged; }
-        bool IsEditorFocused() const  { return isChildWindowFocus; }
+        bool IsEditorFocused() const  { return this->isChildWindowFocus; }
         bool IsColorizerEnabled() const { return this->mColorizerEnabled; }
 
         void SetColorizerEnable(bool aValue);

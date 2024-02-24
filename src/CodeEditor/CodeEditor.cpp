@@ -139,7 +139,6 @@ float CodeEditor::SetupMenuTab()
                 SaveUserData();
                 ShouldCloseEditor = true;
             }
-            
             ImGui::EndMenu();
         }
 
@@ -166,7 +165,7 @@ float CodeEditor::SetupMenuTab()
                 ArmSimPro::MenuItemData("\tDelete", "Del", nullptr, (!ro && (focused_editor != nullptr && IsWindowShowed)? focused_editor->HasSelection() : false), [&](){focused_editor->Delete();}),
                 ArmSimPro::MenuItemData("\tPaste", "Ctrl+V", nullptr, (!ro && ImGui::GetClipboardText() != nullptr), [&](){focused_editor->Paste();}),
                 //,seperator here
-                ArmSimPro::MenuItemData("\tSelect all", nullptr, nullptr, focused_editor != nullptr && IsWindowShowed, [&](){focused_editor->SetSelection(ArmSimPro::Coordinates(), ArmSimPro::Coordinates(focused_editor->GetTotalLines(), 0));})
+                ArmSimPro::MenuItemData("\tSelect all", nullptr, nullptr, IsWindowShowed, [&](){focused_editor->SetSelection(ArmSimPro::Coordinates(), ArmSimPro::Coordinates(focused_editor->GetTotalLines(), 0));})
             };
             
             for(unsigned int i = 0; i < IM_ARRAYSIZE(menu_item_arr); i++)
@@ -193,8 +192,6 @@ void CodeEditor::RunEditor()
         project_root_node = task.get();
     }
 
-    OpenFileDialog(SelectedProjectPath, "SelectProject");
-
     ImGui::PushFont(DefaultFont);
         
         float main_menubar_height = SetupMenuTab();
@@ -205,14 +202,12 @@ void CodeEditor::RunEditor()
         status_bar->BeginStatusBar();
         {
             float width = ImGui::GetWindowWidth();
-            char buffer[255];
-
             if(!current_editor.empty())
             {
                 static ImVec2 textSize; 
                 if(textSize.x == NULL)
-                    textSize = ImGui::CalcTextSize(buffer);
-                ImGui::SetCursorPosX(width - (textSize.x - 650));
+                    textSize = ImGui::CalcTextSize(current_editor.c_str());
+                ImGui::SetCursorPosX(width - (textSize.x));
                 ImGui::Text(current_editor.c_str());
             }
         }
@@ -511,7 +506,7 @@ void CodeEditor::ImplementDirectoryNode()
         if(ImGui::Button("Open Folder", ImVec2(width - 30, 0)))
             ArmSimPro::FileDialog::Instance().Open("SelectProject", "Select project directory", "");
         
-        //OpenFileDialog(SelectedProjectPath, "SelectProject");
+        OpenFileDialog(SelectedProjectPath, "SelectProject");
 //=========================================================================Create New Project============================================================================================================================================================== 
         
         ImGui::SetCursorPosX(posX);
@@ -595,6 +590,7 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
             if(!Opened_TextEditors.empty())
             {
                 show_welcome = false;
+
                 //make sure to have no duplicates      
                 static size_t prev_size = 0;
                 if(Opened_TextEditors.size() != prev_size)
@@ -611,7 +607,6 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
                 
                 RenderTextEditors();
             }
-            
             else
             {
                 current_editor.clear();
@@ -623,8 +618,8 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
     ImGui::PopStyleColor(2);
     ImGui::End();
 
-    Show_Find_Replace_Panel(window_flags, 
-                            (cmd_panel->GetCurretnHeight() + MainPanelSize.y - horizontal_tool_bar->GetThickness() + 10) - main_menubar_height);
+    // Show_Find_Replace_Panel(window_flags, 
+    //                         (cmd_panel->GetCurretnHeight() + MainPanelSize.y - horizontal_tool_bar->GetThickness() + 10) - main_menubar_height);
 
 //=================================================For Reminding to save work===========================================================================================
     if(auto_save)
@@ -733,7 +728,7 @@ void CodeEditor::DisplayContents(TextEditors::iterator it)
                     it->editor.GetFileExtension().c_str(),
                     it->editor.GetFileName().c_str());
 
-        current_editor = std::string(buffer);
+        current_editor = buffer;
     }
 }
 
@@ -798,8 +793,7 @@ void CodeEditor::RenderTextEditors()
  * true -> window is open
  * false -> window was closed and saved
 */
-std::tuple<bool, std::string> CodeEditor::RenderTextEditorEx(   TextEditors::iterator it, size_t i, 
-                                                    ImGuiTabItemFlags flag, bool autosave)
+std::tuple<bool, std::string> CodeEditor::RenderTextEditorEx( TextEditors::iterator it, size_t i, ImGuiTabItemFlags flag, bool autosave)
 {
     std::lock_guard<std::mutex> lock(opened_editor);
     
