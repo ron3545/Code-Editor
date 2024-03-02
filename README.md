@@ -7,8 +7,10 @@
 https://github.com/ron3545/Code-Editor/assets/86136180/9e385664-3607-48e1-a6a7-000e7c6b014b
 
 
-
-
+## Clone using this command
+```
+git clone --recursive https://github.com/ron3545/Code-Editor.git
+```
 ## Build on Release
 ```
 mkdir build
