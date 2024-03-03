@@ -1,10 +1,11 @@
 #pragma once
-#include <filesystem>
+#include "../filesystem.hpp"
 #include <vector>
 #include <map>
 #include <mutex>
 #include <set>
 #include <algorithm>
+#include <string_view>
 
 #include "../FileDialog/FileHandler.h"
 

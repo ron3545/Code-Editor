@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <functional>
 #include <iomanip>
-#include <string_view>
 
 #include <mio/mmap.hpp>
 
@@ -22,7 +21,6 @@ void Search::Search_String_On_Files(const std::filesystem::path &project_path, c
     std::vector<std::future<void>> futures;
     for(const auto& file : Files)
         futures.push_back(std::async(std::launch::async, &Search::CheckKey_On_File, this, dest, file, key));
-
 }
 
 Search::Handler_SearchKeyOnFile Search::Search_Needle_On_Haystack(const std::filesystem::path &path, const std::string &key)

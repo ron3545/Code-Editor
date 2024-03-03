@@ -6,9 +6,10 @@
 #include <thread>
 #include <vector>
 #include <functional>
-#include <filesystem>
+
 #include <unordered_map>
 #include <algorithm> // std::min, std::max
+#include "../filesystem.hpp"
 
 #define IFD_DIALOG_FILE			0
 #define IFD_DIALOG_DIRECTORY	1

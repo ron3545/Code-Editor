@@ -32,7 +32,7 @@ namespace ArmSimPro
         viewport = ImGui::GetMainViewport();
     }
 
-    void ToolBar::AppendTool(const char* name, ImageData image, std::function<void()> ptr_to_func, bool NoHighlight, bool ActiveOnRun)
+    void ToolBar::AppendTool(const char* name, TwoStateImageData image, std::function<void()> ptr_to_func, bool NoHighlight, bool ActiveOnRun)
     {
         ToolTip tool;
         tool.button_name = name;
@@ -260,7 +260,7 @@ namespace ArmSimPro
 
     
 //================================================================================================================================
-    ToolBar::ButtonTool::ButtonTool(const char* IDname, bool* activation_key, const ImageData& image, const ImVec2& size, const ImVec4& bg_col, ImGuiAxis toolbar_axis, bool HasHighligter)
+    ToolBar::ButtonTool::ButtonTool(const char* IDname, bool* activation_key, const TwoStateImageData& image, const ImVec2& size, const ImVec4& bg_col, ImGuiAxis toolbar_axis, bool HasHighligter)
         : _IDname(IDname), _activation_key(activation_key), _image(image), _size(size), _toolbar_axis(toolbar_axis), _bg_col(bg_col), _highlighter_col(ImVec4(0,0,0,0)), _thickness(0.0f), _HasHighligter(HasHighligter)
     { }
 

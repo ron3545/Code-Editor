@@ -20,7 +20,6 @@ namespace ArmSimPro
         typedef struct
         {
             std::string ToolID;
-            ImageData image;
             std::function<void()> ptr_to_func;
 
             std::string Text;

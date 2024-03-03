@@ -28,7 +28,7 @@ namespace ArmSimPro
             bool _HasHighligter;
             bool _hovered, _held;
 
-            const ImageData _image;
+            const TwoStateImageData _image;
             const ImVec2 _size;
             
             const ImVec4 _bg_col;
@@ -39,7 +39,7 @@ namespace ArmSimPro
             const ImGuiAxis _toolbar_axis;
         
         public:
-            ButtonTool( const char* IDname, bool* activation_key, const ImageData& image, const ImVec2& size, 
+            ButtonTool( const char* IDname, bool* activation_key, const TwoStateImageData& image, const ImVec2& size, 
                         const ImVec4& bg_col, ImGuiAxis toolbar_axis, bool HasHighligter = false);
             
             bool SetButton();
@@ -55,7 +55,7 @@ namespace ArmSimPro
 
         struct ToolTipData
         {
-            ImageData image;
+            TwoStateImageData image;
             std::function<void()> ptr_to_func;
 
             bool isActive;
@@ -100,7 +100,7 @@ namespace ArmSimPro
         ToolBar(const char* label, const RGBA& bg_col, float toolbar_thickness, ImGuiAxis toolbar_axis);
         ~ToolBar() {}
 
-        void AppendTool(const char* name, ImageData image, std::function<void()> ptr_to_func, bool NoHighlight = false, bool ActiveOnRun = false);
+        void AppendTool(const char* name, TwoStateImageData image, std::function<void()> ptr_to_func, bool NoHighlight = false, bool ActiveOnRun = false);
 
         void SetToolBar(float top_margin = 0, float bottom_marigin = 8);
         void SetPaddingBefore(const char* buttonID, float space);

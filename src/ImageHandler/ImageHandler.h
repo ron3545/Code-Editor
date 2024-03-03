@@ -35,17 +35,24 @@ struct RGBA
     }
 };
 
-struct ImageData
+struct TwoStateImageData
 {
     ID3D11ShaderResourceView* ON_textureID;
     ID3D11ShaderResourceView* OFF_textureID;
     int width, height;
 };
 
-struct SingleImageData
+struct SingleStateImageData
 {
     ID3D11ShaderResourceView* textureID;
     int width, height;
+
+    void SafeDelete()
+    {
+        delete this->textureID;
+        this->textureID = NULL;
+    }
 };
 
-bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width = nullptr, int* out_height = nullptr);
+void Free_STBI_Image(void* retval_from_stbi_load);
+unsigned char* Load_STBI(char const *filename, int *x, int *y, int *comp, int req_comp);

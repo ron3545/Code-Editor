@@ -1,24 +1,42 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "CodeEditor/CodeEditor.hpp"
+#include <vector>
+#include <future>
+#include <iterator>
+#include "ImageHandler/ImageHandler.h"
+
+#define ICONS "../../../Utils/icons"
 
 std::unique_ptr<CodeEditor> code_editor;
 
 constexpr wchar_t* SOFTWARE_NAME = L"ArmSim Pro";
 const char* LOGO = "";
 
-       HWND                     hwnd = NULL;
-       ID3D11Device*            g_pd3dDevice = nullptr; //should be non-static. Other translation units will be using this
-static ID3D11DeviceContext*     g_pd3dDeviceContext = nullptr;
-static IDXGISwapChain*          g_pSwapChain = nullptr;
-static UINT                     g_ResizeWidth = 0, g_ResizeHeight = 0;
-static ID3D11RenderTargetView*  g_mainRenderTargetView = nullptr;
+HWND                     hwnd = NULL;
+ID3D11Device*            g_pd3dDevice = nullptr;    
+ID3D11DeviceContext*     g_pd3dDeviceContext = nullptr;
+IDXGISwapChain*          g_pSwapChain = nullptr;
+UINT                     g_ResizeWidth = 0, g_ResizeHeight = 0;
+ID3D11RenderTargetView*  g_mainRenderTargetView = nullptr;
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+//==========================================ICONS====================================================================
+static CodeEditor::SingleStateIconPallete single_states_images;
+static CodeEditor::TwoStateIconPallete two_states_images;
+
+//==================================================================================================================
 
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
+
+
+bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width = nullptr, int* out_height = nullptr);
+TwoStateImageData LoadTwoStateTextureFromFile(const char* filename1, const char* filename2);
+SingleStateImageData LoadSingleStateTextureFromFile(const char* filename);
+
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
@@ -129,13 +147,21 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         texture->Release();
     };
 
-
     const char* Consolas_Font        = "../../../Utils/Fonts/Consolas.ttf";
     const char* DroidSansMono_Font   = "../../../Utils/Fonts/DroidSansMono.ttf";
     const char* Menlo_Regular_Font   = "../../../Utils/Fonts/Menlo-Regular.ttf";
-    const char* MONACO_Font          = "../../../Utils/Fonts/MONACO.TTF";  
+    const char* MONACO_Font          = "../../../Utils/Fonts/MONACO.TTF"; 
+    
     code_editor = std::make_unique<CodeEditor>(Consolas_Font, DroidSansMono_Font, Menlo_Regular_Font, MONACO_Font);
-    code_editor->InitializeEditor();
+
+    two_states_images[(int)CodeEditor::TwoStateIconsIndex::Upload] = LoadTwoStateTextureFromFile(ICONS"/ON/Upload.png", ICONS"/OFF/Upload.png");
+    two_states_images[(int)CodeEditor::TwoStateIconsIndex::Verify] = LoadTwoStateTextureFromFile(ICONS"/ON/Verify.png", ICONS"/OFF/Verify.png");
+    two_states_images[(int)CodeEditor::TwoStateIconsIndex::Folder] = LoadTwoStateTextureFromFile(ICONS"/ON/Folder.png", ICONS"/OFF/Folder.png");
+    two_states_images[(int)CodeEditor::TwoStateIconsIndex::Debug] = LoadTwoStateTextureFromFile(ICONS"/ON/Debug.png", ICONS"/OFF/Debug.png");
+    two_states_images[(int)CodeEditor::TwoStateIconsIndex::RobotArm] = LoadTwoStateTextureFromFile(ICONS"/ON/RobotArm.png", ICONS"/OFF/RobotArm.png");
+    two_states_images[(int)CodeEditor::TwoStateIconsIndex::Search] = LoadTwoStateTextureFromFile(ICONS"/ON/Search.png", ICONS"/OFF/Search.png");
+
+    code_editor->InitializeEditor(two_states_images);
 
 //==================================================================================================================================================================
     bool done = false;
@@ -197,6 +223,71 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 }
 
 //================================================================================================================================
+// Simple helper function to load an image into a DX11 texture with common settings
+bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height)
+{
+    // Load from disk into a raw RGBA buffer
+    int image_width = 0;
+    int image_height = 0;
+    unsigned char* image_data = Load_STBI(filename, &image_width, &image_height, NULL, 4);
+    if (image_data == NULL)
+        return false;
+
+    // Create texture
+    D3D11_TEXTURE2D_DESC desc;
+    ZeroMemory(&desc, sizeof(desc));
+    desc.Width = image_width;
+    desc.Height = image_height;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    desc.CPUAccessFlags = 0;
+
+    ID3D11Texture2D *pTexture = NULL;
+    D3D11_SUBRESOURCE_DATA subResource;
+    subResource.pSysMem = image_data;
+    subResource.SysMemPitch = desc.Width * 4;
+    subResource.SysMemSlicePitch = 0;
+    g_pd3dDevice->CreateTexture2D(&desc, &subResource, &pTexture);
+
+    // Create texture view
+    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+    ZeroMemory(&srvDesc, sizeof(srvDesc));
+    srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MipLevels = desc.MipLevels;
+    srvDesc.Texture2D.MostDetailedMip = 0;
+    g_pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, out_srv);
+    pTexture->Release();
+
+    if(out_width != nullptr || out_height != nullptr){
+        *out_width = image_width;
+        *out_height = image_height;
+    }
+    Free_STBI_Image(image_data);
+
+    return true;
+}
+
+TwoStateImageData LoadTwoStateTextureFromFile(const char *filename1, const char *filename2)
+{
+    TwoStateImageData temp;
+    (LoadTextureFromFile(filename1, &temp.ON_textureID, &temp.width, &temp.height));
+    (LoadTextureFromFile(filename2, &temp.OFF_textureID));
+
+    return temp;
+}
+
+SingleStateImageData LoadSingleStateTextureFromFile(const char *filename)
+{
+    SingleStateImageData temp;
+    assert(LoadTextureFromFile(filename, &temp.textureID, &temp.width, &temp.height));
+    return temp;
+}
+
 bool CreateDeviceD3D(HWND hWnd)
 {
     DXGI_SWAP_CHAIN_DESC sd;

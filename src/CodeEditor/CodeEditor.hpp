@@ -25,7 +25,7 @@
 #include <iterator>
 #include <functional>
 
-#include <filesystem>
+#include "../filesystem.hpp"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "../imgui/imgui.h"
@@ -37,7 +37,6 @@
 #include <nlohmann/json.hpp>
 
 #include "../ToolBar/ToolBar.h"
-#include "../ImageHandler/ImageHandler.h"
 #include "../StatusBar/StatusBar.h"
 #include "../Editor/CmdPanel.h"
 #include "../Editor/TextEditor.h"
@@ -52,6 +51,7 @@
 #include "Utility.hpp"
 
 #include <unordered_set>
+#include <array>
 #include <memory>
 
 namespace fs = std::filesystem;
@@ -85,14 +85,6 @@ private:
 
     std::map<std::filesystem::path, Search::Handler_SearchKeyOnFile> SearchResults;
 
-    ImageData Compile_image;
-    ImageData Verify_image;
-    ImageData Folder_image;
-    ImageData Debug_image;
-    ImageData Robot_image;
-    ImageData Search_image;
-    SingleImageData ErroSymbol; 
-
     ImFont* DefaultFont;    
     ImFont* CodeEditorFont;
     ImFont* FileTreeFont;
@@ -114,7 +106,6 @@ private:
     std::mutex opened_editor;
     std::mutex RecentFile_Mutex;
     std::mutex editor_mutex;
-    std::mutex icons_lock;
     std::mutex CodeEditor_mutex;
 
 //===============================================================================================================================================
@@ -129,6 +120,26 @@ private:
     };
 
 public:
+    enum class TwoStateIconsIndex
+    {
+        Upload,
+        Verify,
+        Folder,
+        Debug,
+        RobotArm,
+        Search,
+        Max
+    };
+
+    enum class SingleStateIconsIndex
+    {
+        Error_Marker,
+        Max
+    };
+
+    typedef std::array<TwoStateImageData, (unsigned)TwoStateIconsIndex::Max> TwoStateIconPallete;
+    typedef std::array<SingleStateImageData, (unsigned)SingleStateIconsIndex::Max> SingleStateIconPallete;
+
     CodeEditor(const char* Consolas_Font, 
                const char* DroidSansMono_Font,
                const char* Menlo_Regular_Font,
@@ -137,7 +148,7 @@ public:
     ~CodeEditor();
 
 
-    void InitializeEditor();
+    void InitializeEditor(const TwoStateIconPallete& two_states_icon);
     void RunEditor();
     void SaveUserData();
 
@@ -171,6 +182,7 @@ private:
 
     void OpenFileDialog(fs::path& path, const char* key);
     void ProjectWizard();
+    void ShowProjectWizard(const char* label);
 
     void LoadEditor(const std::string& file);
     void GetRecentlyOpenedProjects();

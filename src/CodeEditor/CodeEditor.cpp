@@ -1,5 +1,7 @@
 #include "CodeEditor.hpp"
+#include "../ImageHandler/ImageHandler.h"
 #include <shellapi.h>
+#include <string_view>
 
 namespace ArmSimPro
 {
@@ -53,36 +55,10 @@ CodeEditor::~CodeEditor()
     SafeDelete<ImFont>(TextFont);
 }
 
-void CodeEditor::InitializeEditor()
+void CodeEditor::InitializeEditor(const TwoStateIconPallete& two_states_icon)
 {   
-    //======================================Load Icons/Images/Fonts==========================================================================================================
     ImGuiIO& io = ImGui::GetIO(); 
     
-    auto load_icons = std::async(std::launch::async, [&]()
-    {
-        std::lock_guard<std::mutex> lock(icons_lock);
-        IM_ASSERT(LoadTextureFromFile(ICONS"/ON/Upload.png", &Compile_image.ON_textureID, &Compile_image.width, &Compile_image.height));
-        IM_ASSERT(LoadTextureFromFile(ICONS"/OFF/Upload.png", &Compile_image.OFF_textureID));
-
-        IM_ASSERT(LoadTextureFromFile(ICONS"/ON/Verify.png", &Verify_image.ON_textureID, &Verify_image.width, &Verify_image.height));
-        IM_ASSERT(LoadTextureFromFile(ICONS"/OFF/Verify.png", &Verify_image.OFF_textureID));
-
-        IM_ASSERT(LoadTextureFromFile(ICONS"/ON/Folder.png", &Folder_image.ON_textureID, &Folder_image.width, &Folder_image.height));
-        IM_ASSERT(LoadTextureFromFile(ICONS"/OFF/Folder.png", &Folder_image.OFF_textureID));
-
-        IM_ASSERT(LoadTextureFromFile(ICONS"/ON/Debug.png", &Debug_image.ON_textureID, &Debug_image.width, &Debug_image.height));
-        IM_ASSERT(LoadTextureFromFile(ICONS"/OFF/Debug.png", &Debug_image.OFF_textureID));
-
-        IM_ASSERT(LoadTextureFromFile(ICONS"/ON/RobotArm.png", &Robot_image.ON_textureID, &Robot_image.width, &Robot_image.height));
-        IM_ASSERT(LoadTextureFromFile(ICONS"/OFF/RobotArm.png", &Robot_image.OFF_textureID));
-
-        IM_ASSERT(LoadTextureFromFile(ICONS"/ON/Search.png", &Search_image.ON_textureID, &Search_image.width, &Search_image.height));
-        IM_ASSERT(LoadTextureFromFile(ICONS"/OFF/Search.png", &Search_image.OFF_textureID));
-
-        IM_ASSERT(LoadTextureFromFile(ICONS"/process-error.png", &ErroSymbol.textureID, &ErroSymbol.width, &ErroSymbol.height));
-    });
-    load_icons.wait();
-
     float iconFontSize = 24; 
     static const ImWchar icons_ranges_CI[] = { ICON_MIN_CI, ICON_MAX_CI, 0 };
     static const ImWchar icons_ranges_MDI[] = { ICON_MIN_MDI, ICON_MAX_MDI, 0 };
@@ -109,16 +85,16 @@ void CodeEditor::InitializeEditor()
 //==================================Initializations===============================================================================================================
     FileHandler::GetInstance().SetFont(TextFont);
     vertical_tool_bar = std::make_unique< ArmSimPro::ToolBar >("Vertical", bg_col, 30, ImGuiAxis_Y);
-    {
-        vertical_tool_bar->AppendTool("Explorer", Folder_image, std::bind(&CodeEditor::ImplementDirectoryNode, this), false, true);                
-        vertical_tool_bar->AppendTool("Search", Search_image, std::bind(&CodeEditor::SearchOnCodeEditor, this));                
-        vertical_tool_bar->AppendTool("Debug", Debug_image, nullptr);                  
+    {   
+        vertical_tool_bar->AppendTool("Explorer", two_states_icon[(int)TwoStateIconsIndex::Folder], std::bind(&CodeEditor::ImplementDirectoryNode, this), false, true);                
+        vertical_tool_bar->AppendTool("Search", two_states_icon[(int)TwoStateIconsIndex::Search], std::bind(&CodeEditor::SearchOnCodeEditor, this));                
+        vertical_tool_bar->AppendTool("Debug", two_states_icon[(int)TwoStateIconsIndex::Debug], nullptr);                 
     }
 
     horizontal_tool_bar = std::make_unique< ArmSimPro::ToolBar >("Horizontal", bg_col, 30, ImGuiAxis_X);
-    {
-        horizontal_tool_bar->AppendTool("verify", Verify_image, [&](){  }, true);   horizontal_tool_bar->SetPaddingBefore("verify", 10);
-        horizontal_tool_bar->AppendTool("Upload", Compile_image, [&](){  }, true);  horizontal_tool_bar->SetPaddingBefore("Upload", 5);
+    {   
+        horizontal_tool_bar->AppendTool("verify", two_states_icon[(int)TwoStateIconsIndex::Verify], [&](){  }, true);   horizontal_tool_bar->SetPaddingBefore("verify", 10);
+        horizontal_tool_bar->AppendTool("Upload", two_states_icon[(int)TwoStateIconsIndex::Upload], [&](){  }, true);  horizontal_tool_bar->SetPaddingBefore("Upload", 5);
     }
 
     status_bar = std::make_unique< ArmSimPro::StatusBar >("status", 30, horizontal_tool_bar->GetbackgroundColor());
@@ -510,23 +486,12 @@ void CodeEditor::ImplementDirectoryNode()
 //=========================================================================Create New Project============================================================================================================================================================== 
         
         ImGui::SetCursorPosX(posX);
-        ImGui::TextWrapped("\nYou can create a new PlatformIo based Project or explore the examples of ArmSim Kit\n\n");
+        ImGui::TextWrapped("\nYou can create a new Project or explore the examples of ArmSim Kit\n\n");
         ImGui::SetCursorPosX(posX);
         if(ImGui::Button("Create New Project", ImVec2(width - 30, 0)))
-            ImGui::OpenPopup("Project Wizard");
+            ImGui::OpenPopup("Project Wizard ##2");
 
-        bool is_Open;
-        ImGui::SetNextWindowSize(ImVec2(700, 300));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(50.0f, 10.0f));
-        ImGui::PushStyleColor(ImGuiCol_TitleBgActive, bg_col.GetCol());
-        ImGui::PushStyleColor(ImGuiCol_TitleBg, bg_col.GetCol());
-        if(ImGui::BeginPopupModal("Project Wizard", &is_Open, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
-        {   
-            ProjectWizard();
-            ImGui::EndPopup();
-        }
-        ImGui::PopStyleColor(2);
-        ImGui::PopStyleVar();
+        ShowProjectWizard("Project Wizard ##2");
 
         ImGui::PopFont();
     }
@@ -943,8 +908,8 @@ void CodeEditor::OpenFileDialog(fs::path& path, const char* key)
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
 
-    std::string_view folder_name = path.filename().u8string();
-    std::string_view full_path = path.u8string();
+    std::string folder_name = path.filename().u8string();
+    std::string full_path = path.u8string();
     if(folder_name.empty() && !full_path.empty()){
         ImGui::OpenPopup("Warning Screen");
         path.clear();
@@ -975,7 +940,7 @@ void CodeEditor::ProjectWizard()
 {
      const char* DirCreateLog[] = {"None","Project already exist.", "Project Created.", "Failed To create project.", "Project name not specified."};
 
-    ImGui::PushFont(TextFont);
+    
     ImGui::TextWrapped("This wizard allows you to create new PlatformIO project. In the last case, you need to uncheck \"Use default location\" and specify path to chosen directory");
         static DirStatus DirCreateStatus = DirStatus_None;
 
@@ -1033,6 +998,24 @@ void CodeEditor::ProjectWizard()
             if(DirCreateStatus != DirStatus_Created && DirCreateStatus != DirStatus_None && DirCreateStatus != DirStatus_NameNotSpecified)
                 Project_Name.clear();
         }
+    
+}
+
+void CodeEditor::ShowProjectWizard(const char *label)
+{
+    bool is_Open;
+    ImGui::PushFont(TextFont);
+    ImGui::SetNextWindowSize(ImVec2(700, 300));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(50.0f, 10.0f));
+    ImGui::PushStyleColor(ImGuiCol_TitleBgActive, bg_col.GetCol());
+    ImGui::PushStyleColor(ImGuiCol_TitleBg, bg_col.GetCol());
+    if(ImGui::BeginPopupModal(label, &is_Open, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
+    {   
+        ProjectWizard();
+        ImGui::EndPopup();
+    }
+    ImGui::PopStyleColor(2);
+    ImGui::PopStyleVar();
     ImGui::PopFont();
 }
 
@@ -1160,21 +1143,10 @@ void CodeEditor::WelcomPage()
         ImGui::PopFont();             
 
         ImGui::SetCursorPosY(140);
-        if(ButtonWithIcon("New Project...", ICON_CI_ADD, "Create new Platform IO project"))
+        if(ButtonWithIcon("New Project...", ICON_CI_ADD, "Create new project"))
             ImGui::OpenPopup("Project Wizard");
 
-        bool is_Open;
-        ImGui::SetNextWindowSize(ImVec2(700, 300));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(50.0f, 10.0f));
-        ImGui::PushStyleColor(ImGuiCol_TitleBgActive, bg_col.GetCol());
-        ImGui::PushStyleColor(ImGuiCol_TitleBg, bg_col.GetCol());
-        if(ImGui::BeginPopupModal("Project Wizard", &is_Open, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
-        {   
-            ProjectWizard();
-            ImGui::EndPopup();
-        }
-        ImGui::PopStyleColor(2);
-        ImGui::PopStyleVar();
+        ShowProjectWizard("Project Wizard");
 
         if(ButtonWithIcon("Open Project...", ICON_CI_FOLDER_OPENED, "Open a project to start working (Ctrl+O)"))
             ArmSimPro::FileDialog::Instance().Open("SelectProjectDir", "Select project directory", "");
