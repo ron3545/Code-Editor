@@ -10,6 +10,7 @@
 #include <iomanip>
 
 #include <mio/mmap.hpp>
+#include "../CodeEditor/AppLog.hpp"
 
 void Search::Search_String_On_Files(const std::filesystem::path &project_path, const std::string &key, std::set<std::filesystem::path>* dest)
 {
@@ -29,26 +30,19 @@ Search::Handler_SearchKeyOnFile Search::Search_Needle_On_Haystack(const std::fil
     size_t line_number = 0;
     size_t occurances = 0;
 
-    std::error_code error;
-    mio::mmap_source ro_mmap;
-    ro_mmap.map(path.u8string().c_str(), error);
+    std::ifstream file(path);
     
-    const std::string data(ro_mmap.begin(), ro_mmap.end());
-
     Lines lines;
-    lines.emplace_back(Line());
 
-    for(auto& chr : data)
-        GetLinesFromString(&lines, chr);
-
-    std::vector<std::future<void>> SearchOnLine_future;
-    for(const auto& line : lines){
-        SearchOnLine_future.push_back(std::async(std::launch::async, &Search::SearchOnLine, this, line, key, line_number, &occurances, &keys_loc));
-        ++line_number;
+    if (file.is_open()) {
+        std::string line;
+        std::vector<std::future<void>> m_futures;
+        while (std::getline(file, line)) 
+            m_futures.push_back(std::async(std::launch::async, &Search::SearchOnLine, this, line, key, line_number, &occurances, &keys_loc));
+        
+        file.close();
     }
-
-    Handler_SearchKeyOnFile result(occurances, key, path, keys_loc );
-    return result;
+    return Handler_SearchKeyOnFile (key, path, keys_loc );
 }
 
 void Search::GetFileList(DirectoryNode& parentNode, std::vector<std::filesystem::path>* Files)
@@ -64,18 +58,6 @@ void Search::GetFileList(DirectoryNode& parentNode, std::vector<std::filesystem:
         auto it = std::find(std::begin(supported_filetype), std::end(supported_filetype), temp.extension().u8string().c_str());
         if(it != std::end(supported_filetype))
             Files->push_back(parentNode.FullPath);
-    }
-}
-
-void Search::GetLinesFromString(Lines *lines, char chr)
-{
-    static std::string line;
-
-    switch(chr)
-    {
-        case '\r': break;
-        case '\n': lines->emplace_back(Line()); line.clear(); break;
-        default: lines->back().emplace_back(chr); break;
     }
 }
 
@@ -99,25 +81,30 @@ void Search::CheckKey_On_File(std::set<std::filesystem::path> *dest, const std::
     file.close();
 }
 
-void Search::SearchOnLine(const Line &line, std::string_view key, size_t line_number, size_t *occurances, KeyLocations *lines)
+// Helper Function to remove leading spaces or tabs from a string
+std::string removeLeadingWhitespace(const std::string& str) {
+    size_t pos = 0;
+    // Find the position of the first character that is not a space or tab
+    while (pos < str.length() && (str[pos] == ' ' || str[pos] == '\t')) {
+        pos++;
+    }
+    // If there are spaces or tabs at the beginning of the string, remove them
+    if (pos > 0) {
+        return str.substr(pos);
+    }
+    // If no spaces or tabs at the beginning, return the original string
+    return str;
+}
+
+void Search::SearchOnLine(const std::string_view& line, std::string_view key, size_t line_number, size_t *occurances, KeyLocations *lines)
 {
-    const std::string data(line.begin(), line.end());
-    const std::string_view m_line = data;
-
-    auto it = std::search(m_line.begin(), m_line.end(),
-                            std::boyer_moore_horspool_searcher(key.begin(), key.end()));
-
-    if (const auto it = std::search(m_line.begin(), m_line.end(),
-            std::boyer_moore_searcher(key.begin(), key.end()));
-        it != m_line.end()
-    )
+    const auto it = std::search(line.begin(), line.end(), std::boyer_moore_searcher(key.begin(), key.end()));
+    if ( it != line.end() )
     {
-        size_t offset = it - m_line.begin();
-
         static std::mutex convert_chr_str_mutex;
         std::lock_guard<std::mutex> lock(convert_chr_str_mutex);
 
-        *occurances += 1;
-        lines->push_back(Handler_KeyLocation(data, offset, line_number));
+        auto offset = it - line.begin();
+        lines->push_back(Handler_KeyLocation(std::string(line), static_cast<unsigned int>(offset), static_cast<unsigned int>(line_number)));
     }
 }

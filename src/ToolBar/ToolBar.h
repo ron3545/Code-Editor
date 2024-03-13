@@ -89,6 +89,7 @@ namespace ArmSimPro
         float _primary_sidebar_posY;
         float _total_width;
         
+
         const ImGuiAxis _toolbar_axis;
         ImGuiViewport* viewport;
         std::vector<ToolTip> Tools;

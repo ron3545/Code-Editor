@@ -1,6 +1,7 @@
 
 add_library( CodeEditor
     CodeEditor.cpp
+    AppLog.hpp
 )
 
 include(FetchContent)

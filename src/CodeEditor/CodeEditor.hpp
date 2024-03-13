@@ -49,6 +49,7 @@
 
 #include "../Algorithms/Search.h"
 #include "Utility.hpp"
+#include "AppLog.hpp"
 
 #include <unordered_set>
 #include <array>
@@ -64,6 +65,8 @@ private:
     const char* m_Menlo_Regular_Font;
     const char* m_MONACO_Font;
 
+    float explorer_panel_width = 320;
+
     bool auto_save;
     bool UseDefault_Location;
     bool ShouldCloseEditor;
@@ -78,9 +81,8 @@ private:
     typedef std::vector<ArmSimPro::TextEditorState> TextEditors;
     TextEditors Opened_TextEditors;  //Storage for all the instances of text editors that has been opened
 
-    const RGBA bg_col = RGBA(24, 24, 24, 255);
+    const RGBA bg_col = RGBA(16, 16, 16, 255);
     const RGBA highlighter_col = RGBA(0, 120, 212, 255);
-    const RGBA child_col = RGBA(31,31,31,255);
     const ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f); 
 
     std::map<std::filesystem::path, Search::Handler_SearchKeyOnFile> SearchResults;
@@ -96,7 +98,7 @@ private:
     DirectoryNode project_root_node;
 
 //======================================CLASS DECLARATION================================================================================
-    std::unique_ptr< ArmSimPro::ToolBar > vertical_tool_bar;
+    //std::unique_ptr< ArmSimPro::ToolBar > vertical_tool_bar;
     std::unique_ptr< ArmSimPro::ToolBar > horizontal_tool_bar;
     std::unique_ptr< ArmSimPro::StatusBar > status_bar;
     std::unique_ptr< ArmSimPro::CmdPanel > cmd_panel;
@@ -163,31 +165,26 @@ private:
     DirStatus CreatesDefaultProjectDirectory(const fs::path& NewProjectPath, const char* ProjectName, fs::path* output_path);
     void RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode);
     void ImplementDirectoryNode();
+    void ShowFileExplorer(float top_margin, float bottom_margin);
 
 //=====================================Rendering Editors=====================================================================================================
     void EditorWithoutDockSpace(float main_menubar_height); 
     void DisplayContents(TextEditors::iterator it);
     void RenderTextEditors();
+    void LoadEditor(const std::string& file);
     std::tuple<bool, std::string> RenderTextEditorEx(   TextEditors::iterator it, size_t i, 
                                                         ImGuiTabItemFlags flag = ImGuiTabItemFlags_None, bool autosave = false);
     
 //=========================================================================================================================================================
     float SetupMenuTab();
 
-    void SearchOnCodeEditor();
-    void DisplayTree(const std::set<std::filesystem::path>& SearchedFiles, const std::string& key);
-    void ShowLinesFromSearchedResult(const std::filesystem::path& path);
-    void ShowSearchResultTree(const std::filesystem::path& files, const std::string& key);
-    void GetAllLinesFromSearchedResult(const std::filesystem::path& path, const std::string& key);
-
     void OpenFileDialog(fs::path& path, const char* key);
     void ProjectWizard();
     void ShowProjectWizard(const char* label);
 
-    void LoadEditor(const std::string& file);
     void GetRecentlyOpenedProjects();
     void WelcomPage();
-
+    
 //===================================================Used for renaming and adding files/folders============================================================
     void RenderArrow(ImGuiDir dir);
     void NodeInputText(std::string& FileName, bool* state, float offsetX, std::function<void(const std::string&)> ptr_to_func, bool IsDirectory = false);

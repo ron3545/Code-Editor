@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "CodeEditor.hpp"
 #include "../ImageHandler/ImageHandler.h"
 #include <shellapi.h>
@@ -43,7 +45,7 @@ CodeEditor::CodeEditor( const char *Consolas_Font,
 
 CodeEditor::~CodeEditor()
 {
-    vertical_tool_bar.reset();
+    // vertical_tool_bar.reset();
     horizontal_tool_bar.reset();
     cmd_panel.reset();
     status_bar.reset();
@@ -84,12 +86,12 @@ void CodeEditor::InitializeEditor(const TwoStateIconPallete& two_states_icon)
 
 //==================================Initializations===============================================================================================================
     FileHandler::GetInstance().SetFont(TextFont);
-    vertical_tool_bar = std::make_unique< ArmSimPro::ToolBar >("Vertical", bg_col, 30, ImGuiAxis_Y);
-    {   
-        vertical_tool_bar->AppendTool("Explorer", two_states_icon[(int)TwoStateIconsIndex::Folder], std::bind(&CodeEditor::ImplementDirectoryNode, this), false, true);                
-        vertical_tool_bar->AppendTool("Search", two_states_icon[(int)TwoStateIconsIndex::Search], std::bind(&CodeEditor::SearchOnCodeEditor, this));                
-        vertical_tool_bar->AppendTool("Debug", two_states_icon[(int)TwoStateIconsIndex::Debug], nullptr);                 
-    }
+    // vertical_tool_bar = std::make_unique< ArmSimPro::ToolBar >("Vertical", bg_col, 30, ImGuiAxis_Y);
+    // {   
+    //     vertical_tool_bar->AppendTool("Explorer", two_states_icon[(int)TwoStateIconsIndex::Folder], std::bind(&CodeEditor::ImplementDirectoryNode, this), false, true);                
+    //     vertical_tool_bar->AppendTool("Search", two_states_icon[(int)TwoStateIconsIndex::Search], std::bind(&CodeEditor::SearchOnCodeEditor, this));                
+    //     vertical_tool_bar->AppendTool("Debug", two_states_icon[(int)TwoStateIconsIndex::Debug], nullptr);                 
+    // }
 
     horizontal_tool_bar = std::make_unique< ArmSimPro::ToolBar >("Horizontal", bg_col, 30, ImGuiAxis_X);
     {   
@@ -108,7 +110,9 @@ float CodeEditor::SetupMenuTab()
     {   
         if (ImGui::BeginMenu("File"))
         {
-            if (ImGui::MenuItem("\tNew Window", "CTRL+Shift+N")) { ShellExecute(NULL, L"open", Path_To_Wstring(std::filesystem::current_path() / "ARMSIMPRO_core.exe").c_str(), NULL, NULL, SW_SHOWDEFAULT); }
+            if (ImGui::MenuItem("\tNew Window", "CTRL+Shift+N")) 
+                ShellExecute(NULL, L"open", Path_To_Wstring(std::filesystem::current_path() / "ARMSIMPRO_core.exe").c_str(), NULL, NULL, SW_SHOWDEFAULT);
+            
             ImGui::Separator();
             ImGui::MenuItem("\tAuto Save", "", &auto_save);
             if (ImGui::MenuItem("\tQuit", "CTRL+Q")){
@@ -172,7 +176,8 @@ void CodeEditor::RunEditor()
         
         float main_menubar_height = SetupMenuTab();
         horizontal_tool_bar->SetToolBar(main_menubar_height + 10);
-        vertical_tool_bar->SetToolBar(horizontal_tool_bar->GetThickness(), status_bar->GetHeight() + 17);
+        ShowFileExplorer(horizontal_tool_bar->GetThickness(), status_bar->GetHeight() + 17);
+        //vertical_tool_bar->SetToolBar(horizontal_tool_bar->GetThickness(), status_bar->GetHeight() + 17);
 
 //===================================================STATUS BAR==============================================================================================
         status_bar->BeginStatusBar();
@@ -194,7 +199,7 @@ void CodeEditor::RunEditor()
     if (username != nullptr)
         organizationPath = "C:\\Program Files\\" + std::string(username);
 
-    cmd_panel->SetPanel((SelectedProjectPath.empty())? organizationPath : SelectedProjectPath, 100, vertical_tool_bar->GetTotalWidth());
+    cmd_panel->SetPanel((SelectedProjectPath.empty())? organizationPath : SelectedProjectPath, 100, explorer_panel_width - 20);
     
     ImGui::PopFont(); //default font
 
@@ -500,6 +505,56 @@ void CodeEditor::ImplementDirectoryNode()
         RecursivelyDisplayDirectoryNode(project_root_node);
 }
 
+void CodeEditor::ShowFileExplorer(float top_margin, float bottom_margin)
+{
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const float explorer_panel_height = viewport->WorkSize.y - ((top_margin + bottom_margin));
+    const float explorer_panel_posY = viewport->Pos.y + ((top_margin * 2) + 7);
+
+    ImGui::SetNextWindowSize(ImVec2(explorer_panel_width, explorer_panel_height));
+    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, explorer_panel_posY));
+    ImGui::SetNextWindowViewport(viewport->ID);
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, bg_col.GetCol());
+    ImGui::Begin("File Explorer", NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoDocking);
+    {
+        ImVec2 windowPos = ImGui::GetWindowPos();
+        ImVec2 windowSize = ImGui::GetWindowSize();
+        const float splitter_thickness = 6;
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, bg_col.GetCol());
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        
+        ImGui::BeginChild("Explorer", ImVec2(windowSize.x - splitter_thickness, windowSize.y - splitter_thickness), false,   ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoMove);
+            ImplementDirectoryNode();
+        ImGui::EndChild();
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor();
+
+        ImVec2 splitter_size(splitter_thickness, windowPos[ImGuiAxis_Y] + windowSize[ImGuiAxis_Y]);
+        ImVec2 splitter_pos(windowPos.x + (explorer_panel_width - splitter_thickness), 0);
+
+        ImGui::Splitter("Explorer splitter", ImGui::GetColorU32(bg_col.GetCol()),
+                        ImGui::GetColorU32(highlighter_col.GetCol()), splitter_size, splitter_pos, 
+                        &explorer_panel_width, ImGuiAxis_Y);
+        
+        ImGuiMouseCursor cursor = ImGuiMouseCursor_Arrow;
+        if(ImGui::IsItemActive() || ImGui::IsItemHovered())
+            cursor = ImGuiMouseCursor_ResizeEW;
+        ImGui::SetMouseCursor(cursor);
+        //size limit
+        if(explorer_panel_width < 197.33f)
+            explorer_panel_width = 197.33f;
+        else if(explorer_panel_width > 579.33f)
+            explorer_panel_width = 579.33f;
+    }
+    ImGui::PopStyleColor();
+    ImGui::End();
+    ImGui::PopStyleVar(2);
+}
+
 void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
 {
     std::lock_guard<std::mutex> lock(editor_mutex);
@@ -512,10 +567,10 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
     {                       
         const float menubar_toolbar_total_thickness = horizontal_tool_bar->GetThickness() + (main_menubar_height + 10);
 
-        pos[ImGuiAxis_X]  = viewport->Pos[ImGuiAxis_X] + vertical_tool_bar->GetTotalWidth() + 20;
+        pos[ImGuiAxis_X]  = viewport->Pos[ImGuiAxis_X] + explorer_panel_width;
         pos[ImGuiAxis_Y]  = viewport->Pos[ImGuiAxis_Y] + menubar_toolbar_total_thickness + 8;
 
-        size[ImGuiAxis_X] = viewport->WorkSize.x - vertical_tool_bar->GetTotalWidth() - 20;
+        size[ImGuiAxis_X] = viewport->WorkSize.x - explorer_panel_width;
         size[ImGuiAxis_Y] = viewport->WorkSize.y - (cmd_panel->GetCurretnHeight() + status_bar->GetHeight() + 47);
     }
 
@@ -533,13 +588,14 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
         MainPanelSize = ImGui::GetWindowSize();
         float width = ImGui::GetWindowWidth() + 10;
         float height = ImGui::GetWindowHeight();
+
         if(ImGui::BeginTabBar("##tabs", ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_AutoSelectNewTabs | ImGuiTabBarFlags_FittingPolicyScroll))
         {   
             ImGui::PushStyleColor(ImGuiCol_Tab, bg_col.GetCol());
             if(Opened_TextEditors.empty() && project_root_node.FileName.empty() && project_root_node.FullPath.empty() || show_welcome)
             {
                 if(ImGui::BeginTabItem("\tWelcome\t")){
-                    ImGui::PushStyleColor(ImGuiCol_ChildBg, child_col.GetCol());
+                    ImGui::PushStyleColor(ImGuiCol_ChildBg, bg_col.GetCol());
                     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 12.5);
                     ImGui::BeginChild("\tWelcome\t", ImVec2(width, height), false, ImGuiWindowFlags_NoDecoration);
                         WelcomPage();
@@ -583,8 +639,8 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
     ImGui::PopStyleColor(2);
     ImGui::End();
 
-    // Show_Find_Replace_Panel(window_flags, 
-    //                         (cmd_panel->GetCurretnHeight() + MainPanelSize.y - horizontal_tool_bar->GetThickness() + 10) - main_menubar_height);
+    Show_Find_Replace_Panel(window_flags, 
+                            (cmd_panel->GetCurretnHeight() + MainPanelSize.y - horizontal_tool_bar->GetThickness() + 10) - main_menubar_height);
 
 //=================================================For Reminding to save work===========================================================================================
     if(auto_save)
@@ -786,114 +842,6 @@ std::tuple<bool, std::string> CodeEditor::RenderTextEditorEx( TextEditors::itera
     return std::tuple<bool, std::string>(std::make_pair(true, it->editor.GetPath()));
 }
 
-void CodeEditor::SearchOnCodeEditor()
-{
-    static std::string search_buffer, replace_buffer;
-    static std::set<std::filesystem::path> SearchedFiles;
-
-    ImGui::Dummy(ImVec2(0.0f, 13.05f));
-    ImGui::Dummy(ImVec2(5.0f, 13.05f));
-    ImGui::SameLine();
-
-    ImGui::PushFont(TextFont);
-    {   
-        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,255,255,255));
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(49,49,49,255));
-        ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(24, 24, 24,255));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(24, 24, 24,255));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(24, 24, 24,255));
-        ImGui::PushItemWidth(-1);
-
-            static bool isPressed = false;
-            if(ImGui::ArrowButton("##drop_down", (isPressed)? ImGuiDir_Down : ImGuiDir_Right))
-                isPressed = !isPressed;
-            
-            ImGui::SameLine();
- 
-            if(ImGui::InputTextWithHint("##Search This", "Search Word on source files", &search_buffer, ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll) && !SelectedProjectPath.empty())
-            {
-                SearchedFiles.clear(); //make sure to get new result every enter
-                SearchResults.clear();
-
-                Search::GetInstance().Search_String_On_Files(SelectedProjectPath, search_buffer, &SearchedFiles);
-            }
-
-            if(isPressed)
-            {
-                const int indent = 39;
-                ImGui::Indent(indent);
-                if(ImGui::InputTextWithHint("##Replace This", "Replace Word on Files", &replace_buffer, ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll) && !SelectedProjectPath.empty())
-                {
-                        
-                }
-                ImGui::Unindent(indent);
-            }
-
-        DisplayTree(SearchedFiles, search_buffer); 
-
-        ImGui::PopItemWidth();
-        ImGui::PopStyleColor(5);
-    }
-    ImGui::PopFont();
-}
-
-void CodeEditor::DisplayTree(const std::set<std::filesystem::path>& SearchedFiles, const std::string& key)
-{
-    ImGui::BeginChild("Show Search Result");
-    {
-        for(const auto& file : SearchedFiles)
-            ShowSearchResultTree(file, key);
-    }
-    ImGui::EndChild();
-}
-
-void CodeEditor::ShowLinesFromSearchedResult(const std::filesystem::path& path)
-{
-    ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-    const auto result = SearchResults[path];
-    
-}
-
-void CodeEditor::ShowSearchResultTree(const std::filesystem::path& file, const std::string& key)
-{
-    ImGui::PushFont(DefaultFont);
-
-    bool opened = ImGui::TreeNodeEx(file.filename().u8string().c_str(), ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_AllowOverlap);
-
-    if(opened)
-    {   
-        auto future = std::async(std::launch::async, &CodeEditor::GetAllLinesFromSearchedResult, this, file, key);
-
-        float offsetX = ImGui::GetWindowSize().x - (ImGui::GetTreeNodeToLabelSpacing() + 70);
-        ImGui::SameLine();
-        ImGui::Indent(offsetX);
-            ImGui::PushStyleColor(ImGuiCol_TextSelectedBg, RGBA(97, 97, 97, 255).GetCol());
-
-            unsigned int occurances = 0;
-            if(!SearchResults.empty())
-                occurances = SearchResults[file].m_KeyLocation.size();
-            ImGui::Text("%d", occurances);
-            ImGui::PopStyleColor();
-        ImGui::Unindent(offsetX);
-
-        if(!SearchResults.empty() && SearchResults.find(file) != SearchResults.end())
-            ShowLinesFromSearchedResult(file);
-
-        ImGui::TreePop();
-    }
-    
-    ImGui::PopFont();
-}
-
-void CodeEditor::GetAllLinesFromSearchedResult(const std::filesystem::path& path, const std::string& key)
-{
-    static std::mutex getter_mutex;
-    std::lock_guard<std::mutex> lock(getter_mutex);
-
-    if(SearchResults.find(path) == SearchResults.end()) //prevents the function to constatnly updates the dictionary as it will result in lagging
-        SearchResults[path] = Search::GetInstance().Search_Needle_On_Haystack(path, key);
-}
-
 void CodeEditor::OpenFileDialog(fs::path& path, const char* key)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));
@@ -1082,7 +1030,7 @@ void CodeEditor::GetRecentlyOpenedProjects()
 
             std::set<std::string> files;
             for(const auto& file : element[OPENED_FILES])
-                    files.insert(file);
+                files.insert(file);
             
             Application_data[project_path] = files;
         }
