@@ -96,7 +96,6 @@ private:
     ImFont* ICFont;
 
     DirectoryNode project_root_node;
-
 //======================================CLASS DECLARATION================================================================================
     //std::unique_ptr< ArmSimPro::ToolBar > vertical_tool_bar;
     std::unique_ptr< ArmSimPro::ToolBar > horizontal_tool_bar;

@@ -213,18 +213,11 @@ CodeEditor::DirStatus CodeEditor::CreateProjectDirectory(const fs::path& path, c
     if(fs::exists(temp))
         return DirStatus_AlreadyExist;
     
-    try
-    {
-        //Create Project Directory
-        if(fs::create_directory(temp)){
-            *out = temp;
-            FileHandler::GetInstance().CreateWholeProjectDirectory(temp);
-            return DirStatus_Created;
-        }
-    }
-    catch(const std::exception& e)
-    {
-        //Do nothing
+    //Create Project Directory
+    if(fs::create_directory(temp)){
+        *out = temp;
+        FileHandler::GetInstance().CreateWholeProjectDirectory(temp);
+        return DirStatus_Created;
     }
     
     return DirStatus_FailedToCreate;
@@ -748,7 +741,7 @@ void CodeEditor::DisplayContents(TextEditors::iterator it)
                     it->editor.GetTotalLines(),
                     it->editor.GetFileExtension().c_str(),
                     it->editor.GetFileName().c_str());
-
+        
         current_editor = buffer;
     }
 }
@@ -1225,6 +1218,7 @@ void CodeEditor::NodeInputText(bool* state, float offsetX, std::function<void(co
 
 void CodeEditor::Show_Find_Replace_Panel(ImGuiWindowFlags window_flags, float main_menubar_height)
 {
+    
     ImGuiIO& io = ImGui::GetIO();
     auto ctrl = io.KeyCtrl;
 
@@ -1234,20 +1228,14 @@ void CodeEditor::Show_Find_Replace_Panel(ImGuiWindowFlags window_flags, float ma
     if(Opened_TextEditors.empty())
         return;
 
-    static ArmSimPro::TextEditor * focused_editor = nullptr;
-    if((selected_window_path != prev_selected_window_path)){
-        prev_selected_window_path = selected_window_path;
-        auto iterator = std::find(Opened_TextEditors.begin(), Opened_TextEditors.end(), selected_window_path); 
-        if(iterator != Opened_TextEditors.cend())
-            focused_editor = &(iterator->editor);
-    }
-
-    if(ctrl && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_F)) && focused_editor != nullptr && focused_editor->IsEditorFocused())
+    if(ctrl && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_F)))
         show_find_replace_panel = true;
     
     if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape)))
         show_find_replace_panel = false;
 
+    //TO DO: Embedd to texteditor class
+    //Functions parameters includes: std::string to_find and std::string to_replace
     if(show_find_replace_panel)
     {   
         static unsigned int panel_height = 40;
@@ -1263,17 +1251,17 @@ void CodeEditor::Show_Find_Replace_Panel(ImGuiWindowFlags window_flags, float ma
             panel_pos[ImGuiAxis_X] = available_rect.Max[ImGuiAxis_X] - (PanelWidth + 30);
 
             size = available_rect.GetSize();
-            size[ImGuiAxis_Y] = panel_height;
+            size[ImGuiAxis_Y] = (float)panel_height;
         }
 
-        ImGui::SetNextWindowSize(ImVec2(PanelWidth, panel_height));
+        ImGui::SetNextWindowSize(ImVec2(PanelWidth, (float)panel_height));
         ImGui::SetNextWindowPos(panel_pos, ImGuiCond_Always);
 
         ImGui::PushStyleColor(ImGuiCol_WindowBg, bg_col.GetCol());
         ImGui::Begin("Search and Replace", NULL, window_flags);
         {
             static bool isPressed = false;
-            static std::string buffer;
+            static std::string to_find, to_replace;
 
             ImGui::PushFont(TextFont);
                 ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,255,255,255));
@@ -1288,7 +1276,7 @@ void CodeEditor::Show_Find_Replace_Panel(ImGuiWindowFlags window_flags, float ma
                 ImGui::SameLine();
 
                 ImGui::PushItemWidth(260);
-                if(ImGui::InputTextWithHint("##Search", "Search Word on Files", &buffer, ImGuiInputTextFlags_EnterReturnsTrue) && !SelectedProjectPath.empty())
+                if(ImGui::InputTextWithHint("##Search", "Search Word on Files", &to_find, ImGuiInputTextFlags_EnterReturnsTrue) && !SelectedProjectPath.empty())
                 {
 
                 }
@@ -1319,7 +1307,7 @@ void CodeEditor::Show_Find_Replace_Panel(ImGuiWindowFlags window_flags, float ma
                     ImGui::Indent(indent);
                     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,255,255,255));
                     ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(49,49,49,255));
-                    if(ImGui::InputTextWithHint("##Replace", "Replace Word on Files", &buffer, ImGuiInputTextFlags_EnterReturnsTrue) && !SelectedProjectPath.empty())
+                    if(ImGui::InputTextWithHint("##Replace", "Replace Word on Files", &to_replace, ImGuiInputTextFlags_EnterReturnsTrue) && !SelectedProjectPath.empty())
                     {
                         
                     }
@@ -1365,7 +1353,7 @@ bool CodeEditor::ButtonWithIconEx(const char* label, const char* icon, const cha
         ImGui::Text(icon);
     }
     pos.y -= 12;
-    ImGui::SetCursorPos(ImVec2(95.64, pos.y));
+    ImGui::SetCursorPos(ImVec2(95.64f, pos.y));
     ImGui::PushFont(TextFont);
         bool clicked = ImGui::Button(label);
     ImGui::PopFont();
