@@ -9,7 +9,7 @@
 
 std::unique_ptr<CodeEditor> code_editor;
 
-constexpr wchar_t* SOFTWARE_NAME = L"ArmSim Pro";
+constexpr wchar_t* SOFTWARE_NAME = L"RMR";
 const char* LOGO = "";
 
 HWND                     hwnd = NULL;
@@ -69,8 +69,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
     const int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
-    const int windowWidth = 1280;  // Set your desired width
-    const int windowHeight = 800; // Set your desired height
+    const int windowWidth = 1100;  // Set your desired width
+    const int windowHeight = 700; // Set your desired height
 
     const int x = (screenWidth - windowWidth) / 2;
     const int y = (screenHeight - windowHeight) / 2;

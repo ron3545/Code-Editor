@@ -66,6 +66,7 @@ private:
     const char* m_MONACO_Font;
 
     float explorer_panel_width = 320;
+    float search_replace_panel_offset;
 
     bool auto_save;
     bool UseDefault_Location;
@@ -77,6 +78,8 @@ private:
     std::string selected_window_path, prev_selected_window_path; // for editing
     std::string current_editor, found_selected_editor;
     std::string Project_Name; 
+
+    std::string to_find, to_replace;  bool use_search_panel = false;//for searching
     
     typedef std::vector<ArmSimPro::TextEditorState> TextEditors;
     TextEditors Opened_TextEditors;  //Storage for all the instances of text editors that has been opened
@@ -108,7 +111,6 @@ private:
     std::mutex RecentFile_Mutex;
     std::mutex editor_mutex;
     std::mutex CodeEditor_mutex;
-
 //===============================================================================================================================================
 
     enum DirStatus
@@ -188,7 +190,7 @@ private:
     void RenderArrow(ImGuiDir dir);
     void NodeInputText(std::string& FileName, bool* state, float offsetX, std::function<void(const std::string&)> ptr_to_func, bool IsDirectory = false);
     void NodeInputText(bool* state, float offsetX, std::function<void(const std::string&)> ptr_to_func, bool IsDirectory = false);
-    void Show_Find_Replace_Panel(ImGuiWindowFlags window_flags, float main_menubar_height);
+    void Show_Find_Replace_Panel();
 //=========================================================================================================================================================
 
     template<class T> void SafeDelete(T*& pVal);

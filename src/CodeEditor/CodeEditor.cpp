@@ -194,13 +194,13 @@ void CodeEditor::RunEditor()
         }
         status_bar->EndStatusBar();
 //===========================================================================================================================================================
-    const char* username = std::getenv("USERNAME");
-    fs::path organizationPath;
-    if (username != nullptr)
-        organizationPath = "C:\\Program Files\\" + std::string(username);
+        const char* username = std::getenv("USERNAME");
+        fs::path organizationPath;
+        if (username != nullptr)
+            organizationPath = "C:\\Program Files\\" + std::string(username);
 
-    cmd_panel->SetPanel((SelectedProjectPath.empty())? organizationPath : SelectedProjectPath, 100, explorer_panel_width - 20);
-    
+        cmd_panel->SetPanel((SelectedProjectPath.empty())? organizationPath : SelectedProjectPath, 100, explorer_panel_width - 20);
+        
     ImGui::PopFont(); //default font
 
     auto future = std::async(std::launch::async, &CodeEditor::EditorWithoutDockSpace, this, main_menubar_height);
@@ -275,86 +275,86 @@ void CodeEditor::RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
                 selected_path = parentNode.FullPath;
 
             ImGui::PushFont(TextFont); 
-            if(ImGui::IsItemClicked(ImGuiMouseButton_Right)){
-                ShouldRename = false;
-                ShouldAddNewFolder = false;
-                ShouldAddNewFile = false;
+                if(ImGui::IsItemClicked(ImGuiMouseButton_Right)){
+                    ShouldRename = false;
+                    ShouldAddNewFolder = false;
+                    ShouldAddNewFile = false;
 
-                selected_file.clear();
-                selected_folder = parentNode.FullPath;
-                ImGui::OpenPopup("Edit Folder");
-            }
-
-            if(ImGui::BeginPopupContextItem("Edit Folder")) 
-            {
-                auto clipText = ImGui::GetClipboardText();
-
-                const ArmSimPro::MenuItemData popup_items[] = {
-                    ArmSimPro::MenuItemData("\tNew File...\t", nullptr, nullptr, true, [&](){ ShouldAddNewFile = true; }),
-                    ArmSimPro::MenuItemData("\tNew Folder...\t", nullptr, nullptr, true, [&](){ ShouldAddNewFolder = true; }),
-
-                    ArmSimPro::MenuItemData("\tCut\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().Cut(project_root_node, selected_folder); }),
-                    ArmSimPro::MenuItemData("\tCopy\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().Copy(project_root_node, selected_folder); }),
-                    ArmSimPro::MenuItemData("\tPaste\t", nullptr, nullptr, (clipText != nullptr && strlen(clipText) > 0), [=](){ FileHandler::GetInstance().Paste(project_root_node, selected_folder, true); }),
-
-                    ArmSimPro::MenuItemData("\tRename...\t", nullptr, nullptr, true, [&](){ ShouldRename = true; }),
-                    ArmSimPro::MenuItemData("\tDelete\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().DeleteSelectedFolder(project_root_node, selected_folder); })
-                };
-
-                for(int i = 0; i < IM_ARRAYSIZE(popup_items); i++)
-                {  
-                    if(i == 3 || i == 7)
-                        ImGui::Separator();
-        
-                    ArmSimPro::MenuItem(popup_items[i], true);
+                    selected_file.clear();
+                    selected_folder = parentNode.FullPath;
+                    ImGui::OpenPopup("Edit Folder");
                 }
-                ImGui::EndPopup();
-            }
-            ImGui::PopFont();
 
-            // renaming widget
-            if(ShouldRename && selected_folder == parentNode.FullPath &&  project_root_node.FullPath != selected_folder)
-            {
-                offsetX = (opened)? ImGui::GetTreeNodeToLabelSpacing() - 30 : ImGui::GetTreeNodeToLabelSpacing();
-                NodeInputText(parentNode.FileName, &ShouldRename, offsetX, [&](const std::string& buffer){ FileHandler::GetInstance().Rename(parentNode.FullPath, buffer); });
-            }
+                if(ImGui::BeginPopupContextItem("Edit Folder")) 
+                    {
+                        auto clipText = ImGui::GetClipboardText();
+
+                        const ArmSimPro::MenuItemData popup_items[] = {
+                            ArmSimPro::MenuItemData("\tNew File...\t", nullptr, nullptr, true, [&](){ ShouldAddNewFile = true; }),
+                            ArmSimPro::MenuItemData("\tNew Folder...\t", nullptr, nullptr, true, [&](){ ShouldAddNewFolder = true; }),
+
+                            ArmSimPro::MenuItemData("\tCut\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().Cut(project_root_node, selected_folder); }),
+                            ArmSimPro::MenuItemData("\tCopy\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().Copy(project_root_node, selected_folder); }),
+                            ArmSimPro::MenuItemData("\tPaste\t", nullptr, nullptr, (clipText != nullptr && strlen(clipText) > 0), [=](){ FileHandler::GetInstance().Paste(project_root_node, selected_folder, true); }),
+
+                            ArmSimPro::MenuItemData("\tRename...\t", nullptr, nullptr, true, [&](){ ShouldRename = true; }),
+                            ArmSimPro::MenuItemData("\tDelete\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().DeleteSelectedFolder(project_root_node, selected_folder); })
+                        };
+
+                        for(int i = 0; i < IM_ARRAYSIZE(popup_items); i++)
+                        {  
+                            if(i == 3 || i == 7)
+                                ImGui::Separator();
+                
+                            ArmSimPro::MenuItem(popup_items[i], true);
+                        }
+                        ImGui::EndPopup();
+                    }
+                ImGui::PopFont();
+
+                // renaming widget
+                if(ShouldRename && selected_folder == parentNode.FullPath &&  project_root_node.FullPath != selected_folder)
+                {
+                    offsetX = (opened)? ImGui::GetTreeNodeToLabelSpacing() - 30 : ImGui::GetTreeNodeToLabelSpacing();
+                    NodeInputText(parentNode.FileName, &ShouldRename, offsetX, [&](const std::string& buffer){ FileHandler::GetInstance().Rename(parentNode.FullPath, buffer); });
+                }
            
 //==========================Drag and Drop of Files; For moving files/folders only======================================================
-            if (ImGui::BeginDragDropTarget())
-            {
-                if(const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_PATH"))
+                if (ImGui::BeginDragDropTarget())
                 {
-                    IM_ASSERT(payload->DataSize == sizeof(std::string));
-                    const std::string payload_data = *(const std::string*)payload->Data;
-                    FileHandler::GetInstance().Paste(project_root_node, payload_data, parentNode.FullPath);
+                    if(const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_PATH"))
+                    {
+                        IM_ASSERT(payload->DataSize == sizeof(std::string));
+                        const std::string payload_data = *(const std::string*)payload->Data;
+                        FileHandler::GetInstance().Paste(project_root_node, payload_data, parentNode.FullPath);
+                    }
+                    ImGui::EndDragDropTarget();
                 }
-                ImGui::EndDragDropTarget();
-            }
 //======================================================================================================================================
 
-            if (opened)
-            {   
-                if(ShouldAddNewFolder && selected_folder == parentNode.FullPath )
-                {
-                    ShouldAddNewFile = false;
-                    ImGui::Dummy(ImVec2(0,0));
-                    auto AddFolder = [&](const std::string& buffer){ FileHandler::GetInstance().CreateNewFolder(project_root_node, selected_folder, buffer.c_str()); };
-                    NodeInputText(&ShouldAddNewFolder, ImGui::GetTreeNodeToLabelSpacing(), AddFolder, true);
+                if (opened)
+                {   
+                    if(ShouldAddNewFolder && selected_folder == parentNode.FullPath )
+                    {
+                        ShouldAddNewFile = false;
+                        ImGui::Dummy(ImVec2(0,0));
+                        auto AddFolder = [&](const std::string& buffer){ FileHandler::GetInstance().CreateNewFolder(project_root_node, selected_folder, buffer.c_str()); };
+                        NodeInputText(&ShouldAddNewFolder, ImGui::GetTreeNodeToLabelSpacing(), AddFolder, true);
+                    }
+
+                    if(ShouldAddNewFile && selected_folder == parentNode.FullPath )
+                    {
+                        ShouldAddNewFolder = false;
+                        ImGui::Dummy(ImVec2(0,0));
+                        auto AddFile = [&](const std::string& buffer){ FileHandler::GetInstance().CreateNewFile(project_root_node, selected_folder, buffer.c_str()); };
+                        NodeInputText(&ShouldAddNewFile, ImGui::GetTreeNodeToLabelSpacing(), AddFile, false);
+                    }
+
+                    for (DirectoryNode& childNode : parentNode.Children)
+                        RecursivelyDisplayDirectoryNode(childNode);
+
+                    ImGui::TreePop();
                 }
-
-                if(ShouldAddNewFile && selected_folder == parentNode.FullPath )
-                {
-                    ShouldAddNewFolder = false;
-                    ImGui::Dummy(ImVec2(0,0));
-                    auto AddFile = [&](const std::string& buffer){ FileHandler::GetInstance().CreateNewFile(project_root_node, selected_folder, buffer.c_str()); };
-                    NodeInputText(&ShouldAddNewFile, ImGui::GetTreeNodeToLabelSpacing(), AddFile, false);
-                }
-
-                for (DirectoryNode& childNode : parentNode.Children)
-                    RecursivelyDisplayDirectoryNode(childNode);
-
-                ImGui::TreePop();
-            }
             ImGui::PopFont();  
         } break;
     
@@ -367,7 +367,7 @@ void CodeEditor::RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
                 node_flags |= ImGuiTreeNodeFlags_Selected;
 
             ImGui::PushFont(FileTreeFont);
-            ImGui::TreeNodeEx(parentNode.FileName.c_str(), node_flags);
+                ImGui::TreeNodeEx(parentNode.FileName.c_str(), node_flags);
             ImGui::PopFont();
             
             if(ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
@@ -408,28 +408,28 @@ void CodeEditor::RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
             }
             
             ImGui::PushFont(TextFont);
-            if(ImGui::BeginPopup("Edit File"))
-            {
-                auto clipText = ImGui::GetClipboardText();
+                if(ImGui::BeginPopup("Edit File"))
+                {
+                    auto clipText = ImGui::GetClipboardText();
 
-                const ArmSimPro::MenuItemData items[] = {
-                    ArmSimPro::MenuItemData("\tCut\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().Cut(project_root_node, parentNode.FullPath); }),
-                    ArmSimPro::MenuItemData("\tCopy\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().Copy(project_root_node, parentNode.FullPath); }),
-                    ArmSimPro::MenuItemData("\tPaste\t", nullptr, nullptr, (clipText != nullptr && strlen(clipText) > 0), [=](){ FileHandler::GetInstance().Paste(project_root_node, parentNode.FullPath, true); }),
+                    const ArmSimPro::MenuItemData items[] = {
+                        ArmSimPro::MenuItemData("\tCut\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().Cut(project_root_node, parentNode.FullPath); }),
+                        ArmSimPro::MenuItemData("\tCopy\t", nullptr, nullptr, true, [=](){ FileHandler::GetInstance().Copy(project_root_node, parentNode.FullPath); }),
+                        ArmSimPro::MenuItemData("\tPaste\t", nullptr, nullptr, (clipText != nullptr && strlen(clipText) > 0), [=](){ FileHandler::GetInstance().Paste(project_root_node, parentNode.FullPath, true); }),
 
-                    ArmSimPro::MenuItemData("\tRename...\t", nullptr, nullptr, true, [&](){ ShouldRename = true; }),
-                    ArmSimPro::MenuItemData("\tDelete\t", nullptr, nullptr, true, [&](){ FileHandler::GetInstance().DeleteSelectedFile(project_root_node, parentNode.FullPath); })
-                };
+                        ArmSimPro::MenuItemData("\tRename...\t", nullptr, nullptr, true, [&](){ ShouldRename = true; }),
+                        ArmSimPro::MenuItemData("\tDelete\t", nullptr, nullptr, true, [&](){ FileHandler::GetInstance().DeleteSelectedFile(project_root_node, parentNode.FullPath); })
+                    };
 
-                for(int i = 0; i < IM_ARRAYSIZE(items); i++)
-                {  
-                    if(i == 3 || i == 7)
-                        ImGui::Separator();
-        
-                    ArmSimPro::MenuItem(items[i], true);
+                    for(int i = 0; i < IM_ARRAYSIZE(items); i++)
+                    {  
+                        if(i == 3 || i == 7)
+                            ImGui::Separator();
+            
+                        ArmSimPro::MenuItem(items[i], true);
+                    }
+                    ImGui::EndPopup();
                 }
-                ImGui::EndPopup();
-            }
             ImGui::PopFont();
 
             // renaming widget
@@ -444,20 +444,20 @@ void CodeEditor::RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
 
 //==========================Drag and Drop of Files; For moving files/folders only======================================================
     ImGui::PushFont(TextFont);
-    if(ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
-    {
-        std::string file_name;
-        size_t lastSeparatorPos = selected_path.find_last_of("\\/");
-        if (lastSeparatorPos != std::string::npos) 
-            // Extract the substring starting from the position after the separator
-            file_name = selected_path.substr(lastSeparatorPos + 1);
-        else
-            file_name = selected_path;
+        if(ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+        {
+            std::string file_name;
+            size_t lastSeparatorPos = selected_path.find_last_of("\\/");
+            if (lastSeparatorPos != std::string::npos) 
+                // Extract the substring starting from the position after the separator
+                file_name = selected_path.substr(lastSeparatorPos + 1);
+            else
+                file_name = selected_path;
 
-        ImGui::SetDragDropPayload("DND_PATH", &selected_path, sizeof(std::string));
-        ImGui::Text(file_name.c_str());
-        ImGui::EndDragDropSource();
-    }
+            ImGui::SetDragDropPayload("DND_PATH", &selected_path, sizeof(std::string));
+            ImGui::Text(file_name.c_str());
+            ImGui::EndDragDropSource();
+        }
     ImGui::PopFont();
 }
 
@@ -473,23 +473,23 @@ void CodeEditor::ImplementDirectoryNode()
     {
         static const char* file_dialog_key = nullptr;
         ImGui::PushFont(TextFont);
-        const int posX = 14;
-        ImGui::SetCursorPosX(posX);
-        ImGui::TextWrapped("You have not opened a project folder.\n\nYou can open an existing PlatformIO-based project (a folder that contains platformio.ini file).\n\n");
-        ImGui::SetCursorPosX(posX);
-        if(ImGui::Button("Open Folder", ImVec2(width - 30, 0)))
-            ArmSimPro::FileDialog::Instance().Open("SelectProject", "Select project directory", "");
-        
-        OpenFileDialog(SelectedProjectPath, "SelectProject");
+            const int posX = 14;
+            ImGui::SetCursorPosX(posX);
+            ImGui::TextWrapped("You have not opened a project folder.\n\nYou can open an existing PlatformIO-based project (a folder that contains platformio.ini file).\n\n");
+            ImGui::SetCursorPosX(posX);
+            if(ImGui::Button("Open Folder", ImVec2(width - 30, 0)))
+                ArmSimPro::FileDialog::Instance().Open("SelectProject", "Select project directory", "");
+            
+            OpenFileDialog(SelectedProjectPath, "SelectProject");
 //=========================================================================Create New Project============================================================================================================================================================== 
         
-        ImGui::SetCursorPosX(posX);
-        ImGui::TextWrapped("\nYou can create a new Project or explore the examples of ArmSim Kit\n\n");
-        ImGui::SetCursorPosX(posX);
-        if(ImGui::Button("Create New Project", ImVec2(width - 30, 0)))
-            ImGui::OpenPopup("Project Wizard ##2");
+            ImGui::SetCursorPosX(posX);
+            ImGui::TextWrapped("\nYou can create a new Project or explore the examples of ArmSim Kit\n\n");
+            ImGui::SetCursorPosX(posX);
+            if(ImGui::Button("Create New Project", ImVec2(width - 30, 0)))
+                ImGui::OpenPopup("Project Wizard ##2");
 
-        ShowProjectWizard("Project Wizard ##2");
+            ShowProjectWizard("Project Wizard ##2");
 
         ImGui::PopFont();
     }
@@ -632,9 +632,8 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
     ImGui::PopStyleColor(2);
     ImGui::End();
 
-    Show_Find_Replace_Panel(window_flags, 
-                            (cmd_panel->GetCurretnHeight() + MainPanelSize.y - horizontal_tool_bar->GetThickness() + 10) - main_menubar_height);
-
+    search_replace_panel_offset = (cmd_panel->GetCurretnHeight() + MainPanelSize.y - horizontal_tool_bar->GetThickness() + 10) - main_menubar_height;
+    Show_Find_Replace_Panel();
 //=================================================For Reminding to save work===========================================================================================
     if(auto_save)
         return;
@@ -724,7 +723,7 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
 void CodeEditor::DisplayContents(TextEditors::iterator it)
 {
     ImGui::PushFont(CodeEditorFont);
-    it->editor.Render();
+        it->editor.Render(use_search_panel, to_find, to_replace, DefaultFont, TextFont);
     ImGui::PopFont();
 
     if(it->editor.IsTextChanged())
@@ -839,41 +838,42 @@ void CodeEditor::OpenFileDialog(fs::path& path, const char* key)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));
     ImGui::PushStyleColor(ImGuiCol_ChildBg, bg_col.GetCol());
+
     ImGui::PushFont(TextFont);
-    if (ArmSimPro::FileDialog::Instance().IsDone(key)) {
-        if (ArmSimPro::FileDialog::Instance().HasResult()) 
-            path = ArmSimPro::FileDialog::Instance().GetResult();
-        
-        ArmSimPro::FileDialog::Instance().Close();
-    }
-    ImGui::PopStyleColor();
-    ImGui::PopStyleVar();
+        if (ArmSimPro::FileDialog::Instance().IsDone(key)) {
+            if (ArmSimPro::FileDialog::Instance().HasResult()) 
+                path = ArmSimPro::FileDialog::Instance().GetResult();
+            
+            ArmSimPro::FileDialog::Instance().Close();
+        }
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar();
 
-    std::string folder_name = path.filename().u8string();
-    std::string full_path = path.u8string();
-    if(folder_name.empty() && !full_path.empty()){
-        ImGui::OpenPopup("Warning Screen");
-        path.clear();
-    }
+        std::string folder_name = path.filename().u8string();
+        std::string full_path = path.u8string();
+        if(folder_name.empty() && !full_path.empty()){
+            ImGui::OpenPopup("Warning Screen");
+            path.clear();
+        }
 
-    ImGui::SetNextWindowSize(ImVec2(300, 130));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(50.0f, 5.0f));
-    ImGui::PushStyleColor(ImGuiCol_TitleBgActive, bg_col.GetCol());
-    ImGui::PushStyleColor(ImGuiCol_TitleBg, bg_col.GetCol());
-    if(ImGui::BeginPopupModal("Warning Screen", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
-    {  
-        ImGui::PushFont(CodeEditorFont);
-            ImGui::TextWrapped("Selected folder Invalid");
-            ImGui::Dummy(ImVec2(0, 3));
-            ImGui::Separator();
-            ImGui::Dummy(ImVec2(0, 3));
-            if(ImGui::Button("Ok", ImVec2(200, 27)) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter)))
-                ImGui::CloseCurrentPopup();
-        ImGui::PopFont();
-        ImGui::EndPopup();
-    }
-    ImGui::PopStyleColor(2);
-    ImGui::PopStyleVar();
+        ImGui::SetNextWindowSize(ImVec2(300, 130));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(50.0f, 5.0f));
+        ImGui::PushStyleColor(ImGuiCol_TitleBgActive, bg_col.GetCol());
+        ImGui::PushStyleColor(ImGuiCol_TitleBg, bg_col.GetCol());
+        if(ImGui::BeginPopupModal("Warning Screen", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
+        {  
+            ImGui::PushFont(CodeEditorFont);
+                ImGui::TextWrapped("Selected folder Invalid");
+                ImGui::Dummy(ImVec2(0, 3));
+                ImGui::Separator();
+                ImGui::Dummy(ImVec2(0, 3));
+                if(ImGui::Button("Ok", ImVec2(200, 27)) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter)))
+                    ImGui::CloseCurrentPopup();
+            ImGui::PopFont();
+            ImGui::EndPopup();
+        }
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar();
     ImGui::PopFont();
 }
 
@@ -946,17 +946,17 @@ void CodeEditor::ShowProjectWizard(const char *label)
 {
     bool is_Open;
     ImGui::PushFont(TextFont);
-    ImGui::SetNextWindowSize(ImVec2(700, 300));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(50.0f, 10.0f));
-    ImGui::PushStyleColor(ImGuiCol_TitleBgActive, bg_col.GetCol());
-    ImGui::PushStyleColor(ImGuiCol_TitleBg, bg_col.GetCol());
-    if(ImGui::BeginPopupModal(label, &is_Open, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
-    {   
-        ProjectWizard();
-        ImGui::EndPopup();
-    }
-    ImGui::PopStyleColor(2);
-    ImGui::PopStyleVar();
+        ImGui::SetNextWindowSize(ImVec2(700, 300));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(50.0f, 10.0f));
+        ImGui::PushStyleColor(ImGuiCol_TitleBgActive, bg_col.GetCol());
+        ImGui::PushStyleColor(ImGuiCol_TitleBg, bg_col.GetCol());
+        if(ImGui::BeginPopupModal(label, &is_Open, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
+        {   
+            ProjectWizard();
+            ImGui::EndPopup();
+        }
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar();
     ImGui::PopFont();
 }
 
@@ -1079,6 +1079,7 @@ void CodeEditor::WelcomPage()
     float window_width = ImGui::GetWindowWidth();
     ImGui::Columns(2, "mycols", false);
         ImGui::SetCursorPos(ImVec2(60,80));
+
         ImGui::PushFont(FileTreeFont);
             ImGui::Text("Start");
         ImGui::PopFont();             
@@ -1216,9 +1217,8 @@ void CodeEditor::NodeInputText(bool* state, float offsetX, std::function<void(co
     ImGui::Unindent(offsetX);
 }
 
-void CodeEditor::Show_Find_Replace_Panel(ImGuiWindowFlags window_flags, float main_menubar_height)
+void CodeEditor::Show_Find_Replace_Panel()
 {
-    
     ImGuiIO& io = ImGui::GetIO();
     auto ctrl = io.KeyCtrl;
 
@@ -1229,100 +1229,10 @@ void CodeEditor::Show_Find_Replace_Panel(ImGuiWindowFlags window_flags, float ma
         return;
 
     if(ctrl && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_F)))
-        show_find_replace_panel = true;
+        use_search_panel = true;
     
     if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape)))
-        show_find_replace_panel = false;
-
-    //TO DO: Embedd to texteditor class
-    //Functions parameters includes: std::string to_find and std::string to_replace
-    if(show_find_replace_panel)
-    {   
-        static unsigned int panel_height = 40;
-        const float PanelWidth = 466;
-        ImVec2 size,panel_pos;
-
-        {
-            ImGuiViewportP* viewportp = (ImGuiViewportP*)(void*)(viewport);
-            ImRect available_rect = viewportp->GetBuildWorkRect();
-
-            panel_pos = available_rect.Min;
-            panel_pos[ImGuiAxis_Y] = available_rect.Max[ImGuiAxis_Y] - (panel_height + main_menubar_height);
-            panel_pos[ImGuiAxis_X] = available_rect.Max[ImGuiAxis_X] - (PanelWidth + 30);
-
-            size = available_rect.GetSize();
-            size[ImGuiAxis_Y] = (float)panel_height;
-        }
-
-        ImGui::SetNextWindowSize(ImVec2(PanelWidth, (float)panel_height));
-        ImGui::SetNextWindowPos(panel_pos, ImGuiCond_Always);
-
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, bg_col.GetCol());
-        ImGui::Begin("Search and Replace", NULL, window_flags);
-        {
-            static bool isPressed = false;
-            static std::string to_find, to_replace;
-
-            ImGui::PushFont(TextFont);
-                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,255,255,255));
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(49,49,49,255));
-                ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(24, 24, 24,255));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(24, 24, 24,255));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(24, 24, 24,255));
-
-                if(ImGui::ArrowButton("##drop_down", (isPressed)? ImGuiDir_Down : ImGuiDir_Right))
-                    isPressed = !isPressed;
-                
-                ImGui::SameLine();
-
-                ImGui::PushItemWidth(260);
-                if(ImGui::InputTextWithHint("##Search", "Search Word on Files", &to_find, ImGuiInputTextFlags_EnterReturnsTrue) && !SelectedProjectPath.empty())
-                {
-
-                }
-                ImGui::PopItemWidth();
-                ImGui::PopStyleColor(5);
-
-                ImGui::SameLine();
-                ImGui::PushFont(DefaultFont);
-                ImGui::Text("No results");
-                ImGui::PopFont();
-
-                ImGui::SameLine();
-                if(ImGui::ArrowButton("##move uo", ImGuiDir_Up))
-                {
-
-                }
-
-                ImGui::SameLine();
-                if(ImGui::ArrowButton("##move down", ImGuiDir_Down))
-                {
-
-                }
-
-                if(isPressed)
-                {
-                    panel_height = 70;
-                    const int indent = 32;
-                    ImGui::Indent(indent);
-                    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,255,255,255));
-                    ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(49,49,49,255));
-                    if(ImGui::InputTextWithHint("##Replace", "Replace Word on Files", &to_replace, ImGuiInputTextFlags_EnterReturnsTrue) && !SelectedProjectPath.empty())
-                    {
-                        
-                    }
-                    ImGui::PopStyleColor(2);
-                    ImGui::Unindent(indent);
-                }
-                else
-                    panel_height = 40;
-
-                
-            ImGui::PopFont();
-        }
-        ImGui::End();
-        ImGui::PopStyleColor();   
-    }
+        use_search_panel = false;
 }
 
 template<class T> void CodeEditor::SafeDelete(T*& pVal)
@@ -1361,9 +1271,9 @@ bool CodeEditor::ButtonWithIconEx(const char* label, const char* icon, const cha
     if(definition != nullptr)
     {
         ImGui::PushFont(TextFont);
-        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
-        ImGui::SetItemTooltip(definition);
-        ImGui::PopStyleColor();
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
+            ImGui::SetItemTooltip(definition);
+            ImGui::PopStyleColor();
         ImGui::PopFont();
     }
 

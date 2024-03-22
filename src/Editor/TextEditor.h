@@ -16,6 +16,7 @@
 #include <chrono>
 #include <fstream>
 
+#include "../Algorithms/Search.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "../imgui/imgui.h"
 
@@ -85,6 +86,10 @@ namespace ArmSimPro
     //Base class
     class Editor
     {
+    private:
+        void Show_Find_Replace_Panel(std::string* to_find, std::string* to_replace, ImFont* DefaultFont, ImFont* TextFont, unsigned int* panel_height);
+    protected:
+        Search::KeyInstances_Position found_keys; //For searching
     protected:
         enum class SelectionMode
         {
@@ -133,6 +138,7 @@ namespace ArmSimPro
             EditorState mAfter;
         };
 
+        virtual void Show_Search_Panel(std::string& to_find, std::string& to_replace, const ImVec2& offset, const ImVec2& pos_offset, bool show_panel, const ImVec4& bg_col, ImFont* DefaultFont, ImFont* TextFont);
         virtual void Advance(Coordinates& aCoordinates) const = 0;
         virtual void DeleteRange(const Coordinates& aStart, const Coordinates& aEnd)= 0;
         virtual int InsertTextAt(Coordinates& aWhere, const char* aValue)= 0;
@@ -298,7 +304,7 @@ namespace ArmSimPro
         TextEditor(const std::string& full_path, const ImVec4& window_bg_col);
         ~TextEditor() {}
         //bool Render(const ImVec2& aSize = ImVec2(), bool aBorder = false, bool noMove = true);
-        void Render(const ImVec2& aSize = ImVec2(), bool aBorder = false);
+        void Render(bool show_find_replace, std::string& to_find, std::string& to_replace, ImFont* DefaultFont, ImFont* TextFont, const ImVec2& aSize = ImVec2(), bool aBorder = false);
 
         std::string GetFileName() const { return file_name; }
         std::string GetFileExtension() const;
@@ -440,7 +446,7 @@ namespace ArmSimPro
     private:
         std::string aTitle;
         std::string path, file_name;
-        bool isChildWindowFocus;
+
         float mLineSpacing;
         float mLastClick;
         float mTextStart;  // position (in pixels) where a code line starts relative to the left of the TextEditor.
@@ -464,6 +470,10 @@ namespace ArmSimPro
         bool mIgnoreImGuiChild;
         bool mShowWhitespaces;
         bool mCheckComments;
+        bool isChildWindowFocus;
+
+        ImVec2 ChildWindow_Size;
+        ImVec2 ChildWindow_Pos;
 
         const std::string _file_name;
         SelectionMode mSelectionMode;

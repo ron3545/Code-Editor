@@ -8,7 +8,8 @@
 #include <algorithm>
 #include <functional>
 #include <iomanip>
-
+#include <array>
+#include <cmath>
 #include <mio/mmap.hpp>
 #include "../CodeEditor/AppLog.hpp"
 
@@ -24,7 +25,7 @@ void Search::Search_String_On_Files(const std::filesystem::path &project_path, c
         futures.push_back(std::async(std::launch::async, &Search::CheckKey_On_File, this, dest, file, key));
 }
 
-Search::Handler_SearchKeyOnFile Search::Search_Needle_On_Haystack(const std::filesystem::path &path, const std::string &key)
+Search::Handler_SearchKeyOnFile Search::Search_Needle_On_Haystack(const std::filesystem::path &path, const String &key)
 {
     KeyLocations keys_loc;
     size_t line_number = 0;
@@ -45,6 +46,63 @@ Search::Handler_SearchKeyOnFile Search::Search_Needle_On_Haystack(const std::fil
     return Handler_SearchKeyOnFile (key, path, keys_loc );
 }
 
+Search::KeyInstances_Position Search::Search_Needle_On_Haystack(const std::vector<std::string> &text_lines, const String &key, StringMatchingAlgoType string_matching_type)
+{
+    KeyInstances_Position search_result;
+    Lines_number lines_has_key;
+    unsigned int line_num = 0; 
+
+    std::vector<std::future<void>> futures;
+    for(const auto& line : text_lines)
+    {
+        auto searcher = std::boyer_moore_horspool_searcher(key.begin(), key.end());
+        auto it = std::search(line.begin(), line.end(), searcher);
+        const bool is_key_found = it != line.end();
+
+        if(is_key_found)
+        {
+            //Execute in seperate thread
+            futures.push_back(std::async(std::launch::async, [&](){
+                static std::mutex m_mutex;
+                std::lock_guard<std::mutex> lock(m_mutex);
+
+                lines_has_key.push_back(std::make_tuple(line_num, line));
+            }));
+        }
+
+        ++line_num;
+    }
+    
+    if(!lines_has_key.empty())
+    {
+#define LINE_NUM 0
+#define LINE_DATA 1
+
+        //By specifying the enum value, it can automatically select which function to use based on the index of the enum class
+        const std::array<std::function<Search::KeyFound_Containter::Offset(const std::string &text, const std::string &pattern)>, 3> Searching_Algo_Types = {
+            [this](const std::string &text, const std::string &pattern){ return searchKMP(text, pattern); },
+            [this](const std::string &text, const std::string &pattern){ return RobinKarp(text, pattern, INT_MAX); }
+        }; 
+
+        std::vector<std::future<void>> result_futures;
+        for(const auto& line : lines_has_key)
+        {
+            auto line_number = std::get<LINE_NUM>(line);
+            auto line_data = std::get<LINE_DATA>(line);
+
+            result_futures.push_back(std::async(std::launch::async, [&](){
+                static std::mutex search_result_mutex;
+                std::lock_guard<std::mutex> lock(search_result_mutex);
+
+                search_result.push_back(KeyFound_Containter(line_data, 
+                    Searching_Algo_Types[static_cast<unsigned int>(string_matching_type)] (line_data, key), line_number));
+                }));
+        }
+    }
+
+    return search_result;
+}
+
 void Search::GetFileList(DirectoryNode& parentNode, std::vector<std::filesystem::path>* Files)
 {
     const std::string supported_filetype[] = {".h", ".hpp", ".cpp", ".c", ".py", ".txt"}; 
@@ -59,6 +117,89 @@ void Search::GetFileList(DirectoryNode& parentNode, std::vector<std::filesystem:
         if(it != std::end(supported_filetype))
             Files->push_back(parentNode.FullPath);
     }
+}
+
+void Search::preprocessKMP(const std::string &pattern, std::vector<int> &lps)
+{
+    int m = pattern.size();
+    int len = 0; // Length of the previous longest prefix suffix
+
+    lps[0] = 0; // lps[0] is always 0
+
+    for (int i = 1; i < m; ++i) {
+        while (len > 0 && pattern[i] != pattern[len])
+            len = lps[len - 1];
+
+        if (pattern[i] == pattern[len])
+            ++len;
+
+        lps[i] = len;
+    }
+}
+
+Search::KeyFound_Containter::Offset Search::searchKMP(const std::string &text, const std::string &pattern)
+{
+    KeyFound_Containter::Offset offset;
+    size_t n = static_cast<size_t>(text.size());       //Size of the main text
+    size_t m = static_cast<size_t>(pattern.size());    //Size of the patern
+
+    std::vector<int> lps(m, 0);
+    preprocessKMP(pattern, lps);
+
+    int i = 0; // Index for text[]
+    int j = 0; // Index for pattern[]
+
+    while (i < n) {
+        if (pattern[j] == text[i]) {
+            ++i;
+            ++j;
+        }
+
+        if (j == m) {
+            // Pattern found at position (i - j)
+            offset.push_back(i-j);
+
+            j = lps[j - 1];
+        } else if (i < n && pattern[j] != text[i]) {
+            if (j != 0)
+                j = lps[j - 1];
+            else
+                ++i;
+        }
+    }
+
+    return offset;
+}
+
+Search::KeyFound_Containter::Offset Search::RobinKarp(const std::string &text, const std::string &pattern, int prime_number)
+{
+    KeyFound_Containter::Offset key_found_indexes;
+    
+    const int base_number = 256; //number of characters in the input alphabet
+
+    int current_hash = 1;
+    int pattern_hash = 0, text_hash = 0;
+
+    unsigned int pattern_size = pattern.size();
+    unsigned int text_sie = text.size();
+
+    //step 1: calculate the hash value for the pattern
+    pattern_hash = Calculate_KeyHash(pattern, prime_number, base_number);
+    
+
+
+    return key_found_indexes;
+}
+
+int Search::Calculate_KeyHash(const std::string &key, int prime_number, int base_value)
+{
+    const size_t size = key.size();
+    int hash_value = 0;
+
+    for(size_t i = 0; i < key.size(); i++)
+        hash_value += (key[i] * static_cast<int>(std::pow(base_value, size - i))) % prime_number;
+
+    return hash_value;
 }
 
 void Search::CheckKey_On_File(std::set<std::filesystem::path> *dest, const std::filesystem::path &path, std::string_view key)
@@ -108,3 +249,5 @@ void Search::SearchOnLine(const std::string_view& line, std::string_view key, si
         lines->push_back(Handler_KeyLocation(std::string(line), static_cast<unsigned int>(offset), static_cast<unsigned int>(line_number)));
     }
 }
+
+

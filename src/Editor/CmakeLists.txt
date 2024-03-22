@@ -1,13 +1,6 @@
-add_library( Editor "" )
-
-file(GLOB HeadersFiles "${CMAKE_CURRENT_LIST_DIR}/*.h")
-file(GLOB SourceFiles "${CMAKE_CURRENT_LIST_DIR}/*.cpp")
-
-target_sources( Editor 
-    PRIVATE 
-        ${SourceFiles}
-    PUBLIC
-        ${HeadersFiles}
+add_library( Editor 
+    CmdPanel.cpp
+    TextEditor.cpp
 )
 
 target_include_directories( Editor

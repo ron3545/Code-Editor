@@ -29,9 +29,18 @@ public:
     {
         std::string m_Line;
         unsigned int m_offset, m_lineNumber;
+
+        Handler_KeyLocation() : m_Line(0), m_offset(0), m_lineNumber(0) {}
         Handler_KeyLocation(const std::string& Line, unsigned int offset, unsigned int lineNumber)
             : m_Line(Line), m_offset(offset), m_lineNumber(lineNumber)
         {}
+        
+        Handler_KeyLocation& operator = (const Handler_KeyLocation& other)
+        {
+            this->m_Line = other.m_Line;
+            this->m_lineNumber = other.m_lineNumber;
+            this->m_offset = other.m_offset;
+        }
 
         inline bool operator < (const Handler_KeyLocation& other)
         {
@@ -39,17 +48,33 @@ public:
         }
     };
 
+    typedef std::string String;
     typedef std::vector<std::string> Lines;
+    typedef std::vector<std::tuple<unsigned int, std::string>> Lines_number;
     typedef std::vector<Handler_KeyLocation> KeyLocations;
+
+    struct KeyFound_Containter
+    {
+        typedef std::vector<int> Offset;
+
+        String line;
+        Offset m_offset;
+        unsigned int line_number;
+
+        KeyFound_Containter(const String& text, const Offset& offset, unsigned int line) 
+            : line(text), m_offset(offset), line_number(line) {}
+    };
+
+    typedef std::vector<KeyFound_Containter> KeyInstances_Position;
 
     struct Handler_SearchKeyOnFile
     {
         //TODO: modify this
         std::filesystem::path m_path;
         KeyLocations m_KeyLocation;
-        std::string m_key;
+        String m_key;
 
-        Handler_SearchKeyOnFile(const std::string& key,
+        Handler_SearchKeyOnFile(const String& key,
                                 const std::filesystem::path& path,
                                 KeyLocations KeyLocation)
         : m_key(key), m_path(path), m_KeyLocation(KeyLocation)
@@ -58,12 +83,31 @@ public:
         Handler_SearchKeyOnFile() {}
     };
 
-    void Search_String_On_Files(const std::filesystem::path& project_path, const std::string& key, std::set<std::filesystem::path>* dest); 
-    Handler_SearchKeyOnFile Search_Needle_On_Haystack(const std::filesystem::path& path, const std::string& key);
+    void Search_String_On_Files(const std::filesystem::path& project_path, const String& key, std::set<std::filesystem::path>* dest); 
+
+    enum class StringMatchingAlgoType
+    {
+        StringMatchingAlgoType_KMP,
+        StringMatchingAlgoType_RabinKarp
+    };
+
+    Handler_SearchKeyOnFile Search_Needle_On_Haystack(const std::filesystem::path& path, const String& key);
+    KeyInstances_Position Search_Needle_On_Haystack(const std::vector<std::string>& text_lines, const String& key, StringMatchingAlgoType string_matching_type = StringMatchingAlgoType::StringMatchingAlgoType_RabinKarp);
 
     void GetFileList(DirectoryNode& parentNode, std::vector<std::filesystem::path>* Files);
     
 private:    
+    KeyFound_Containter::Offset searchKMP(const std::string& text, const std::string& pattern);
+    KeyFound_Containter::Offset RobinKarp(const std::string& text, const std::string& pattern, int prime_number);
+
+    /// @brief 
+    /// @param key ---------------> The text from which we want to get the hash value
+    /// @param prime_number ------> This number will be used as a modulus to avoid overflow issues
+    /// @param base_value --------> This is the size of the character set
+    /// @return 
+    int Calculate_KeyHash(const std::string& key, int prime_number, int base_value);
+
+    void preprocessKMP(const std::string& pattern, std::vector<int>& lps);
     void CheckKey_On_File(std::set<std::filesystem::path>* dest, const std::filesystem::path& path, std::string_view key);
     void SearchOnLine(const std::string_view& line_view, std::string_view key, size_t line_number, size_t* occurances, KeyLocations* lines);
 };
