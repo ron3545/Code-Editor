@@ -3107,7 +3107,7 @@ namespace  ArmSimPro
     void Editor::Show_Find_Replace_Panel(std::string* to_find, std::string* to_replace, ImFont* DefaultFont, ImFont* TextFont, unsigned int* panel_height)
     {
         std::vector<std::string> text_lines = this->GetTextLines();
-        if(text_lines.empty())
+        if(text_lines.empty() || to_find == nullptr || to_replace ==nullptr)
             return;
 
         static bool isPressed = false;
@@ -3125,20 +3125,23 @@ namespace  ArmSimPro
             
             ImGui::SameLine();
 
+            static bool not_found = false;
             ImGui::PushItemWidth(260);
+
             if(ImGui::InputTextWithHint("##Search", "Search Word on Files", to_find, ImGuiInputTextFlags_EnterReturnsTrue))
+            {
                 this->found_keys = Search::GetInstance().Search_Needle_On_Haystack(text_lines, *to_find);
-            
+                not_found = this->found_keys.empty();
+            }
             ImGui::PopItemWidth();
             ImGui::PopStyleColor(5);
 
             Spacer(15);
 
             ImGui::PushFont(DefaultFont);
-                const bool should_change_color = this->found_keys.empty() && !to_find->empty();
-                if(should_change_color) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0, 0, 1));
+                if(not_found) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0, 0, 1));
                     ImGui::Text("No results");
-                if(should_change_color) ImGui::PopStyleColor();
+                if(not_found) ImGui::PopStyleColor();
             ImGui::PopFont();
 
             const bool is_window_active = ImGui::IsWindowFocused();
@@ -3158,10 +3161,8 @@ namespace  ArmSimPro
             }
 
             Spacer(10);
-            if(ImGui::ArrowButton("##move up", ImGuiDir_Up) 
-                || (is_move_up_active && is_window_active && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter))))
+            if(ImGui::ArrowButton("##move up", ImGuiDir_Up) && !this->found_keys.empty())
             {
-                is_move_up_active = true;
                 //Decrease n_offset(go left) and n_line
                 
                 if(in_offset == 0)
@@ -3179,10 +3180,8 @@ namespace  ArmSimPro
             }
 
             Spacer(7);
-            if(ImGui::ArrowButton("##move down", ImGuiDir_Down) 
-                || (!is_move_up_active && is_window_active && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter))))
+            if(ImGui::ArrowButton("##move down", ImGuiDir_Down) && !this->found_keys.empty())
             {
-                is_move_up_active = false;
                 //Increase n_offset(go right) and n_line
 
                 if(in_offset == offset_size)

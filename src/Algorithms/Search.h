@@ -88,7 +88,8 @@ public:
     enum class StringMatchingAlgoType
     {
         StringMatchingAlgoType_KMP,
-        StringMatchingAlgoType_RabinKarp
+        StringMatchingAlgoType_RabinKarp,
+        StringMatchingAlgoType_Max
     };
 
     Handler_SearchKeyOnFile Search_Needle_On_Haystack(const std::filesystem::path& path, const String& key);
@@ -98,14 +99,7 @@ public:
     
 private:    
     KeyFound_Containter::Offset searchKMP(const std::string& text, const std::string& pattern);
-    KeyFound_Containter::Offset RobinKarp(const std::string& text, const std::string& pattern, int prime_number);
-
-    /// @brief 
-    /// @param key ---------------> The text from which we want to get the hash value
-    /// @param prime_number ------> This number will be used as a modulus to avoid overflow issues
-    /// @param base_value --------> This is the size of the character set
-    /// @return 
-    int Calculate_KeyHash(const std::string& key, int prime_number, int base_value);
+    KeyFound_Containter::Offset RobinKarp(const std::string& text, const std::string& pattern);
 
     void preprocessKMP(const std::string& pattern, std::vector<int>& lps);
     void CheckKey_On_File(std::set<std::filesystem::path>* dest, const std::filesystem::path& path, std::string_view key);

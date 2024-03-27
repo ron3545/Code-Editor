@@ -48,56 +48,25 @@ Search::Handler_SearchKeyOnFile Search::Search_Needle_On_Haystack(const std::fil
 
 Search::KeyInstances_Position Search::Search_Needle_On_Haystack(const std::vector<std::string> &text_lines, const String &key, StringMatchingAlgoType string_matching_type)
 {
-    KeyInstances_Position search_result;
-    Lines_number lines_has_key;
-    unsigned int line_num = 0; 
+    if(text_lines.empty())
+        return KeyInstances_Position();
 
-    std::vector<std::future<void>> futures;
+    KeyInstances_Position search_result;
+    unsigned int line_num = 0; 
+ 
+    //By specifying the enum value, it can automatically select which function to use based on the index of the enum class
+    std::function<Search::KeyFound_Containter::Offset(const std::string &text, const std::string &pattern)> Searching_Algo_Types[(int)StringMatchingAlgoType::StringMatchingAlgoType_Max];
+
+    Searching_Algo_Types[(int)StringMatchingAlgoType::StringMatchingAlgoType_KMP] = [this](const std::string &text, const std::string &pattern){ return searchKMP(text, pattern); };
+    Searching_Algo_Types[(int)StringMatchingAlgoType::StringMatchingAlgoType_RabinKarp] = [this](const std::string &text, const std::string &pattern){ return RobinKarp(text, pattern); };
+
+    std::vector<std::future<void>> result_futures;
     for(const auto& line : text_lines)
     {
-        auto searcher = std::boyer_moore_horspool_searcher(key.begin(), key.end());
-        auto it = std::search(line.begin(), line.end(), searcher);
-        const bool is_key_found = it != line.end();
-
-        if(is_key_found)
-        {
-            //Execute in seperate thread
-            futures.push_back(std::async(std::launch::async, [&](){
-                static std::mutex m_mutex;
-                std::lock_guard<std::mutex> lock(m_mutex);
-
-                lines_has_key.push_back(std::make_tuple(line_num, line));
-            }));
-        }
-
-        ++line_num;
-    }
-    
-    if(!lines_has_key.empty())
-    {
-#define LINE_NUM 0
-#define LINE_DATA 1
-
-        //By specifying the enum value, it can automatically select which function to use based on the index of the enum class
-        const std::array<std::function<Search::KeyFound_Containter::Offset(const std::string &text, const std::string &pattern)>, 3> Searching_Algo_Types = {
-            [this](const std::string &text, const std::string &pattern){ return searchKMP(text, pattern); },
-            [this](const std::string &text, const std::string &pattern){ return RobinKarp(text, pattern, INT_MAX); }
-        }; 
-
-        std::vector<std::future<void>> result_futures;
-        for(const auto& line : lines_has_key)
-        {
-            auto line_number = std::get<LINE_NUM>(line);
-            auto line_data = std::get<LINE_DATA>(line);
-
-            result_futures.push_back(std::async(std::launch::async, [&](){
-                static std::mutex search_result_mutex;
-                std::lock_guard<std::mutex> lock(search_result_mutex);
-
-                search_result.push_back(KeyFound_Containter(line_data, 
-                    Searching_Algo_Types[static_cast<unsigned int>(string_matching_type)] (line_data, key), line_number));
-                }));
-        }
+        auto result = Searching_Algo_Types[static_cast<unsigned int>(string_matching_type)] (line, key);
+        if(!result.empty())
+            search_result.push_back(KeyFound_Containter(line, result, line_num));
+        line_num++;
     }
 
     return search_result;
@@ -171,35 +140,34 @@ Search::KeyFound_Containter::Offset Search::searchKMP(const std::string &text, c
     return offset;
 }
 
-Search::KeyFound_Containter::Offset Search::RobinKarp(const std::string &text, const std::string &pattern, int prime_number)
+size_t Calculate_StringHash(const std::string& text, int prime_number, int modulus)
+{
+    size_t hash = 0;
+    const size_t size = text.size();
+
+    for(size_t i = 0; i < size; i++)
+        hash += (text[i] * static_cast<size_t>(std::pow(prime_number, size - i))) % modulus; 
+
+    return hash;
+}
+
+Search::KeyFound_Containter::Offset Search::RobinKarp(const std::string &text, const std::string &pattern)
 {
     KeyFound_Containter::Offset key_found_indexes;
     
-    const int base_number = 256; //number of characters in the input alphabet
+    const size_t text_size = text.length();
+    const size_t pattern_size = pattern.length();
 
-    int current_hash = 1;
-    int pattern_hash = 0, text_hash = 0;
+    const int prime = 31;
+    const int mod = 1e9 + 9;
 
-    unsigned int pattern_size = pattern.size();
-    unsigned int text_sie = text.size();
+    const size_t pattern_hash = Calculate_StringHash(pattern, prime, mod);
+    const size_t text_hash = Calculate_StringHash(text.substr(0, pattern_size),prime, mod);
 
-    //step 1: calculate the hash value for the pattern
-    pattern_hash = Calculate_KeyHash(pattern, prime_number, base_number);
+    //slide the pattern to the whole text
     
 
-
     return key_found_indexes;
-}
-
-int Search::Calculate_KeyHash(const std::string &key, int prime_number, int base_value)
-{
-    const size_t size = key.size();
-    int hash_value = 0;
-
-    for(size_t i = 0; i < key.size(); i++)
-        hash_value += (key[i] * static_cast<int>(std::pow(base_value, size - i))) % prime_number;
-
-    return hash_value;
 }
 
 void Search::CheckKey_On_File(std::set<std::filesystem::path> *dest, const std::filesystem::path &path, std::string_view key)
