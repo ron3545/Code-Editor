@@ -3109,7 +3109,7 @@ namespace  ArmSimPro
         std::vector<std::string> text_lines = this->GetTextLines();
         if(text_lines.empty() || to_find == nullptr || to_replace ==nullptr)
             return;
-
+        
         static bool isPressed = false;
 
         ImGui::Dummy(ImVec2(0, 6));
@@ -3130,9 +3130,10 @@ namespace  ArmSimPro
 
             if(ImGui::InputTextWithHint("##Search", "Search Word on Files", to_find, ImGuiInputTextFlags_EnterReturnsTrue))
             {
-                this->found_keys = Search::GetInstance().Search_Needle_On_Haystack(text_lines, *to_find);
-                not_found = this->found_keys.empty();
+                Search::GetInstance().Search_Needle_On_Haystack(text_lines, *to_find);
+                //not_found = this->found_keys.empty();
             }
+
             ImGui::PopItemWidth();
             ImGui::PopStyleColor(5);
 
@@ -3154,29 +3155,29 @@ namespace  ArmSimPro
             size_t offset_size = 0;
         
         //ToDo: fix starting from this part
-            if(!this->found_keys.empty())
-            {
-                found_keys_size = this->found_keys.size();
-                offset_size = this->found_keys[in_line].m_offset.size();
-            }
+            // if(!this->found_keys.empty())
+            // {
+            //     found_keys_size = this->found_keys.size();
+            //     offset_size = this->found_keys[in_line].m_offset.size();
+            // }
 
             Spacer(10);
             if(ImGui::ArrowButton("##move up", ImGuiDir_Up) && !this->found_keys.empty())
             {
                 //Decrease n_offset(go left) and n_line
                 
-                if(in_offset == 0)
-                    --in_line;
-                else
-                    --in_offset;
+                // if(in_offset == 0)
+                //     --in_line;
+                // else
+                //     --in_offset;
                 
-                const auto line_number = this->found_keys[in_line].line_number;
-                this->MoveUp(line_number);
+                // const auto line_number = this->found_keys[in_line].line_number;
+                // this->MoveUp(line_number);
 
-                //highlight the text
-                const auto offset =  this->found_keys[in_line].m_offset[in_offset];
-                this->MoveLeft(offset, true);
-                this->MoveLeft(offset + ImGui::CalcTextSize(to_find->c_str()).x, true);
+                // //highlight the text
+                // const auto offset =  this->found_keys[in_line].m_offset[in_offset];
+                // this->MoveLeft(offset, true);
+                // this->MoveLeft(offset + ImGui::CalcTextSize(to_find->c_str()).x, true);
             }
 
             Spacer(7);
@@ -3184,18 +3185,18 @@ namespace  ArmSimPro
             {
                 //Increase n_offset(go right) and n_line
 
-                if(in_offset == offset_size)
-                    ++in_line;
-                else
-                    ++in_offset;
+                // if(in_offset == offset_size)
+                //     ++in_line;
+                // else
+                //     ++in_offset;
 
-                const auto line_number = this->found_keys[in_line].line_number;
-                this->MoveUp(line_number);
+                // const auto line_number = this->found_keys[in_line].line_number;
+                // this->MoveUp(line_number);
 
-                //highlight the text
-                const auto offset =  this->found_keys[in_line].m_offset[in_offset];
-                this->MoveLeft(offset, true);
-                this->MoveLeft(offset + ImGui::CalcTextSize(to_find->c_str()).x, true);
+                // //highlight the text
+                // const auto offset =  this->found_keys[in_line].m_offset[in_offset];
+                // this->MoveLeft(offset, true);
+                // this->MoveLeft(offset + ImGui::CalcTextSize(to_find->c_str()).x, true);
             }
 
             if(isPressed)

@@ -25,7 +25,7 @@ void Search::Search_String_On_Files(const std::filesystem::path &project_path, c
         futures.push_back(std::async(std::launch::async, &Search::CheckKey_On_File, this, dest, file, key));
 }
 
-Search::Handler_SearchKeyOnFile Search::Search_Needle_On_Haystack(const std::filesystem::path &path, const String &key)
+Search::Handler_SearchKeyOnFile Search::Search_Needle_On_Haystack_File(const std::filesystem::path &path, const String &key)
 {
     KeyLocations keys_loc;
     size_t line_number = 0;
@@ -57,13 +57,27 @@ Search::KeyInstances_Position Search::Search_Needle_On_Haystack(const std::vecto
     //By specifying the enum value, it can automatically select which function to use based on the index of the enum class
     std::function<Search::KeyFound_Containter::Offset(const std::string &text, const std::string &pattern)> Searching_Algo_Types[(int)StringMatchingAlgoType::StringMatchingAlgoType_Max];
 
-    Searching_Algo_Types[(int)StringMatchingAlgoType::StringMatchingAlgoType_KMP] = [this](const std::string &text, const std::string &pattern){ return searchKMP(text, pattern); };
-    Searching_Algo_Types[(int)StringMatchingAlgoType::StringMatchingAlgoType_RabinKarp] = [this](const std::string &text, const std::string &pattern){ return RobinKarp(text, pattern); };
+    Searching_Algo_Types[(int)StringMatchingAlgoType::StringMatchingAlgoType_KMP] = [this]
+        (const std::string &text, const std::string &pattern){ return searchKMP(text, pattern); };
+
+    Searching_Algo_Types[(int)StringMatchingAlgoType::StringMatchingAlgoType_RabinKarp] = [this]
+        (const std::string &text, const std::string &pattern){ 
+            const size_t length_text = text.length() + 1;
+            const size_t length_pattern = pattern.length() + 1;
+
+            char* char_array_text = new char[length_text]; 
+            char* char_array_pattern = new char[length_pattern]; 
+
+            strcpy_s(char_array_text, length_text, text.c_str()); 
+            strcpy_s(char_array_pattern, length_pattern, pattern.c_str()); 
+
+            return RobinKarp(char_array_text, char_array_pattern); 
+        };
 
     std::vector<std::future<void>> result_futures;
     for(const auto& line : text_lines)
     {
-        auto result = Searching_Algo_Types[static_cast<unsigned int>(string_matching_type)] (line, key);
+        KeyFound_Containter::Offset result = Searching_Algo_Types[static_cast<unsigned int>(string_matching_type)] (line, key);
         if(!result.empty())
             search_result.push_back(KeyFound_Containter(line, result, line_num));
         line_num++;
@@ -151,21 +165,63 @@ size_t Calculate_StringHash(const std::string& text, int prime_number, int modul
     return hash;
 }
 
-Search::KeyFound_Containter::Offset Search::RobinKarp(const std::string &text, const std::string &pattern)
+Search::KeyFound_Containter::Offset Search::RobinKarp(char pat[], char txt[])
 {
     KeyFound_Containter::Offset key_found_indexes;
     
-    const size_t text_size = text.length();
-    const size_t pattern_size = pattern.length();
+    const int M = static_cast<int>(strlen(pat));
+    const int N = static_cast<int>(strlen(txt));
+    int i, j;
+    int p = 0; // hash value for pattern
+    int t = 0; // hash value for txt
+    int h = 1;
 
-    const int prime = 31;
-    const int mod = 1e9 + 9;
+    int q = INT_MAX;
+    int d = 256;
 
-    const size_t pattern_hash = Calculate_StringHash(pattern, prime, mod);
-    const size_t text_hash = Calculate_StringHash(text.substr(0, pattern_size),prime, mod);
-
-    //slide the pattern to the whole text
-    
+    // The value of h would be "pow(d, M-1)%q"
+    for (i = 0; i < M - 1; i++)
+        h = (h * d) % q;
+ 
+    // Calculate the hash value of pattern and first
+    // window of text
+    for (i = 0; i < M; i++) {
+        p = (d * p + pat[i]) % q;
+        t = (d * t + txt[i]) % q;
+    }
+ 
+    // Slide the pattern over text one by one
+    for (i = 0; i <= N - M; i++) {
+ 
+        // Check the hash values of current window of text
+        // and pattern. If the hash values match then only
+        // check for characters one by one
+        if (p == t) {
+            /* Check for characters one by one */
+            for (j = 0; j < M; j++) {
+                if (txt[i + j] != pat[j]) {
+                    break;
+                }
+            }
+ 
+            // if p == t and pat[0...M-1] = txt[i, i+1,
+            // ...i+M-1]
+ 
+            if (j == M)
+                key_found_indexes.push_back(i);
+        }
+ 
+        // Calculate hash value for next window of text:
+        // Remove leading digit, add trailing digit
+        if (i < N - M) {
+            t = (d * (t - txt[i] * h) + txt[i + M]) % q;
+ 
+            // We might get negative value of t, converting
+            // it to positive
+            if (t < 0)
+                t = (t + q);
+        }
+    }
 
     return key_found_indexes;
 }

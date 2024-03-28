@@ -92,14 +92,14 @@ public:
         StringMatchingAlgoType_Max
     };
 
-    Handler_SearchKeyOnFile Search_Needle_On_Haystack(const std::filesystem::path& path, const String& key);
+    Handler_SearchKeyOnFile Search_Needle_On_Haystack_File(const std::filesystem::path& path, const String& key);
     KeyInstances_Position Search_Needle_On_Haystack(const std::vector<std::string>& text_lines, const String& key, StringMatchingAlgoType string_matching_type = StringMatchingAlgoType::StringMatchingAlgoType_RabinKarp);
 
     void GetFileList(DirectoryNode& parentNode, std::vector<std::filesystem::path>* Files);
     
 private:    
     KeyFound_Containter::Offset searchKMP(const std::string& text, const std::string& pattern);
-    KeyFound_Containter::Offset RobinKarp(const std::string& text, const std::string& pattern);
+    KeyFound_Containter::Offset RobinKarp(char pat[], char txt[]);
 
     void preprocessKMP(const std::string& pattern, std::vector<int>& lps);
     void CheckKey_On_File(std::set<std::filesystem::path>* dest, const std::filesystem::path& path, std::string_view key);

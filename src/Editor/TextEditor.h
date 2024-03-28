@@ -20,6 +20,8 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "../imgui/imgui.h"
 
+#include "../CodeEditor/AppLog.hpp"
+
 namespace ArmSimPro
 {   
     // Represents a character coordinate from the user's point of view,
