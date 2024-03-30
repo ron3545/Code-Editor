@@ -3109,7 +3109,7 @@ namespace  ArmSimPro
         std::vector<std::string> text_lines = this->GetTextLines();
         if(text_lines.empty() || to_find == nullptr || to_replace ==nullptr)
             return;
-        
+
         static bool isPressed = false;
 
         ImGui::Dummy(ImVec2(0, 6));
@@ -3128,11 +3128,20 @@ namespace  ArmSimPro
             static bool not_found = false;
             ImGui::PushItemWidth(260);
 
-            if(ImGui::InputTextWithHint("##Search", "Search Word on Files", to_find, ImGuiInputTextFlags_EnterReturnsTrue))
-            {
-                Search::GetInstance().Search_Needle_On_Haystack(text_lines, *to_find);
-                //not_found = this->found_keys.empty();
+            ImGui::InputTextWithHint("##Search", "Search Word on Files", to_find);
+
+            static std::string prev_search_string;
+            if( (!to_find->empty() && found_keys.empty()) || *to_find != prev_search_string )
+            {   
+                prev_search_string = *to_find;
+
+                found_keys.clear();
+                found_keys = Search::GetInstance().Search_Needle_On_Haystack(text_lines, *to_find);
+                not_found = found_keys.empty();
             }
+            
+            if(to_find->empty())
+                found_keys.clear();
 
             ImGui::PopItemWidth();
             ImGui::PopStyleColor(5);
@@ -3153,16 +3162,19 @@ namespace  ArmSimPro
 
             size_t found_keys_size = 0;
             size_t offset_size = 0;
-        
-        //ToDo: fix starting from this part
-            // if(!this->found_keys.empty())
-            // {
-            //     found_keys_size = this->found_keys.size();
-            //     offset_size = this->found_keys[in_line].m_offset.size();
-            // }
+
+            ShowAppLog(nullptr,found_keys );
+
+            //ToDo: fix starting from this part
+            if(!found_keys.empty())
+            {   
+                auto serach_res = found_keys[0];
+                found_keys_size = found_keys.size();
+                offset_size = found_keys[in_line].m_offset.size();
+            }
 
             Spacer(10);
-            if(ImGui::ArrowButton("##move up", ImGuiDir_Up) && !this->found_keys.empty())
+            if(ImGui::ArrowButton("##move up", ImGuiDir_Up) && !found_keys.empty())
             {
                 //Decrease n_offset(go left) and n_line
                 
@@ -3181,20 +3193,20 @@ namespace  ArmSimPro
             }
 
             Spacer(7);
-            if(ImGui::ArrowButton("##move down", ImGuiDir_Down) && !this->found_keys.empty())
+            if(ImGui::ArrowButton("##move down", ImGuiDir_Down) && !found_keys.empty())
             {
                 //Increase n_offset(go right) and n_line
 
                 // if(in_offset == offset_size)
-                //     ++in_line;
+                //     in_line++;
                 // else
-                //     ++in_offset;
+                //     in_offset++;
 
-                // const auto line_number = this->found_keys[in_line].line_number;
+                // const auto line_number = found_keys[in_line].line_number;
                 // this->MoveUp(line_number);
 
                 // //highlight the text
-                // const auto offset =  this->found_keys[in_line].m_offset[in_offset];
+                // const auto offset =  found_keys[in_line].m_offset[in_offset];
                 // this->MoveLeft(offset, true);
                 // this->MoveLeft(offset + ImGui::CalcTextSize(to_find->c_str()).x, true);
             }
@@ -3224,7 +3236,24 @@ namespace  ArmSimPro
         ImGui::PopFont();
     }
 
-    void Editor::Show_Search_Panel(std::string& to_find, std::string& to_replace, const ImVec2& offset, const ImVec2& pos_ofset, bool show_panel, const ImVec4& bg_col, ImFont* DefaultFont, ImFont* TextFont)
+    void Editor::ShowAppLog(bool* p_open, const Search::KeyInstances_Position &positions)
+    {
+        
+        AppLog log;
+
+        ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
+        ImGui::Begin("Example: Log", p_open);
+        {
+            for(const auto position : positions)
+                log.AddLog("Line Number: %d ; Offset size: %d \n", position.line_number, position.m_offset.size());
+        }
+        ImGui::End();
+
+        // Actually call in the regular Log helper (which will Begin() into the same window as we just did)
+        log.Draw("Example: Log", p_open);
+    }
+
+    void Editor::Show_Search_Panel(std::string &to_find, std::string &to_replace, const ImVec2 &offset, const ImVec2 &pos_ofset, bool show_panel, const ImVec4 &bg_col, ImFont *DefaultFont, ImFont *TextFont)
     {
         const ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                                               ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse; 

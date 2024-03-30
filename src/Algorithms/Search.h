@@ -99,7 +99,7 @@ public:
     
 private:    
     KeyFound_Containter::Offset searchKMP(const std::string& text, const std::string& pattern);
-    KeyFound_Containter::Offset RobinKarp(char pat[], char txt[]);
+    KeyFound_Containter::Offset RobinKarp(const std::string& text, const std::string& pattern);
 
     void preprocessKMP(const std::string& pattern, std::vector<int>& lps);
     void CheckKey_On_File(std::set<std::filesystem::path>* dest, const std::filesystem::path& path, std::string_view key);

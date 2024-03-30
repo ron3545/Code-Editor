@@ -21,6 +21,7 @@
 #include "../imgui/imgui.h"
 
 #include "../CodeEditor/AppLog.hpp"
+#include <future>
 
 namespace ArmSimPro
 {   
@@ -139,6 +140,8 @@ namespace ArmSimPro
             EditorState mBefore;
             EditorState mAfter;
         };
+
+        void ShowAppLog(bool* p_open, const Search::KeyInstances_Position& positions);
 
         virtual void Show_Search_Panel(std::string& to_find, std::string& to_replace, const ImVec2& offset, const ImVec2& pos_offset, bool show_panel, const ImVec4& bg_col, ImFont* DefaultFont, ImFont* TextFont);
         virtual void Advance(Coordinates& aCoordinates) const = 0;

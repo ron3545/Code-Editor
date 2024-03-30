@@ -48,7 +48,7 @@ Search::Handler_SearchKeyOnFile Search::Search_Needle_On_Haystack_File(const std
 
 Search::KeyInstances_Position Search::Search_Needle_On_Haystack(const std::vector<std::string> &text_lines, const String &key, StringMatchingAlgoType string_matching_type)
 {
-    if(text_lines.empty())
+    if(text_lines.empty() || key.empty())
         return KeyInstances_Position();
 
     KeyInstances_Position search_result;
@@ -62,22 +62,12 @@ Search::KeyInstances_Position Search::Search_Needle_On_Haystack(const std::vecto
 
     Searching_Algo_Types[(int)StringMatchingAlgoType::StringMatchingAlgoType_RabinKarp] = [this]
         (const std::string &text, const std::string &pattern){ 
-            const size_t length_text = text.length() + 1;
-            const size_t length_pattern = pattern.length() + 1;
-
-            char* char_array_text = new char[length_text]; 
-            char* char_array_pattern = new char[length_pattern]; 
-
-            strcpy_s(char_array_text, length_text, text.c_str()); 
-            strcpy_s(char_array_pattern, length_pattern, pattern.c_str()); 
-
-            return RobinKarp(char_array_text, char_array_pattern); 
+            return RobinKarp(text, pattern); 
         };
 
-    std::vector<std::future<void>> result_futures;
     for(const auto& line : text_lines)
     {
-        KeyFound_Containter::Offset result = Searching_Algo_Types[static_cast<unsigned int>(string_matching_type)] (line, key);
+        KeyFound_Containter::Offset result = Searching_Algo_Types[(int)string_matching_type] (line, key);
         if(!result.empty())
             search_result.push_back(KeyFound_Containter(line, result, line_num));
         line_num++;
@@ -165,10 +155,17 @@ size_t Calculate_StringHash(const std::string& text, int prime_number, int modul
     return hash;
 }
 
-Search::KeyFound_Containter::Offset Search::RobinKarp(char pat[], char txt[])
+Search::KeyFound_Containter::Offset Search::RobinKarp(const std::string& text, const std::string& pattern)
 {
     KeyFound_Containter::Offset key_found_indexes;
     
+    const size_t length_text = text.length() + 1;
+    const size_t length_pattern = pattern.length() + 1;
+
+    char* txt = new char[length_text]; 
+    char* pat = new char[length_pattern]; 
+
+
     const int M = static_cast<int>(strlen(pat));
     const int N = static_cast<int>(strlen(txt));
     int i, j;
@@ -222,7 +219,11 @@ Search::KeyFound_Containter::Offset Search::RobinKarp(char pat[], char txt[])
                 t = (t + q);
         }
     }
-
+    delete[] txt;
+    txt = NULL;
+    delete[] pat;
+    pat = NULL;
+    
     return key_found_indexes;
 }
 
