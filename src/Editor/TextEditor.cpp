@@ -3106,11 +3106,14 @@ namespace  ArmSimPro
 
     void Editor::Show_Find_Replace_Panel(std::string* to_find, std::string* to_replace, ImFont* DefaultFont, ImFont* TextFont, unsigned int* panel_height)
     {
-        std::vector<std::string> text_lines = this->GetTextLines();
+        std::vector<std::string> text_lines = this->GetTextLines(); //----> this causes an error
         if(text_lines.empty() || to_find == nullptr || to_replace ==nullptr)
             return;
 
-        static bool isPressed = false;
+        const bool is_window_active = ImGui::IsWindowFocused();
+       
+        size_t found_keys_size = 0;
+        size_t offset_size = 0;
 
         ImGui::Dummy(ImVec2(0, 6));
         ImGui::PushFont(TextFont);
@@ -3128,7 +3131,7 @@ namespace  ArmSimPro
             static bool not_found = false;
             ImGui::PushItemWidth(260);
 
-            ImGui::InputTextWithHint("##Search", "Search Word on Files", to_find);
+            ImGui::InputTextWithHint("##Search", "Search Word on Files", to_find, ImGuiInputTextFlags_EnterReturnsTrue);
 
             static std::string prev_search_string;
             if( (!to_find->empty() && found_keys.empty()) || *to_find != prev_search_string )
@@ -3149,19 +3152,17 @@ namespace  ArmSimPro
             Spacer(15);
 
             ImGui::PushFont(DefaultFont);
-                if(not_found) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0, 0, 1));
+                if(not_found) 
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0, 0, 1));
                     ImGui::Text("No results");
-                if(not_found) ImGui::PopStyleColor();
+                    ImGui::PopStyleColor();
+                }
+                else
+                {
+                    
+                }
             ImGui::PopFont();
-
-            const bool is_window_active = ImGui::IsWindowFocused();
-            static bool is_move_up_active = false;
-            
-            static unsigned int in_line = 0;   //index to get the next line of string from the std::vector
-            static unsigned int in_offset = 0; //index to get the next offset from the std::vector
-
-            size_t found_keys_size = 0;
-            size_t offset_size = 0;
 
             ShowAppLog(nullptr,found_keys );
 

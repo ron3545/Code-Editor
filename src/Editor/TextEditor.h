@@ -89,6 +89,16 @@ namespace ArmSimPro
     //Base class
     class Editor
     {
+    //Variables for controlling the searched highlighter
+        bool is_move_up_active = false;
+        bool isPressed = false;
+
+        unsigned int in_line = 0;   //index to get the next line of string from the std::vector
+        unsigned int in_offset = 0; //index to get the next offset from the std::vector
+
+        unsigned int current_index_found_keys = 1; //current index should be starting at 1
+        unsigned int total_index_found_keys = 0;
+
     private:
         void Show_Find_Replace_Panel(std::string* to_find, std::string* to_replace, ImFont* DefaultFont, ImFont* TextFont, unsigned int* panel_height);
     protected:

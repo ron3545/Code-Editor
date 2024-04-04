@@ -49,7 +49,6 @@ public:
     };
 
     typedef std::string String;
-    typedef std::vector<std::string> Lines;
     typedef std::vector<std::tuple<unsigned int, std::string>> Lines_number;
     typedef std::vector<Handler_KeyLocation> KeyLocations;
 
@@ -57,12 +56,11 @@ public:
     {
         typedef std::vector<int> Offset;
 
-        String line;
         Offset m_offset;
         unsigned int line_number;
 
-        KeyFound_Containter(const String& text, const Offset& offset, unsigned int line) 
-            : line(text), m_offset(offset), line_number(line) {}
+        KeyFound_Containter(const Offset& offset, unsigned int line) 
+            : m_offset(offset), line_number(line) {}
     };
 
     typedef std::vector<KeyFound_Containter> KeyInstances_Position;
@@ -93,17 +91,18 @@ public:
     };
 
     Handler_SearchKeyOnFile Search_Needle_On_Haystack_File(const std::filesystem::path& path, const String& key);
-    KeyInstances_Position Search_Needle_On_Haystack(const std::vector<std::string>& text_lines, const String& key, StringMatchingAlgoType string_matching_type = StringMatchingAlgoType::StringMatchingAlgoType_RabinKarp);
+    KeyInstances_Position Search_Needle_On_Haystack(const std::vector<std::string>& text_lines, const String& key);
 
     void GetFileList(DirectoryNode& parentNode, std::vector<std::filesystem::path>* Files);
     
 private:    
     KeyFound_Containter::Offset searchKMP(const std::string& text, const std::string& pattern);
-    KeyFound_Containter::Offset RobinKarp(const std::string& text, const std::string& pattern);
+    KeyInstances_Position SearchText(const std::vector<std::string>& text, const std::string& pattern);
 
-    void preprocessKMP(const std::string& pattern, std::vector<int>& lps);
     void CheckKey_On_File(std::set<std::filesystem::path>* dest, const std::filesystem::path& path, std::string_view key);
     void SearchOnLine(const std::string_view& line_view, std::string_view key, size_t line_number, size_t* occurances, KeyLocations* lines);
+
+    KeyFound_Containter::Offset RabinKarp(const std::string& Text, const std::string& Pattern);    
 };
 
 

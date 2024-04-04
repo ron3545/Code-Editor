@@ -33,7 +33,7 @@ Search::Handler_SearchKeyOnFile Search::Search_Needle_On_Haystack_File(const std
 
     std::ifstream file(path);
     
-    Lines lines;
+    std::vector<std::string> lines;
 
     if (file.is_open()) {
         std::string line;
@@ -46,35 +46,31 @@ Search::Handler_SearchKeyOnFile Search::Search_Needle_On_Haystack_File(const std
     return Handler_SearchKeyOnFile (key, path, keys_loc );
 }
 
-Search::KeyInstances_Position Search::Search_Needle_On_Haystack(const std::vector<std::string> &text_lines, const String &key, StringMatchingAlgoType string_matching_type)
+Search::KeyInstances_Position Search::Search_Needle_On_Haystack(const std::vector<std::string> &text_lines, const String &key)
 {
     if(text_lines.empty() || key.empty())
         return KeyInstances_Position();
 
-    KeyInstances_Position search_result;
-    unsigned int line_num = 0; 
- 
-    //By specifying the enum value, it can automatically select which function to use based on the index of the enum class
-    std::function<Search::KeyFound_Containter::Offset(const std::string &text, const std::string &pattern)> Searching_Algo_Types[(int)StringMatchingAlgoType::StringMatchingAlgoType_Max];
-
-    Searching_Algo_Types[(int)StringMatchingAlgoType::StringMatchingAlgoType_KMP] = [this]
-        (const std::string &text, const std::string &pattern){ return searchKMP(text, pattern); };
-
-    Searching_Algo_Types[(int)StringMatchingAlgoType::StringMatchingAlgoType_RabinKarp] = [this]
-        (const std::string &text, const std::string &pattern){ 
-            return RobinKarp(text, pattern); 
-        };
-
-    for(const auto& line : text_lines)
-    {
-        KeyFound_Containter::Offset result = Searching_Algo_Types[(int)string_matching_type] (line, key);
-        if(!result.empty())
-            search_result.push_back(KeyFound_Containter(line, result, line_num));
-        line_num++;
-    }
-
-    return search_result;
+    return SearchText(text_lines, key);
 }
+
+// Function to implement Rabin-Karp algorithm
+Search::KeyInstances_Position Search::SearchText(const std::vector<std::string>& text, const std::string& pattern) 
+{
+    KeyInstances_Position key_pos;
+    int line_num = 0;
+    
+    for (const auto& str : text) 
+    {
+        ++line_num;
+        const KeyFound_Containter::Offset offset = RabinKarp(str, pattern);
+
+        if(!offset.empty())
+            key_pos.push_back(KeyFound_Containter(offset, line_num));
+    }
+    return key_pos;
+}
+
 
 void Search::GetFileList(DirectoryNode& parentNode, std::vector<std::filesystem::path>* Files)
 {
@@ -92,58 +88,6 @@ void Search::GetFileList(DirectoryNode& parentNode, std::vector<std::filesystem:
     }
 }
 
-void Search::preprocessKMP(const std::string &pattern, std::vector<int> &lps)
-{
-    int m = pattern.size();
-    int len = 0; // Length of the previous longest prefix suffix
-
-    lps[0] = 0; // lps[0] is always 0
-
-    for (int i = 1; i < m; ++i) {
-        while (len > 0 && pattern[i] != pattern[len])
-            len = lps[len - 1];
-
-        if (pattern[i] == pattern[len])
-            ++len;
-
-        lps[i] = len;
-    }
-}
-
-Search::KeyFound_Containter::Offset Search::searchKMP(const std::string &text, const std::string &pattern)
-{
-    KeyFound_Containter::Offset offset;
-    size_t n = static_cast<size_t>(text.size());       //Size of the main text
-    size_t m = static_cast<size_t>(pattern.size());    //Size of the patern
-
-    std::vector<int> lps(m, 0);
-    preprocessKMP(pattern, lps);
-
-    int i = 0; // Index for text[]
-    int j = 0; // Index for pattern[]
-
-    while (i < n) {
-        if (pattern[j] == text[i]) {
-            ++i;
-            ++j;
-        }
-
-        if (j == m) {
-            // Pattern found at position (i - j)
-            offset.push_back(i-j);
-
-            j = lps[j - 1];
-        } else if (i < n && pattern[j] != text[i]) {
-            if (j != 0)
-                j = lps[j - 1];
-            else
-                ++i;
-        }
-    }
-
-    return offset;
-}
-
 size_t Calculate_StringHash(const std::string& text, int prime_number, int modulus)
 {
     size_t hash = 0;
@@ -153,78 +97,6 @@ size_t Calculate_StringHash(const std::string& text, int prime_number, int modul
         hash += (text[i] * static_cast<size_t>(std::pow(prime_number, size - i))) % modulus; 
 
     return hash;
-}
-
-Search::KeyFound_Containter::Offset Search::RobinKarp(const std::string& text, const std::string& pattern)
-{
-    KeyFound_Containter::Offset key_found_indexes;
-    
-    const size_t length_text = text.length() + 1;
-    const size_t length_pattern = pattern.length() + 1;
-
-    char* txt = new char[length_text]; 
-    char* pat = new char[length_pattern]; 
-
-
-    const int M = static_cast<int>(strlen(pat));
-    const int N = static_cast<int>(strlen(txt));
-    int i, j;
-    int p = 0; // hash value for pattern
-    int t = 0; // hash value for txt
-    int h = 1;
-
-    int q = INT_MAX;
-    int d = 256;
-
-    // The value of h would be "pow(d, M-1)%q"
-    for (i = 0; i < M - 1; i++)
-        h = (h * d) % q;
- 
-    // Calculate the hash value of pattern and first
-    // window of text
-    for (i = 0; i < M; i++) {
-        p = (d * p + pat[i]) % q;
-        t = (d * t + txt[i]) % q;
-    }
- 
-    // Slide the pattern over text one by one
-    for (i = 0; i <= N - M; i++) {
- 
-        // Check the hash values of current window of text
-        // and pattern. If the hash values match then only
-        // check for characters one by one
-        if (p == t) {
-            /* Check for characters one by one */
-            for (j = 0; j < M; j++) {
-                if (txt[i + j] != pat[j]) {
-                    break;
-                }
-            }
- 
-            // if p == t and pat[0...M-1] = txt[i, i+1,
-            // ...i+M-1]
- 
-            if (j == M)
-                key_found_indexes.push_back(i);
-        }
- 
-        // Calculate hash value for next window of text:
-        // Remove leading digit, add trailing digit
-        if (i < N - M) {
-            t = (d * (t - txt[i] * h) + txt[i + M]) % q;
- 
-            // We might get negative value of t, converting
-            // it to positive
-            if (t < 0)
-                t = (t + q);
-        }
-    }
-    delete[] txt;
-    txt = NULL;
-    delete[] pat;
-    pat = NULL;
-    
-    return key_found_indexes;
 }
 
 void Search::CheckKey_On_File(std::set<std::filesystem::path> *dest, const std::filesystem::path &path, std::string_view key)
@@ -275,4 +147,49 @@ void Search::SearchOnLine(const std::string_view& line, std::string_view key, si
     }
 }
 
+Search::KeyFound_Containter::Offset Search::RabinKarp(const std::string &Text, const std::string &Pattern)
+{
+    KeyFound_Containter::Offset offset;
 
+     // Calculating the length of S and P 
+    int Ns = Text.length();
+    int Np = Pattern.length();
+    
+    if(Ns < Np)
+        return KeyFound_Containter::Offset();
+
+    // Initialize the value of prime number and mod for calculating hash values
+    int prime = 31;
+    int mod = 1e9 + 9;
+        
+    // Calculating the power raise to the taken prime
+    std::vector<long long> p_pow(Ns);
+    p_pow[0] = 1; 
+    for (int i = 1; i < Ns; i++) 
+        p_pow[i] = (p_pow[i-1] * prime) % mod;
+    
+   	
+    std::vector<long long> h(Ns + 1, 0); 
+    for (int i = 0; i < Ns; i++)
+        h[i+1] = (h[i] + (Text[i] - 'a' + 1) * p_pow[i]) % mod;
+     
+    
+    // Calculating the hash value of P 
+    long long hash_P = 0; 
+    for (int i = 0; i < Np; i++) 
+        hash_P = (hash_P + (Pattern[i] - 'a' + 1) * p_pow[i]) % mod; 
+    
+  	
+    /*
+       Now slide the pattern by one character and check for the corresponding
+       hash value to match with the hash value of the given pattern
+    */
+    for (int i = 0; i + Np - 1 < Ns; i++) 
+    { 
+        long long curr_hash = (h[i+Np] + mod - h[i]) % mod; 
+        if (curr_hash == hash_P * p_pow[i] % mod)
+            offset.push_back(i);
+    }
+
+    return offset;
+}
