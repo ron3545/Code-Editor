@@ -3158,13 +3158,35 @@ namespace  ArmSimPro
                     ImGui::Text("No results");
                     ImGui::PopStyleColor();
                 }
+                else if(to_find->empty())
+                {
+                    found_keys.clear();
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
+                    ImGui::Text("No results");
+                    ImGui::PopStyleColor(); 
+                }
                 else
                 {
-                    
+                    //Count how many the found keys are
+                    static std::string prev_find;
+                    if(!this->found_keys.empty() && !to_find->empty() && *to_find != prev_find)
+                    {
+                        prev_find = *to_find;
+                        total_index_found_keys = 0;  //Make sure that key start from 0 before adding value
+                        for(const auto& keys : found_keys)
+                            total_index_found_keys += (unsigned int)keys.m_offset.size();
+                    }
+
+                    ImGui::Text("%d of %d", current_index_found_keys, total_index_found_keys);
                 }
             ImGui::PopFont();
+            
+            //Highlight all the found keys
+            {
 
-            ShowAppLog(nullptr,found_keys );
+            }
+
+            //ShowAppLog(nullptr,found_keys );
 
             //ToDo: fix starting from this part
             if(!found_keys.empty())
