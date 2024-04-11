@@ -104,17 +104,16 @@ namespace ArmSimPro
 
             ImGui::SameLine();
             ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 75);
-            if(ImGui::ArrowButton("##move up", ImGuiDir_Up) && (!this->coordinates.empty() || this->coordinates.size() > 1) && coordinate_index > 0)
+            if(ImGui::ArrowButton("##move up", ImGuiDir_Up) && !this->coordinates.empty())
             {
-                --coordinate_index;
-
-                const Coordinates curr_coord = this->coordinates[coordinate_index];
+                curr_coord = this->coordinates[(coordinate_index > 0)? coordinate_index-- :  coordinate_index = 0];
+                current_index_found_keys = (coordinate_index != 0)? coordinate_index : 1; //Update Display
 
                 const Coordinates current_cursor_coordinate = GetActualCursorCoordinates();
-                const int line_amount = current_cursor_coordinate.mLine - curr_coord.mLine;
+                const unsigned int line_amount = curr_coord.mLine - current_cursor_coordinate.mLine;
 
                 const int colmn = curr_coord.mColumn + to_find_size;
-                const int Colmn_amount = current_cursor_coordinate.mColumn - colmn;
+                const int Colmn_amount = colmn - current_cursor_coordinate.mColumn;
                 
                 MoveUp(line_amount);
                 MoveLeft(Colmn_amount);
@@ -283,9 +282,10 @@ namespace ArmSimPro
                 ImVec2 vstart(LineStartScreenPos.x + mTextStart + sstart, LineStartScreenPos.y);
                 ImVec2 vend(LineStartScreenPos.x + mTextStart + ssend, LineStartScreenPos.y + mCharAdvance.y);
 
-                ImVec4 color = ImVec4(0.8f, 0.9f, 0.17f, 0.35f);
+                ImVec4 color = ImVec4(0.8f, 0.9f, 0.17f, 0.35f); //yellow
                 if(curr_coord == coordinate)
-                    color = ImVec4(0.901f, 0.286f, 0.043f, 0.35f);
+                    color = ImVec4(0.901f, 0.286f, 0.043f, 0.35f); //red 
+
                 ImGui::GetWindowDrawList()->AddRectFilled(vstart, vend, ImGui::ColorConvertFloat4ToU32(color));
             }
         }
