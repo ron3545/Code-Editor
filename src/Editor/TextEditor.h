@@ -23,195 +23,10 @@
 #include "../CodeEditor/AppLog.hpp"
 #include <future>
 
+#include "Editor.hpp"
+
 namespace ArmSimPro
 {   
-    // Represents a character coordinate from the user's point of view,
-    // i. e. consider an uniform grid (assuming fixed-width font) on the
-    // screen as it is rendered, and each cell has its own coordinate, starting from 0.
-    // Tabs are counted as [1..mTabSize] count empty spaces, depending on
-    // how many space is necessary to reach the next tab stop.
-    // For example, coordinate (1, 5) represents the character 'B' in a line "\tABC", when mTabSize = 4,
-    // because it is rendered as "    ABC" on the screen.
-    struct Coordinates
-    {
-        int mLine, mColumn;
-        Coordinates() : mLine(0), mColumn(0) {}
-        Coordinates(int aLine, int aColumn) : mLine(aLine), mColumn(aColumn)
-        {
-            assert(aLine >= 0);
-            assert(aColumn >= 0);
-        }
-        static Coordinates Invalid() { static Coordinates invalid(-1, -1); return invalid; }
-
-        bool operator ==(const Coordinates& o) const
-        {
-            return
-                mLine == o.mLine &&
-                mColumn == o.mColumn;
-        }
-
-        bool operator !=(const Coordinates& o) const
-        {
-            return
-                mLine != o.mLine ||
-                mColumn != o.mColumn;
-        }
-
-        bool operator <(const Coordinates& o) const
-        {
-            if (mLine != o.mLine)
-                return mLine < o.mLine;
-            return mColumn < o.mColumn;
-        }
-
-        bool operator >(const Coordinates& o) const
-        {
-            if (mLine != o.mLine)
-                return mLine > o.mLine;
-            return mColumn > o.mColumn;
-        }
-
-        bool operator <=(const Coordinates& o) const
-        {
-            if (mLine != o.mLine)
-                return mLine < o.mLine;
-            return mColumn <= o.mColumn;
-        }
-
-        bool operator >=(const Coordinates& o) const
-        {
-            if (mLine != o.mLine)
-                return mLine > o.mLine;
-            return mColumn >= o.mColumn;
-        }
-    };
-
-    //Base class
-    class Editor
-    {
-    //Variables for controlling the searched highlighter
-        bool is_move_up_active = false;
-        bool isPressed = false;
-
-        unsigned int in_line = 0;   //index to get the next line of string from the std::vector
-        unsigned int in_offset = 0; //index to get the next offset from the std::vector
-
-        unsigned int current_index_found_keys = 1; //current index should be starting at 1
-        unsigned int total_index_found_keys = 0;
-
-    private:
-        void Show_Find_Replace_Panel(std::string* to_find, std::string* to_replace, ImFont* DefaultFont, ImFont* TextFont, unsigned int* panel_height);
-    protected:
-        Search::KeyInstances_Position found_keys; //For searching
-    protected:
-        enum class SelectionMode
-        {
-            Normal,
-            Word,
-            Line
-        };
-
-        struct EditorState
-        {
-            Coordinates mSelectionStart;
-            Coordinates mSelectionEnd;
-            Coordinates mCursorPosition;
-        };
-
-        class UndoRecord
-        {
-        public:
-            UndoRecord() {}
-            ~UndoRecord() {}
-
-            UndoRecord(
-                const std::string& aAdded,
-                const Coordinates aAddedStart,
-                const Coordinates aAddedEnd,
-
-                const std::string& aRemoved,
-                const Coordinates aRemovedStart,
-                const Coordinates aRemovedEnd,
-
-                EditorState& aBefore,
-                EditorState& aAfter);
-
-            void Undo(Editor* aEditor, EditorState* mState);
-            void Redo(Editor* aEditor, EditorState* mState);
-
-            std::string mAdded;
-            Coordinates mAddedStart;
-            Coordinates mAddedEnd;
-
-            std::string mRemoved;
-            Coordinates mRemovedStart;
-            Coordinates mRemovedEnd;
-
-            EditorState mBefore;
-            EditorState mAfter;
-        };
-
-        void ShowAppLog(bool* p_open, const Search::KeyInstances_Position& positions);
-
-        virtual void Show_Search_Panel(std::string& to_find, std::string& to_replace, const ImVec2& offset, const ImVec2& pos_offset, bool show_panel, const ImVec4& bg_col, ImFont* DefaultFont, ImFont* TextFont);
-        virtual void Advance(Coordinates& aCoordinates) const = 0;
-        virtual void DeleteRange(const Coordinates& aStart, const Coordinates& aEnd)= 0;
-        virtual int InsertTextAt(Coordinates& aWhere, const char* aValue)= 0;
-        virtual void AddUndo(UndoRecord& aValue)= 0;
-
-        virtual Coordinates ScreenPosToCoordinates(const ImVec2& aPosition) const = 0;
-        virtual Coordinates FindWordStart(const Coordinates& aFrom) const = 0;
-        virtual Coordinates FindWordEnd(const Coordinates& aFrom) const = 0;
-        virtual Coordinates FindNextWord(const Coordinates& aFrom) const = 0;
-        
-        virtual void Colorize(int aFromLine = 0, int aCount = -1)= 0;
-        virtual void ColorizeRange(int aFromLine = 0, int aToLine = 0)= 0;
-        virtual void ColorizeInternal()= 0;
-        virtual float TextDistanceToLineStart(const Coordinates& aFrom) const= 0;
-        virtual void EnsureCursorVisible()= 0;
-        virtual int GetPageSize() const= 0;
-
-        virtual void InsertText(const std::string& aValue) = 0;
-        virtual void InsertText(const char* aValue) = 0;
- 
-        virtual void MoveUp(int aAmount = 1, bool aSelect = false) = 0;
-        virtual void MoveDown(int aAmount = 1, bool aSelect = false) = 0;
-        virtual void MoveLeft(int aAmount = 1, bool aSelect = false, bool aWordMode = false) = 0;
-        virtual void MoveRight(int aAmount = 1, bool aSelect = false, bool aWordMode = false) = 0;
-        virtual void MoveTop(bool aSelect = false) = 0;
-        virtual void MoveBottom(bool aSelect = false) = 0;
-        virtual void MoveHome(bool aSelect = false) = 0;
-        virtual void MoveEnd(bool aSelect = false) = 0;
-
-        virtual void SetSelectionStart(const Coordinates& aPosition) = 0;
-        virtual void SetSelectionEnd(const Coordinates& aPosition) = 0;
-        virtual void SetSelection(const Coordinates& aStart, const Coordinates& aEnd, SelectionMode aMode = SelectionMode::Normal) = 0;
-        virtual void SelectWordUnderCursor() = 0;
-        virtual void SelectAll() = 0;
-        virtual bool HasSelection() const = 0;
-
-        virtual void Copy() = 0;
-        virtual void Cut() = 0;
-        virtual void Paste() = 0;
-        virtual void Delete() = 0;
- 
-        virtual bool CanUndo() const = 0;
-        virtual bool CanRedo() const = 0;
-        virtual void Undo(int aSteps = 1) = 0;
-        virtual void Redo(int aSteps = 1) = 0;
-
-        virtual void SetText(const std::string& aText) = 0;
-        virtual std::string GetText() const = 0;
-
-        virtual void SetCursorPosition(const Coordinates& aPosition) = 0;
-
-        virtual void SetTextLines(const std::vector<std::string>& aLines) = 0;
-        virtual std::vector<std::string> GetTextLines() const = 0;
-
-        virtual std::string GetSelectedText() const = 0;
-        virtual std::string GetCurrentLineText()const = 0;
-    };
-
     // Derived Class
     class TextEditor : protected Editor
     {
@@ -316,10 +131,10 @@ namespace ArmSimPro
         TextEditor& operator=(TextEditor& editor) { return *this; }
 
         TextEditor();
-        TextEditor(const std::string& full_path, const ImVec4& window_bg_col);
+        TextEditor(const std::string& full_path, const ImVec4& window_bg_col, ImFont* textfont, ImFont* defaultfont);
         ~TextEditor() {}
         //bool Render(const ImVec2& aSize = ImVec2(), bool aBorder = false, bool noMove = true);
-        void Render(bool show_find_replace, std::string& to_find, std::string& to_replace, ImFont* DefaultFont, ImFont* TextFont, const ImVec2& aSize = ImVec2(), bool aBorder = false);
+        void Render(bool show_find_replace, std::string& to_find, std::string& to_replace, const ImVec2& aSize = ImVec2(), bool aBorder = false);
 
         std::string GetFileName() const { return file_name; }
         std::string GetFileExtension() const;
@@ -415,7 +230,7 @@ namespace ArmSimPro
         typedef std::vector<UndoRecord> UndoBuffer;
 
         void SetRegexList(const std::string& first, const PaletteIndex& second);
-        void RenderMainEditor(ImDrawList* drawList, int lineNo, ImVec2& cursorScreenPos, ImVec2& contentSize, float *longest, float scrollX, float spaceSize, char *buf, size_t buf_size = 16);
+        void RenderMainEditor(bool show_find_replace, std::string& to_find, std::string& to_replace, ImDrawList* drawList, int lineNo, ImVec2& cursorScreenPos, ImVec2& contentSize, float *longest, float scrollX, float spaceSize, char *buf, size_t buf_size = 16);
 
         void Colorize(int aFromLine = 0, int aCount = -1) override;
         void ColorizeRange(int aFromLine = 0, int aToLine = 0) override;
@@ -425,8 +240,8 @@ namespace ArmSimPro
         int GetPageSize() const override;
 
         std::string GetText(const Coordinates& aStart, const Coordinates& aEnd) const;
-        Coordinates GetActualCursorCoordinates() const;
-        Coordinates SanitizeCoordinates(const Coordinates& aValue) const;
+        Coordinates GetActualCursorCoordinates() const override;
+        Coordinates SanitizeCoordinates(const Coordinates& aValue) const override;
 
         void Advance(Coordinates& aCoordinates) const override;
         void DeleteRange(const Coordinates& aStart, const Coordinates& aEnd) override;
@@ -438,10 +253,11 @@ namespace ArmSimPro
         Coordinates FindWordEnd(const Coordinates& aFrom) const override;
         Coordinates FindNextWord(const Coordinates& aFrom) const override;
 
-        int GetCharacterIndex(const Coordinates& aCoordinates) const;
-        int GetCharacterColumn(int aLine, int aIndex) const;
-        int GetLineCharacterCount(int aLine) const;
-        int GetLineMaxColumn(int aLine) const;
+        int GetCharacterIndex(const Coordinates& aCoordinates) const override;
+        int GetCharacterColumn(int aLine, int aIndex) const override;
+        int GetLineCharacterCount(int aLine) const override;
+        int GetLineMaxColumn(int aLine) const override;
+
         bool IsOnWordBoundary(const Coordinates& aAt) const;
         void RemoveLine(int aStart, int aEnd);
         void RemoveLine(int aIndex);
@@ -456,7 +272,7 @@ namespace ArmSimPro
 
         void HandleKeyboardInputs();
         void HandleMouseInputs();
-        void RenderEditor();
+        void RenderEditor(bool show_find_replace, std::string& to_find, std::string& to_replace);
         
     private:
         std::string aTitle;

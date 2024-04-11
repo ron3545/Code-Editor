@@ -723,7 +723,7 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
 void CodeEditor::DisplayContents(TextEditors::iterator it)
 {
     ImGui::PushFont(CodeEditorFont);
-        it->editor.Render(use_search_panel, to_find, to_replace, DefaultFont, TextFont);
+        it->editor.Render(use_search_panel, to_find, to_replace);
     ImGui::PopFont();
 
     if(it->editor.IsTextChanged())
@@ -963,7 +963,7 @@ void CodeEditor::ShowProjectWizard(const char *label)
 void CodeEditor::LoadEditor(const std::string& file)
 {
     std::lock_guard<std::mutex> lock(LoadEditor_mutex);
-    ArmSimPro::TextEditor editor(file,bg_col.GetCol());
+    ArmSimPro::TextEditor editor(file,bg_col.GetCol(), TextFont, DefaultFont);
     auto programming_lang = ArmSimPro::TextEditor::LanguageDefinition::CPlusPlus();
 
     for (int i = 0; i < sizeof(ppnames) / sizeof(ppnames[0]); ++i)
@@ -994,7 +994,6 @@ void CodeEditor::LoadEditor(const std::string& file)
         t.close();
         editor.SetText(str);
     }
-
     // ArmSimPro::TextEditor::Palette palette = editor.GetPalette();
     // palette[(int)ArmSimPro::TextEditor::PaletteIndex::Background] = ImGui::ColorConvertFloat4ToU32(child_col.GetCol());
     // palette[(int)ArmSimPro::TextEditor::PaletteIndex::Number] = ImGui::ColorConvertFloat4ToU32(RGBA(189, 219, 173, 255).GetCol());

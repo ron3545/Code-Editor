@@ -1,6 +1,8 @@
 add_library( Editor 
     CmdPanel.cpp
     TextEditor.cpp
+    Editor.cpp
+    
 )
 
 target_include_directories( Editor

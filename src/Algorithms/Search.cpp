@@ -62,11 +62,12 @@ Search::KeyInstances_Position Search::SearchText(const std::vector<std::string>&
     
     for (const auto& str : text) 
     {
-        ++line_num;
         const KeyFound_Containter::Offset offset = RabinKarp(str, pattern);
 
         if(!offset.empty())
             key_pos.push_back(KeyFound_Containter(offset, line_num));
+        
+        ++line_num;
     }
     return key_pos;
 }

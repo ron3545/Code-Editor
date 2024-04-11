@@ -52,13 +52,14 @@ namespace  ArmSimPro
         , mIgnoreImGuiChild(false)
         , mShowWhitespaces(true)
         , mStartTime(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())
+        , Editor(nullptr, nullptr)
     {
         SetPalette(GetDarkPalette());
         SetLanguageDefinition(LanguageDefinition::CPlusPlus());
         mLines.push_back(Line());
     }
 
-    TextEditor::TextEditor(const std::string& full_path,  const ImVec4& window_bg_col)
+    TextEditor::TextEditor(const std::string& full_path,  const ImVec4& window_bg_col, ImFont* textfont, ImFont* defaultfont)
         : path(full_path)
         , _window_bg_col(window_bg_col)
         , isChildWindowFocus(true)
@@ -85,6 +86,7 @@ namespace  ArmSimPro
         , mIgnoreImGuiChild(false)
         , mShowWhitespaces(true)
         , mStartTime(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())
+        , Editor(textfont, defaultfont)
     {
         SetPalette(GetDarkPalette());
         SetLanguageDefinition(LanguageDefinition::CPlusPlus());
@@ -119,11 +121,8 @@ namespace  ArmSimPro
         return " ";
     }
 
-    static std::mutex m_regexList;
     void TextEditor::SetRegexList(const std::string& first, const PaletteIndex& second)
     {
-        std::lock_guard<std::mutex> lock_regex_list(m_regexList);
-
         mRegexList.push_back(std::make_pair(std::regex(first, std::regex_constants::optimize), second));
     }
 
@@ -921,11 +920,8 @@ namespace  ArmSimPro
         }
     }
 
-    static std::mutex m_mainRender;
-    void TextEditor::RenderMainEditor(ImDrawList* drawList, int lineNo, ImVec2& cursorScreenPos, ImVec2& contentSize, float *longest, float scrollX, float spaceSize, char *buf, size_t buf_size)
+    void TextEditor::RenderMainEditor(bool show_find_replace, std::string& to_find, std::string& to_replace, ImDrawList* drawList, int lineNo, ImVec2& cursorScreenPos, ImVec2& contentSize, float *longest, float scrollX, float spaceSize, char *buf, size_t buf_size)
     {
-        std::lock_guard<std::mutex> lock_editor_render(m_mainRender);
-
         ImVec2 lineStartScreenPos = ImVec2(cursorScreenPos.x, cursorScreenPos.y + lineNo * mCharAdvance.y);
         ImVec2 textScreenPos = ImVec2(lineStartScreenPos.x + mTextStart, lineStartScreenPos.y);
 
@@ -936,23 +932,25 @@ namespace  ArmSimPro
         Coordinates lineEndCoord(lineNo, GetLineMaxColumn(lineNo));
 
         // Draw selection for the current line
-        float sstart = -1.0f;
-        float ssend = -1.0f;
-
-        assert(mState.mSelectionStart <= mState.mSelectionEnd);
-        if (mState.mSelectionStart <= lineEndCoord)
-            sstart = mState.mSelectionStart > lineStartCoord ? TextDistanceToLineStart(mState.mSelectionStart) : 0.0f;
-        if (mState.mSelectionEnd > lineStartCoord)
-            ssend = TextDistanceToLineStart(mState.mSelectionEnd < lineEndCoord ? mState.mSelectionEnd : lineEndCoord);
-
-        if (mState.mSelectionEnd.mLine > lineNo)
-            ssend += mCharAdvance.x;
-
-        if (sstart != -1 && ssend != -1 && sstart < ssend)
         {
-            ImVec2 vstart(lineStartScreenPos.x + mTextStart + sstart, lineStartScreenPos.y);
-            ImVec2 vend(lineStartScreenPos.x + mTextStart + ssend, lineStartScreenPos.y + mCharAdvance.y);
-            drawList->AddRectFilled(vstart, vend, mPalette[(int)PaletteIndex::Selection]);
+            float sstart = -1.0f;
+            float ssend = -1.0f;
+
+            assert(mState.mSelectionStart <= mState.mSelectionEnd);
+            if (mState.mSelectionStart <= lineEndCoord)
+                sstart = mState.mSelectionStart > lineStartCoord ? TextDistanceToLineStart(mState.mSelectionStart) : 0.0f;
+            if (mState.mSelectionEnd > lineStartCoord)
+                ssend = TextDistanceToLineStart(mState.mSelectionEnd < lineEndCoord ? mState.mSelectionEnd : lineEndCoord);
+
+            if (mState.mSelectionEnd.mLine > lineNo)
+                ssend += mCharAdvance.x;
+
+            if (sstart != -1 && ssend != -1 && sstart < ssend)
+            {
+                ImVec2 vstart(lineStartScreenPos.x + mTextStart + sstart, lineStartScreenPos.y);
+                ImVec2 vend(lineStartScreenPos.x + mTextStart + ssend, lineStartScreenPos.y + mCharAdvance.y);
+                drawList->AddRectFilled(vstart, vend, mPalette[(int)PaletteIndex::Selection]);        // Draws the selections
+            }
         }
 
         // Draw breakpoints
@@ -1119,7 +1117,7 @@ namespace  ArmSimPro
         }
     }
 
-    void TextEditor::RenderEditor()
+    void TextEditor::RenderEditor(bool show_find_replace, std::string& to_find, std::string& to_replace)
     {   
         //std::lock_guard<std::mutex> lock(s_mainRender);
         /* Compute mCharAdvance regarding to scaled font size (Ctrl + mouse wheel)*/
@@ -1159,6 +1157,8 @@ namespace  ArmSimPro
         snprintf(buf, 16, " %d ", globalLineMax);
         mTextStart = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, buf, nullptr, nullptr).x + mLeftMargin;
 
+        Show_Search_Panel(to_find, to_replace, ChildWindow_Size, ChildWindow_Pos, show_find_replace, ImGui::ColorConvertU32ToFloat4(mPalette[(int)PaletteIndex::Background]), cursorScreenPos, mCharAdvance, mTextStart);
+        
         if (!mLines.empty())
         {
             float spaceSize = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, " ", nullptr, nullptr).x;
@@ -1166,35 +1166,42 @@ namespace  ArmSimPro
             while (lineNo <= lineMax)
             {
                 //std::future<void> future_result = std::async(std::launch::async, &TextEditor::RenderMainEditor, this, drawList, lineNo, cursorScreenPos, contentSize, &longest, scrollX, spaceSize, buf, 16);
-                RenderMainEditor(drawList, lineNo, cursorScreenPos, contentSize, &longest, scrollX, spaceSize, buf, 16);
+                RenderMainEditor(show_find_replace, to_find, to_replace, drawList, lineNo, cursorScreenPos, contentSize, &longest, scrollX, spaceSize, buf, 16);
                 ++lineNo;
             }
 
+            if(show_find_replace )
+            {
+                //Highlight all the keys found
+                const int size = (int)to_find.size(); 
+                DrawHighlightsFromSearch(size, cursorScreenPos, mCharAdvance, mTextStart);
+            }
+
             // Draw a tooltip on known identifiers/preprocessor symbols
-            // if (ImGui::IsMousePosValid())
-            // {
-            //     auto id = GetWordAt(ScreenPosToCoordinates(ImGui::GetMousePos()));
-            //     if (!id.empty())
-            //     {
-            //         auto it = mLanguageDefinition.mIdentifiers.find(id);
-            //         if (it != mLanguageDefinition.mIdentifiers.end())
-            //         {
-            //             ImGui::BeginTooltip();
-            //             ImGui::TextUnformatted(it->second.mDeclaration.c_str());
-            //             ImGui::EndTooltip();
-            //         }
-            //         else
-            //         {
-            //             auto pi = mLanguageDefinition.mPreprocIdentifiers.find(id);
-            //             if (pi != mLanguageDefinition.mPreprocIdentifiers.end())
-            //             {
-            //                 ImGui::BeginTooltip();
-            //                 ImGui::TextUnformatted(pi->second.mDeclaration.c_str());
-            //                 ImGui::EndTooltip();
-            //             }
-            //         }
-            //     }
-            // }
+            if (ImGui::IsMousePosValid())
+            {
+                auto id = GetWordAt(ScreenPosToCoordinates(ImGui::GetMousePos()));
+                if (!id.empty())
+                {
+                    auto it = mLanguageDefinition.mIdentifiers.find(id);
+                    if (it != mLanguageDefinition.mIdentifiers.end())
+                    {
+                        ImGui::BeginTooltip();
+                        ImGui::TextUnformatted(it->second.mDeclaration.c_str());
+                        ImGui::EndTooltip();
+                    }
+                    else
+                    {
+                        auto pi = mLanguageDefinition.mPreprocIdentifiers.find(id);
+                        if (pi != mLanguageDefinition.mPreprocIdentifiers.end())
+                        {
+                            ImGui::BeginTooltip();
+                            ImGui::TextUnformatted(pi->second.mDeclaration.c_str());
+                            ImGui::EndTooltip();
+                        }
+                    }
+                }
+            }
         }
         ImGui::Dummy(ImVec2((longest + 2), mLines.size() * mCharAdvance.y));
 
@@ -1206,7 +1213,7 @@ namespace  ArmSimPro
         }
     }
 
-    void TextEditor::Render(bool show_find_replace, std::string& to_find, std::string& to_replace, ImFont* DefaultFont, ImFont* TextFont, const ImVec2& aSize, bool aBorder)
+    void TextEditor::Render(bool show_find_replace, std::string& to_find, std::string& to_replace, const ImVec2& aSize, bool aBorder)
     {   
         mWithinRender = true;
         mTextChanged = false;
@@ -1229,8 +1236,7 @@ namespace  ArmSimPro
             HandleMouseInputs();
 
         ColorizeInternal();
-        //std::async(std::launch::async, [&](){RenderEditor();});
-        RenderEditor();
+        RenderEditor( show_find_replace, to_find, to_replace);
 
         ChildWindow_Size = ImGui::GetWindowSize();
         ChildWindow_Pos = ImGui::GetWindowPos();
@@ -1241,7 +1247,7 @@ namespace  ArmSimPro
         if (!mIgnoreImGuiChild)
             ImGui::EndChild();
         
-        Show_Search_Panel(to_find, to_replace, ChildWindow_Size, ChildWindow_Pos, show_find_replace, ImGui::ColorConvertU32ToFloat4(mPalette[(int)PaletteIndex::Background]), DefaultFont, TextFont);
+        
         ImGui::PopStyleVar(2);
         ImGui::PopStyleColor();
 
@@ -3094,218 +3100,5 @@ namespace  ArmSimPro
             inited = true;
         }
         return langDef;
-    }
-
-//==========================================================Editor Definition===============================================================================
-    void Spacer(float space)
-    {
-        ImGui::SameLine();
-        ImGui::Dummy(ImVec2(space, 0));
-        ImGui::SameLine();
-    }
-
-    void Editor::Show_Find_Replace_Panel(std::string* to_find, std::string* to_replace, ImFont* DefaultFont, ImFont* TextFont, unsigned int* panel_height)
-    {
-        std::vector<std::string> text_lines = this->GetTextLines(); //----> this causes an error
-        if(text_lines.empty() || to_find == nullptr || to_replace ==nullptr)
-            return;
-
-        const bool is_window_active = ImGui::IsWindowFocused();
-       
-        size_t found_keys_size = 0;
-        size_t offset_size = 0;
-
-        ImGui::Dummy(ImVec2(0, 6));
-        ImGui::PushFont(TextFont);
-            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,255,255,255));
-            ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(49,49,49,255));
-            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(16, 16, 16,255));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(24, 24, 24,255));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(24, 24, 24,255));
-
-            if(ImGui::ArrowButton("##drop_down", (isPressed)? ImGuiDir_Down : ImGuiDir_Right))
-                isPressed = !isPressed;
-            
-            ImGui::SameLine();
-
-            static bool not_found = false;
-            ImGui::PushItemWidth(260);
-
-            ImGui::InputTextWithHint("##Search", "Search Word on Files", to_find, ImGuiInputTextFlags_EnterReturnsTrue);
-
-            static std::string prev_search_string;
-            if( (!to_find->empty() && found_keys.empty()) || *to_find != prev_search_string )
-            {   
-                prev_search_string = *to_find;
-
-                found_keys.clear();
-                found_keys = Search::GetInstance().Search_Needle_On_Haystack(text_lines, *to_find);
-                not_found = found_keys.empty();
-            }
-            
-            if(to_find->empty())
-                found_keys.clear();
-
-            ImGui::PopItemWidth();
-            ImGui::PopStyleColor(5);
-
-            Spacer(15);
-
-            ImGui::PushFont(DefaultFont);
-                if(not_found) 
-                {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0, 0, 1));
-                    ImGui::Text("No results");
-                    ImGui::PopStyleColor();
-                }
-                else if(to_find->empty())
-                {
-                    found_keys.clear();
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
-                    ImGui::Text("No results");
-                    ImGui::PopStyleColor(); 
-                }
-                else
-                {
-                    //Count how many the found keys are
-                    static std::string prev_find;
-                    if(!this->found_keys.empty() && !to_find->empty() && *to_find != prev_find)
-                    {
-                        prev_find = *to_find;
-                        total_index_found_keys = 0;  //Make sure that key start from 0 before adding value
-                        for(const auto& keys : found_keys)
-                            total_index_found_keys += (unsigned int)keys.m_offset.size();
-                    }
-
-                    ImGui::Text("%d of %d", current_index_found_keys, total_index_found_keys);
-                }
-            ImGui::PopFont();
-            
-            //Highlight all the found keys
-            {
-
-            }
-
-            //ShowAppLog(nullptr,found_keys );
-
-            //ToDo: fix starting from this part
-            if(!found_keys.empty())
-            {   
-                auto serach_res = found_keys[0];
-                found_keys_size = found_keys.size();
-                offset_size = found_keys[in_line].m_offset.size();
-            }
-
-            Spacer(10);
-            if(ImGui::ArrowButton("##move up", ImGuiDir_Up) && !found_keys.empty())
-            {
-                //Decrease n_offset(go left) and n_line
-                
-                // if(in_offset == 0)
-                //     --in_line;
-                // else
-                //     --in_offset;
-                
-                // const auto line_number = this->found_keys[in_line].line_number;
-                // this->MoveUp(line_number);
-
-                // //highlight the text
-                // const auto offset =  this->found_keys[in_line].m_offset[in_offset];
-                // this->MoveLeft(offset, true);
-                // this->MoveLeft(offset + ImGui::CalcTextSize(to_find->c_str()).x, true);
-            }
-
-            Spacer(7);
-            if(ImGui::ArrowButton("##move down", ImGuiDir_Down) && !found_keys.empty())
-            {
-                //Increase n_offset(go right) and n_line
-
-                // if(in_offset == offset_size)
-                //     in_line++;
-                // else
-                //     in_offset++;
-
-                // const auto line_number = found_keys[in_line].line_number;
-                // this->MoveUp(line_number);
-
-                // //highlight the text
-                // const auto offset =  found_keys[in_line].m_offset[in_offset];
-                // this->MoveLeft(offset, true);
-                // this->MoveLeft(offset + ImGui::CalcTextSize(to_find->c_str()).x, true);
-            }
-
-            if(isPressed)
-            {
-                *panel_height = 70;
-                const int indent = 24;
-                ImGui::Indent(indent);
-                ImGui::Dummy(ImVec2(0, 6));
-
-                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,255,255,255));
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(49,49,49,255));
-
-                ImGui::PushItemWidth(260);
-                if(ImGui::InputTextWithHint("##Replace", "Replace Word on Files", to_replace, ImGuiInputTextFlags_EnterReturnsTrue))
-                {
-                    
-                }
-                ImGui::PopItemWidth();
-
-                ImGui::PopStyleColor(2);
-                ImGui::Unindent(indent);
-            }
-            else
-                *panel_height = 40;
-        ImGui::PopFont();
-    }
-
-    void Editor::ShowAppLog(bool* p_open, const Search::KeyInstances_Position &positions)
-    {
-        
-        AppLog log;
-
-        ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
-        ImGui::Begin("Example: Log", p_open);
-        {
-            for(const auto position : positions)
-                log.AddLog("Line Number: %d ; Offset size: %d \n", position.line_number, position.m_offset.size());
-        }
-        ImGui::End();
-
-        // Actually call in the regular Log helper (which will Begin() into the same window as we just did)
-        log.Draw("Example: Log", p_open);
-    }
-
-    void Editor::Show_Search_Panel(std::string &to_find, std::string &to_replace, const ImVec2 &offset, const ImVec2 &pos_ofset, bool show_panel, const ImVec4 &bg_col, ImFont *DefaultFont, ImFont *TextFont)
-    {
-        const ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-                                              ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse; 
-
-        static unsigned int panel_height = 40;
-        const float PanelWidth = 466;
-        ImVec2 size,panel_pos;
-
-        ImGuiViewport* viewport = ImGui::GetMainViewport();
-        
-        ImGuiViewportP* viewportp = (ImGuiViewportP*)(void*)(viewport);
-        ImRect available_rect = viewportp->GetBuildWorkRect();
-
-        panel_pos = available_rect.Min;
-        panel_pos[ImGuiAxis_Y] = available_rect.Min[ImGuiAxis_Y] + (40 * 2) - 3;
-        panel_pos[ImGuiAxis_X] = available_rect.Max[ImGuiAxis_X] - (PanelWidth + 30);
-
-        size = available_rect.GetSize();
-        size[ImGuiAxis_Y] = (float)panel_height;
-
-        if (show_panel) 
-        {
-            ImGui::SetNextWindowSize(ImVec2(PanelWidth, (float)panel_height));
-            ImGui::SetNextWindowPos(panel_pos, ImGuiCond_Always);
-            ImGui::PushStyleColor(ImGuiCol_WindowBg, bg_col);
-            ImGui::Begin("Search and replace", NULL, window_flags);
-                Show_Find_Replace_Panel(&to_find, &to_replace, DefaultFont, TextFont, &panel_height);
-            ImGui::End();
-            ImGui::PopStyleColor();
-        }
     }
 };
