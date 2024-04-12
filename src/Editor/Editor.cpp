@@ -106,14 +106,14 @@ namespace ArmSimPro
             ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 75);
             if(ImGui::ArrowButton("##move up", ImGuiDir_Up) && !this->coordinates.empty())
             {
-                curr_coord = this->coordinates[(coordinate_index > 0)? coordinate_index-- :  coordinate_index = 0];
+                curr_coord = this->coordinates[(coordinate_index > 0)? coordinate_index-- : coordinate_index = total_index_found_keys];
                 current_index_found_keys = (coordinate_index != 0)? coordinate_index : 1; //Update Display
 
                 const Coordinates current_cursor_coordinate = GetActualCursorCoordinates();
-                const unsigned int line_amount = curr_coord.mLine - current_cursor_coordinate.mLine;
+                const unsigned int line_amount = current_cursor_coordinate.mLine - curr_coord.mLine;
 
                 const int colmn = curr_coord.mColumn + to_find_size;
-                const int Colmn_amount = colmn - current_cursor_coordinate.mColumn;
+                const int Colmn_amount = current_cursor_coordinate.mColumn - colmn;
                 
                 MoveUp(line_amount);
                 MoveLeft(Colmn_amount);
