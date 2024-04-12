@@ -104,9 +104,9 @@ namespace ArmSimPro
 
             ImGui::SameLine();
             ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 75);
-            if(ImGui::ArrowButton("##move up", ImGuiDir_Up) && !this->coordinates.empty())
-            {
-                curr_coord = this->coordinates[(coordinate_index > 0)? coordinate_index-- : coordinate_index = total_index_found_keys];
+            if(ImGui::ArrowButton("##move up", ImGuiDir_Up) && (!this->coordinates.empty() || this->coordinates.size() > 1))
+            {   
+                curr_coord = this->coordinates.at((coordinate_index > 0)? --coordinate_index : coordinate_index = this->coordinates.size() - 1);
                 current_index_found_keys = (coordinate_index != 0)? coordinate_index : 1; //Update Display
 
                 const Coordinates current_cursor_coordinate = GetActualCursorCoordinates();
@@ -122,7 +122,7 @@ namespace ArmSimPro
             Spacer(7);
             if(ImGui::ArrowButton("##move down", ImGuiDir_Down) && (!this->coordinates.empty() || this->coordinates.size() > 1))
             {   
-                curr_coord = this->coordinates[(coordinate_index < total_index_found_keys)? coordinate_index++ :  coordinate_index = 0];
+                curr_coord = this->coordinates.at((coordinate_index < total_index_found_keys)? coordinate_index++ :  coordinate_index = 0);
                 current_index_found_keys = (coordinate_index <= total_index_found_keys && coordinate_index != 0)? coordinate_index : 1; //Update Display
 
                 const Coordinates current_cursor_coordinate = GetActualCursorCoordinates();
