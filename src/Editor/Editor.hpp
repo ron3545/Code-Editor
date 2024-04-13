@@ -14,26 +14,18 @@ namespace ArmSimPro
     //Base class
     class Editor
     {
-        int prev_lineNo = 0;
-        unsigned int coordinate_index = 0;
-
-        unsigned int current_index_found_keys = 1; //current index should be starting at 1
-        unsigned int total_index_found_keys = 0;
-        Coordinates curr_coord;
-
-        ImFont* TextFont;
-        ImFont* DefaultFont;
-    private:
-        void Show_Find_Replace_Panel(std::string* to_find, std::string* to_replace, unsigned int* panel_height);
-    protected:
-        Search::KeyInstances_Position found_keys; //For searching
-        std::vector<Coordinates> coordinates;
     protected:
         enum class SelectionMode
         {
             Normal,
             Word,
             Line
+        };
+
+        enum class SearchNavMode
+        {
+            SearchNavMode_UP,
+            SearchNaveMode_Down
         };
 
         struct EditorState
@@ -91,6 +83,7 @@ namespace ArmSimPro
         virtual void DeleteRange(const Coordinates& aStart, const Coordinates& aEnd)= 0;
         virtual int InsertTextAt(Coordinates& aWhere, const char* aValue)= 0;
         virtual void AddUndo(UndoRecord& aValue)= 0;
+        virtual bool IsTextChanged() const = 0;
 
         virtual Coordinates ScreenPosToCoordinates(const ImVec2& aPosition) const = 0;
         virtual Coordinates FindWordStart(const Coordinates& aFrom) const = 0;
@@ -151,5 +144,23 @@ namespace ArmSimPro
 
         virtual Coordinates SanitizeCoordinates(const Coordinates& aValue) const = 0;
         virtual Coordinates GetActualCursorCoordinates() const = 0;
+
+    private:
+        int prev_lineNo = 0;
+        unsigned int coordinate_index = 0;
+
+        unsigned int current_index_found_keys = 1; //current index should be starting at 1
+        unsigned int total_index_found_keys = 0;
+        
+        Coordinates curr_coord;
+        SearchNavMode nav_mode = SearchNavMode::SearchNaveMode_Down;
+
+        ImFont* TextFont;
+        ImFont* DefaultFont;
+    private:
+        void Show_Find_Replace_Panel(std::string* to_find, std::string* to_replace, unsigned int* panel_height);
+    protected:
+        Search::KeyInstances_Position found_keys; //For searching
+        std::vector<Coordinates> coordinates;
     };
 }

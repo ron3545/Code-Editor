@@ -994,6 +994,7 @@ void CodeEditor::LoadEditor(const std::string& file)
         t.close();
         editor.SetText(str);
     }
+    
     // ArmSimPro::TextEditor::Palette palette = editor.GetPalette();
     // palette[(int)ArmSimPro::TextEditor::PaletteIndex::Background] = ImGui::ColorConvertFloat4ToU32(child_col.GetCol());
     // palette[(int)ArmSimPro::TextEditor::PaletteIndex::Number] = ImGui::ColorConvertFloat4ToU32(RGBA(189, 219, 173, 255).GetCol());

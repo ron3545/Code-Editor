@@ -920,7 +920,7 @@ namespace  ArmSimPro
         }
     }
 
-    void TextEditor::RenderMainEditor(bool show_find_replace, std::string& to_find, std::string& to_replace, ImDrawList* drawList, int lineNo, ImVec2& cursorScreenPos, ImVec2& contentSize, float *longest, float scrollX, float spaceSize, char *buf, size_t buf_size)
+    void TextEditor::RenderMainEditor(ImDrawList* drawList, int lineNo, ImVec2& cursorScreenPos, ImVec2& contentSize, float *longest, float scrollX, float spaceSize, char *buf, size_t buf_size)
     {
         ImVec2 lineStartScreenPos = ImVec2(cursorScreenPos.x, cursorScreenPos.y + lineNo * mCharAdvance.y);
         ImVec2 textScreenPos = ImVec2(lineStartScreenPos.x + mTextStart, lineStartScreenPos.y);
@@ -1166,7 +1166,7 @@ namespace  ArmSimPro
             while (lineNo <= lineMax)
             {
                 //std::future<void> future_result = std::async(std::launch::async, &TextEditor::RenderMainEditor, this, drawList, lineNo, cursorScreenPos, contentSize, &longest, scrollX, spaceSize, buf, 16);
-                RenderMainEditor(show_find_replace, to_find, to_replace, drawList, lineNo, cursorScreenPos, contentSize, &longest, scrollX, spaceSize, buf, 16);
+                RenderMainEditor( drawList, lineNo, cursorScreenPos, contentSize, &longest, scrollX, spaceSize, buf, 16);
                 ++lineNo;
             }
 

@@ -167,7 +167,7 @@ namespace ArmSimPro
         void SetReadOnly(bool aValue);
         bool IsReadOnly() const { return this->mReadOnly; }
 
-        bool IsTextChanged() const { return this->mTextChanged; } 
+        bool IsTextChanged() const override { return this->mTextChanged; } 
         bool IsCursorPositionChanged() const { return this->mCursorPositionChanged; }
         bool IsEditorFocused() const  { return this->isChildWindowFocus; }
         bool IsColorizerEnabled() const { return this->mColorizerEnabled; }
@@ -230,7 +230,7 @@ namespace ArmSimPro
         typedef std::vector<UndoRecord> UndoBuffer;
 
         void SetRegexList(const std::string& first, const PaletteIndex& second);
-        void RenderMainEditor(bool show_find_replace, std::string& to_find, std::string& to_replace, ImDrawList* drawList, int lineNo, ImVec2& cursorScreenPos, ImVec2& contentSize, float *longest, float scrollX, float spaceSize, char *buf, size_t buf_size = 16);
+        void RenderMainEditor(ImDrawList* drawList, int lineNo, ImVec2& cursorScreenPos, ImVec2& contentSize, float *longest, float scrollX, float spaceSize, char *buf, size_t buf_size = 16);
 
         void Colorize(int aFromLine = 0, int aCount = -1) override;
         void ColorizeRange(int aFromLine = 0, int aToLine = 0) override;
