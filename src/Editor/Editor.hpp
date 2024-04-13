@@ -90,6 +90,9 @@ namespace ArmSimPro
         virtual Coordinates FindWordEnd(const Coordinates& aFrom) const = 0;
         virtual Coordinates FindNextWord(const Coordinates& aFrom) const = 0;
         
+        virtual std::string GetText(const Coordinates& aStart, const Coordinates& aEnd) const = 0;
+        virtual void SetTextAt(const Coordinates& position, const std::string& replacement) = 0;
+
         virtual int GetCharacterIndex(const Coordinates& aCoordinates) const = 0;
         virtual int GetCharacterColumn(int aLine, int aIndex) const = 0;
         virtual int GetLineCharacterCount(int aLine) const = 0;

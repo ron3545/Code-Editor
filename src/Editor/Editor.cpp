@@ -133,10 +133,8 @@ namespace ArmSimPro
                 ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(49,49,49,255));
 
                 ImGui::PushItemWidth(260);
-                if(ImGui::InputTextWithHint("##Replace", "Replace Word on Files", to_replace, ImGuiInputTextFlags_EnterReturnsTrue))
-                {
-                    
-                }
+                ImGui::InputTextWithHint("##Replace", "Replace Word on Files", to_replace, ImGuiInputTextFlags_AutoSelectAll);
+                
                 ImGui::PopItemWidth();
 
                 ImGui::PopStyleColor(2);
@@ -181,7 +179,7 @@ namespace ArmSimPro
             const int to_find_size = (int)to_find.size(); 
 
             static Coordinates prev_coord;
-            if(curr_coord != prev_coord) //prevent looping this part which prevents padding when needed; This makes sure positioning happens only once
+            if(curr_coord != prev_coord) //prevent looping this part which prevents padding when needed; This makes sure positioning happens only once every coordinate
             {
                 prev_coord = curr_coord;
                 switch(nav_mode)
@@ -193,6 +191,14 @@ namespace ArmSimPro
 
                         const int colmn = curr_coord.mColumn + to_find_size;
                         const int Colmn_amount = colmn - current_cursor_coordinate.mColumn;
+
+                        if(!to_replace.empty())
+                        {
+                            std::string replacement = GetText(Coordinates(curr_coord.mLine, 0), Coordinates(curr_coord.mLine, 0));
+                            replacement.replace(curr_coord.mColumn, to_find.size(), to_replace);
+
+                            SetTextAt(curr_coord, replacement);
+                        }
 
                         MoveDown(line_amount);
                         MoveRight(Colmn_amount, false, true);
@@ -206,9 +212,10 @@ namespace ArmSimPro
 
                         const int colmn = curr_coord.mColumn + to_find_size;
                         const int Colmn_amount = current_cursor_coordinate.mColumn - colmn;
-                        
+
                         MoveUp(line_amount);
                         MoveLeft(Colmn_amount, false, true);
+
                         break;
                     }
                 }
@@ -229,7 +236,6 @@ namespace ArmSimPro
 
             if(selection_start > selection_end)
                 std::swap(selection_start, selection_end);
-            //===============
 
             ImVec2 LineStartScreenPos = ImVec2(cursorScreenPos.x, cursorScreenPos.y + coordinate.mLine * mCharAdvance.y);
             ImVec2 textScreenPos = ImVec2(LineStartScreenPos.x + mTextStart, LineStartScreenPos.y);

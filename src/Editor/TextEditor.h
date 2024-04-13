@@ -239,7 +239,8 @@ namespace ArmSimPro
         void EnsureCursorVisible() override;
         int GetPageSize() const override;
 
-        std::string GetText(const Coordinates& aStart, const Coordinates& aEnd) const;
+        void SetTextAt(const Coordinates& position, const std::string& replacement) override;
+        std::string GetText(const Coordinates& aStart, const Coordinates& aEnd) const override;
         Coordinates GetActualCursorCoordinates() const override;
         Coordinates SanitizeCoordinates(const Coordinates& aValue) const override;
 

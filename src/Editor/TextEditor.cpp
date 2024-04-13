@@ -143,7 +143,12 @@ namespace  ArmSimPro
         mPaletteBase = aValue;
     }
 
-    std::string TextEditor::GetText(const Coordinates & aStart, const Coordinates & aEnd) const
+    void TextEditor::SetTextAt(const Coordinates &position, const std::string &replacement)
+    {
+        
+    }
+
+    std::string TextEditor::GetText(const Coordinates &aStart, const Coordinates &aEnd) const
     {
         std::string result;
 
