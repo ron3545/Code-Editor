@@ -122,6 +122,13 @@ private:
         DirStatus_NameNotSpecified
     };
 
+    enum ProgrammingType
+    {
+        PT_CPP,
+        PT_PYTHON
+    };
+
+    int programming_type = PT_CPP;
 public:
     enum class TwoStateIconsIndex
     {

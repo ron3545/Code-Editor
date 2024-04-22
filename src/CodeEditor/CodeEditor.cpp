@@ -197,7 +197,7 @@ void CodeEditor::RunEditor()
         const char* username = std::getenv("USERNAME");
         fs::path organizationPath;
         if (username != nullptr)
-            organizationPath = "C:\\Program Files\\" + std::string(username);
+            organizationPath = "C:\\Users\\" + std::string(username);
 
         cmd_panel->SetPanel((SelectedProjectPath.empty())? organizationPath : SelectedProjectPath, 100, explorer_panel_width - 20);
         
@@ -475,7 +475,7 @@ void CodeEditor::ImplementDirectoryNode()
         ImGui::PushFont(TextFont);
             const int posX = 14;
             ImGui::SetCursorPosX(posX);
-            ImGui::TextWrapped("You have not opened a project folder.\n\nYou can open an existing PlatformIO-based project (a folder that contains platformio.ini file).\n\n");
+            ImGui::TextWrapped("You have not opened a project folder.\n\nYou can open an existing project.\n\n");
             ImGui::SetCursorPosX(posX);
             if(ImGui::Button("Open Folder", ImVec2(width - 30, 0)))
                 ArmSimPro::FileDialog::Instance().Open("SelectProject", "Select project directory", "");
@@ -484,7 +484,7 @@ void CodeEditor::ImplementDirectoryNode()
 //=========================================================================Create New Project============================================================================================================================================================== 
         
             ImGui::SetCursorPosX(posX);
-            ImGui::TextWrapped("\nYou can create a new Project or explore the examples of ArmSim Kit\n\n");
+            ImGui::TextWrapped("\nYou can create a new Project or explore the examples of Robotics Kit\n\n");
             ImGui::SetCursorPosX(posX);
             if(ImGui::Button("Create New Project", ImVec2(width - 30, 0)))
                 ImGui::OpenPopup("Project Wizard ##2");
@@ -813,10 +813,9 @@ std::tuple<bool, std::string> CodeEditor::RenderTextEditorEx( TextEditors::itera
     if(!it->Open && !it->IsModified) 
         return std::tuple<bool, std::string>(std::make_pair(false, it->editor.GetPath()));
 
-    //automatically save the contents of the window after closing.
-    if(!it->Open && autosave){
+    if(it->IsModified && autosave){
         it->SaveChanges();
-        return std::tuple<bool, std::string>(std::make_pair(false, it->editor.GetPath()));
+        it->IsModified = false;
     }
     else if(!it->Open && it->IsModified && !autosave){ // Aims to prevent closing without saving. Only available when auto save is deactivated
         it->Open = true;
@@ -882,11 +881,11 @@ void CodeEditor::ProjectWizard()
      const char* DirCreateLog[] = {"None","Project already exist.", "Project Created.", "Failed To create project.", "Project name not specified."};
 
     
-    ImGui::TextWrapped("This wizard allows you to create new PlatformIO project. In the last case, you need to uncheck \"Use default location\" and specify path to chosen directory");
+    ImGui::TextWrapped("This wizard allows you to create new project. In the last case, you need to uncheck \"Use default location\" and specify path to chosen directory");
         static DirStatus DirCreateStatus = DirStatus_None;
 
         if(DirCreateStatus == DirStatus_AlreadyExist || DirCreateStatus == DirStatus_FailedToCreate || DirCreateStatus == DirStatus_NameNotSpecified){
-            ImGui::SetCursorPos(ImVec2(185, 110));
+            ImGui::SetCursorPos(ImVec2(189, 110));
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(255,0,0,255));
             ImGui::Text(DirCreateLog[DirCreateStatus]);
             ImGui::PopStyleColor();
@@ -895,7 +894,10 @@ void CodeEditor::ProjectWizard()
         ImGui::Text("Project Name:"); ImGui::SameLine();
         ImGui::InputText("##Project Name", &Project_Name);
 
-        ImGui::SetCursorPos(ImVec2(97, 180));
+        ImGui::SetCursorPosX(190);
+        ImGui::RadioButton("Cpp", &programming_type, PT_CPP); ImGui::SameLine(); ImGui::RadioButton("Python", &programming_type, PT_PYTHON);
+
+        ImGui::SetCursorPosX(97);
         ImGui::Text("Location:"); ImGui::SameLine();
 
         std::string Project_FullPath= NewProjectDir.u8string();

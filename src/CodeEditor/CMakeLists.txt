@@ -40,4 +40,6 @@ target_link_libraries(CodeEditor
     Shell32.lib
     d3d11.lib 
     mio
+
+    CLI
 )

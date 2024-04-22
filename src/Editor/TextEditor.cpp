@@ -217,7 +217,7 @@ namespace  ArmSimPro
 
     // https://en.wikipedia.org/wiki/UTF-8
     // We assume that the char is a standalone character (<128) or a leading byte of an UTF-8 code sequence (non-10xxxxxx code)
-    static int UTF8CharLength(TextEditor::Char c)
+    static int UTF8CharLength(Editor::Char c)
     {
         if ((c & 0xFE) == 0xFC)
             return 6;
@@ -1285,11 +1285,11 @@ namespace  ArmSimPro
         Colorize();
     }
 
-    static std::mutex mutex_set_mLines;
-    static void SetTextMLines(TextEditor::Lines& mLines, size_t i, const TextEditor::Char& aLines)
+    static std::mutex mutex_set_mLines; 
+    static void SetTextMLines(Editor::Lines& mLines, size_t i, const Editor::Char& aLines)
     {
         std::lock_guard<std::mutex> lock_SetTexMLines(mutex_set_mLines);
-        mLines[i].emplace_back(TextEditor::Glyph(aLines, TextEditor::PaletteIndex::Default));
+        mLines[i].emplace_back(Editor::Glyph(aLines, Editor::PaletteIndex::Default));
     }
 
     void TextEditor::SetTextLines(const std::vector<std::string> & aLines)
@@ -1542,7 +1542,7 @@ namespace  ArmSimPro
             int e = ImTextCharToUtf8(buf, 2, aChar);
             if(e > 0)
             {
-                buf[e] = '( )';
+                buf[e] = (char)'( )';
                 auto& line = mLines[coord.mLine];
                 auto cindex = GetCharacterIndex(coord);
 
@@ -1831,7 +1831,7 @@ namespace  ArmSimPro
                 }
             }
 
-            mState.mCursorPosition = Coordinates(line, GetCharacterColumn(line, cindex));
+            mState.mCursorPosition = Coordinates(line, GetCharacterColumn(line, cindex) + 20);
             if (aWordMode)
             {
                 mState.mCursorPosition = FindWordStart(mState.mCursorPosition);
@@ -1879,7 +1879,7 @@ namespace  ArmSimPro
                 if (mState.mCursorPosition.mLine < mLines.size() - 1)
                 {
                     mState.mCursorPosition.mLine = std::max(0, std::min((int)mLines.size() - 1, mState.mCursorPosition.mLine + 1));
-                    mState.mCursorPosition.mColumn = 0;
+                    mState.mCursorPosition.mColumn = 20;
                 }
                 else
                     return;
@@ -1887,7 +1887,7 @@ namespace  ArmSimPro
             else
             {
                 cindex += UTF8CharLength(line[cindex].mChar);
-                mState.mCursorPosition = Coordinates(lindex, GetCharacterColumn(lindex, cindex));
+                mState.mCursorPosition = Coordinates(lindex, GetCharacterColumn(lindex, cindex) + 20);
                 if (aWordMode)
                     mState.mCursorPosition = FindNextWord(mState.mCursorPosition);
             }

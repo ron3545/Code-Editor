@@ -15,6 +15,7 @@ add_subdirectory(Algorithms)
 add_subdirectory(Dependencies)
 add_subdirectory(ImageHandler)
 
+
 add_executable(${PROJECT_NAME} WIN32  RoboMaster_Core.cpp)
 
 target_link_libraries(${PROJECT_NAME} PUBLIC 

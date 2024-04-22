@@ -194,14 +194,14 @@ namespace ArmSimPro
 
                         if(!to_replace.empty())
                         {
-                            std::string replacement = GetText(Coordinates(curr_coord.mLine, 0), Coordinates(curr_coord.mLine, 0));
-                            replacement.replace(curr_coord.mColumn, to_find.size(), to_replace);
-
-                            SetTextAt(curr_coord, replacement);
+                            const auto line = mLines[curr_coord.mLine];
+                            // To Do: 
+                            //Change the characters at this line at a given coordinate.
+                            
                         }
 
                         MoveDown(line_amount);
-                        MoveRight(Colmn_amount, false, true);
+                        MoveRight(Colmn_amount);
                         break;
                     }
 
@@ -211,10 +211,10 @@ namespace ArmSimPro
                         const unsigned int line_amount = current_cursor_coordinate.mLine - curr_coord.mLine;
 
                         const int colmn = curr_coord.mColumn + to_find_size;
-                        const int Colmn_amount = current_cursor_coordinate.mColumn - colmn;
+                        const int Colmn_amount = current_cursor_coordinate.mColumn - curr_coord.mColumn;
 
                         MoveUp(line_amount);
-                        MoveLeft(Colmn_amount, false, true);
+                        MoveLeft(Colmn_amount);
 
                         break;
                     }

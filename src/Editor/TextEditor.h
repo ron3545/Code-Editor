@@ -28,75 +28,9 @@
 namespace ArmSimPro
 {   
     // Derived Class
-    class TextEditor : protected Editor
+    class TextEditor : public Editor
     {
     public:
-        enum class PaletteIndex
-        {
-            Default,
-            Keyword,
-            Number,
-            String,
-            CharLiteral,
-            Punctuation,
-            Preprocessor,
-            Identifier,
-            KnownIdentifier,
-            PreprocIdentifier,
-            Comment,
-            MultiLineComment,
-            Background,
-            Cursor,
-            Selection,
-            ErrorMarker,
-            Breakpoint,
-            LineNumber,
-            CurrentLineFill,
-            CurrentLineFillInactive,
-            CurrentLineEdge,
-            Max
-        };
-
-        struct Breakpoint
-        {
-            int mLine;
-            bool mEnabled;
-            std::string mCondition;
-
-            Breakpoint()
-                : mLine(-1)
-                , mEnabled(false)
-            {}
-        };
-
-        struct Identifier
-        {
-            Coordinates mLocation;
-            std::string mDeclaration;
-        };
-
-        typedef std::string String;
-        typedef std::unordered_map<std::string, Identifier> Identifiers;
-        typedef std::unordered_set<std::string> Keywords;
-        typedef std::map<int, std::string> ErrorMarkers;
-        typedef std::unordered_set<int> Breakpoints;
-        typedef std::array<ImU32, (unsigned)PaletteIndex::Max> Palette;
-        typedef uint8_t Char;
-
-        struct Glyph
-        {
-            Char mChar;
-            PaletteIndex mColorIndex = PaletteIndex::Default;
-            bool mComment : 1;
-            bool mMultiLineComment : 1;
-            bool mPreprocessor : 1;
-
-            Glyph(Char aChar, PaletteIndex aColorIndex = PaletteIndex::Default) : mChar(aChar), mColorIndex(aColorIndex),
-                mComment(false), mMultiLineComment(false), mPreprocessor(false) {}
-        };
-
-        typedef std::vector<Glyph> Line;
-        typedef std::vector<Line> Lines;
 
         struct LanguageDefinition
         {
@@ -314,7 +248,6 @@ namespace ArmSimPro
         LanguageDefinition mLanguageDefinition;
         RegexList mRegexList;
 
-        Lines mLines;          //lines of codes
         EditorState mState;
         UndoBuffer mUndoBuffer;
         

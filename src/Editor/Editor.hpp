@@ -6,6 +6,8 @@
 #include "../CodeEditor/AppLog.hpp"
 #include <future>
 #include <vector>
+#include <unordered_set>
+
 #include "Coordinate.hpp"
 
 namespace ArmSimPro
@@ -14,7 +16,7 @@ namespace ArmSimPro
     //Base class
     class Editor
     {
-    protected:
+    public:
         enum class SelectionMode
         {
             Normal,
@@ -34,6 +36,73 @@ namespace ArmSimPro
             Coordinates mSelectionEnd;
             Coordinates mCursorPosition;
         };
+        
+        enum class PaletteIndex
+        {
+            Default,
+            Keyword,
+            Number,
+            String,
+            CharLiteral,
+            Punctuation,
+            Preprocessor,
+            Identifier,
+            KnownIdentifier,
+            PreprocIdentifier,
+            Comment,
+            MultiLineComment,
+            Background,
+            Cursor,
+            Selection,
+            ErrorMarker,
+            Breakpoint,
+            LineNumber,
+            CurrentLineFill,
+            CurrentLineFillInactive,
+            CurrentLineEdge,
+            Max
+        };
+
+        struct Breakpoint
+        {
+            int mLine;
+            bool mEnabled;
+            std::string mCondition;
+
+            Breakpoint()
+                : mLine(-1)
+                , mEnabled(false)
+            {}
+        };
+
+        struct Identifier
+        {
+            Coordinates mLocation;
+            std::string mDeclaration;
+        };
+
+        typedef std::string String;
+        typedef std::unordered_map<std::string, Identifier> Identifiers;
+        typedef std::unordered_set<std::string> Keywords;
+        typedef std::map<int, std::string> ErrorMarkers;
+        typedef std::unordered_set<int> Breakpoints;
+        typedef std::array<ImU32, (unsigned)PaletteIndex::Max> Palette;
+        typedef uint8_t Char;
+
+        struct Glyph
+        {
+            Char mChar;
+            PaletteIndex mColorIndex = PaletteIndex::Default;
+            bool mComment : 1;
+            bool mMultiLineComment : 1;
+            bool mPreprocessor : 1;
+
+            Glyph(Char aChar, PaletteIndex aColorIndex = PaletteIndex::Default) : mChar(aChar), mColorIndex(aColorIndex),
+                mComment(false), mMultiLineComment(false), mPreprocessor(false) {}
+        };
+
+        typedef std::vector<Glyph> Line;
+        typedef std::vector<Line> Lines;
 
         class UndoRecord
         {
@@ -162,8 +231,9 @@ namespace ArmSimPro
         ImFont* DefaultFont;
     private:
         void Show_Find_Replace_Panel(std::string* to_find, std::string* to_replace, unsigned int* panel_height);
-    protected:
+    public:
         Search::KeyInstances_Position found_keys; //For searching
         std::vector<Coordinates> coordinates;
+        Lines mLines;          //lines of codes
     };
 }

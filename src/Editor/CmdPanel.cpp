@@ -5,6 +5,7 @@
 #include <sstream>
 #include <locale>
 #include <codecvt>
+#include "../filesystem.hpp"
 
 
 ArmSimPro::CmdPanel::CmdPanel(const char* IDname, float status_bar_thickness, const RGBA& bg_col, const RGBA& highlighter_col) 
@@ -97,12 +98,11 @@ void ArmSimPro::CmdPanel::TerminalControl(const std::string& current_path)
 
     if(!ExecutedTerminalCMDs.empty()){
         for(const auto& cmd : ExecutedTerminalCMDs){
-            ImGui::Text("  %s", cmd.c_str());
-            ImGui::Spacing();
+            ImGui::Text("%s", cmd.c_str());
         }
     }
 
-    ImGui::Text("  %s", path_identifier.c_str());
+    ImGui::Text("%s", path_identifier.c_str());
     ImGui::SameLine();
 
     std::string cmd;
@@ -114,23 +114,28 @@ void ArmSimPro::CmdPanel::TerminalControl(const std::string& current_path)
     // The use of input text is just for temporary use. Will update this later.
     if(ImGui::InputText("##terminal", &cmd, ImGuiInputTextFlags_EnterReturnsTrue))
     {
-        auto future = std::async(std::launch::async, &ArmSimPro::CmdPanel::ExecuteCommand, this, cmd);
-        future.wait();
-        std::string result = future.get();
-        ExecutedTerminalCMDs.push_back(path_identifier + " " + cmd + "\n" + result);
+        if(cmd == "cls" || cmd == "clear")
+        {
+            ExecutedTerminalCMDs.clear();
+            ExecutedTerminalCMDs.push_back(path_identifier + " " + cmd);
+        }
+        else
+        {
+            std::string result = ExecuteCommand(cmd, current_path);
+            ExecutedTerminalCMDs.push_back(path_identifier + " " + cmd + "\n" + result);
+        }
     }
 
     ImGui::PopItemWidth();
     ImGui::PopStyleColor(2);
 }
 
-std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string& command)
+std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string& command, const std::string& current_path)
 {
-    std::lock_guard<std::mutex> lock(cmd_exec_mutex);
     std::string result;
 
 #ifdef _WIN32
-    // Windows specific code
+    //Windows specific code
     SECURITY_ATTRIBUTES sa;
     sa.nLength = sizeof(SECURITY_ATTRIBUTES);
     sa.bInheritHandle = TRUE;
@@ -148,9 +153,19 @@ std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string& command)
 
         // Convert narrow string to wide string
         std::wstring wCommand(command.begin(), command.end());
+        std::wstring wPath(current_path.begin(), current_path.end());
 
-        if (CreateProcess(nullptr, const_cast<LPWSTR>(wCommand.c_str()), nullptr, nullptr, TRUE,
-                          CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
+        if (CreateProcess(nullptr, 
+                          const_cast<LPWSTR>(wCommand.c_str()), 
+                          nullptr, 
+                          nullptr, 
+                          TRUE,
+                          CREATE_NO_WINDOW | CREATE_PROTECTED_PROCESS, 
+                          nullptr, 
+                          const_cast<LPWSTR>(wPath.c_str()), 
+                          &si, 
+                          &pi)) 
+        {
             CloseHandle(hWrite);
             WaitForSingleObject(pi.hProcess, INFINITE);
 
@@ -174,7 +189,25 @@ std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string& command)
         result = "Failed to create pipe";
     }
 
+
+    // std::array<char, 128> buffer;
+    // FILE* pipe = _popen(command.c_str(), "r"); // Use FILE* instead of unique_ptr
+
+    // if (!pipe) {
+    //     throw std::runtime_error("popen() failed!");
+    // }
+
+    // while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr) {
+    //     result += buffer.data();
+    // }
+
+    // int exitCode = _pclose(pipe); // Get the exit code
+
+    // if (exitCode != 0) {
+       
+    // }
 #else
+    std::filesystem::current_path(current_path); //change the current working directory
     // Unix-like system code
     FILE* pipe = popen(command.c_str(), "r");
     if (pipe) {
@@ -190,4 +223,9 @@ std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string& command)
 #endif
 
     return result;
+}
+
+void ArmSimPro::CmdPanel::CDCommand(const std::string &cmd)
+{
+    
 }

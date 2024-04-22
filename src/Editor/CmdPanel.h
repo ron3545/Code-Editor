@@ -45,6 +45,7 @@ namespace ArmSimPro
         inline float GetCurretnHeight() const {return _height;}
     private:    
         void TerminalControl(const std::string& current_path);
-        std::string ExecuteCommand(const std::string& command);
+        std::string ExecuteCommand(const std::string& command, const std::string& current_path);
+        void CDCommand(const std::string& cmd);
     };
 };
