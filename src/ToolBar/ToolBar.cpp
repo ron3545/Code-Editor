@@ -178,10 +178,6 @@ namespace ArmSimPro
                             ImGui::GetColorU32(_highlighter_col.GetCol()), splitter_size, splitter_pos, 
                             &_primary_sidebar_width, ImGuiAxis_Y);
             
-            ImGuiMouseCursor cursor = ImGuiMouseCursor_Arrow;
-            if(ImGui::IsItemActive() || ImGui::IsItemHovered())
-                cursor = ImGuiMouseCursor_ResizeEW;
-            ImGui::SetMouseCursor(cursor);
             //size limit
             if(_primary_sidebar_width < 197.33f)
                 _primary_sidebar_width = 197.33f;

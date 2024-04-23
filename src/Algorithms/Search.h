@@ -95,8 +95,6 @@ public:
 
     void GetFileList(DirectoryNode& parentNode, std::vector<std::filesystem::path>* Files);
     
-private:    
-    KeyFound_Containter::Offset searchKMP(const std::string& text, const std::string& pattern);
     KeyInstances_Position SearchText(const std::vector<std::string>& text, const std::string& pattern);
 
     void CheckKey_On_File(std::set<std::filesystem::path>* dest, const std::filesystem::path& path, std::string_view key);

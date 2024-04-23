@@ -86,12 +86,6 @@ void CodeEditor::InitializeEditor(const TwoStateIconPallete& two_states_icon)
 
 //==================================Initializations===============================================================================================================
     FileHandler::GetInstance().SetFont(TextFont);
-    // vertical_tool_bar = std::make_unique< ArmSimPro::ToolBar >("Vertical", bg_col, 30, ImGuiAxis_Y);
-    // {   
-    //     vertical_tool_bar->AppendTool("Explorer", two_states_icon[(int)TwoStateIconsIndex::Folder], std::bind(&CodeEditor::ImplementDirectoryNode, this), false, true);                
-    //     vertical_tool_bar->AppendTool("Search", two_states_icon[(int)TwoStateIconsIndex::Search], std::bind(&CodeEditor::SearchOnCodeEditor, this));                
-    //     vertical_tool_bar->AppendTool("Debug", two_states_icon[(int)TwoStateIconsIndex::Debug], nullptr);                 
-    // }
 
     horizontal_tool_bar = std::make_unique< ArmSimPro::ToolBar >("Horizontal", bg_col, 30, ImGuiAxis_X);
     {   
@@ -102,6 +96,7 @@ void CodeEditor::InitializeEditor(const TwoStateIconPallete& two_states_icon)
     status_bar = std::make_unique< ArmSimPro::StatusBar >("status", 30, horizontal_tool_bar->GetbackgroundColor());
     cmd_panel = std::make_unique< ArmSimPro::CmdPanel >("Command Line", status_bar->GetHeight(), bg_col, highlighter_col);
 }
+//====================================================================================================================================================================================
 
 float CodeEditor::SetupMenuTab()
 {
@@ -207,7 +202,61 @@ void CodeEditor::RunEditor()
     future.wait();
 }
 
-CodeEditor::DirStatus CodeEditor::CreateProjectDirectory(const fs::path& path, const char* ProjectName, fs::path* out)
+void CodeEditor::Build_Run_UserCode()
+{
+    std::string entry_point_file;
+    if(!project_root_node.Children.empty())
+        entry_point_file = Recursively_FindEntryPointFile_FromDirectory(project_root_node);
+    
+    if(entry_point_file.empty())
+        return;
+    
+    const std::string str_path = SelectedProjectPath.u8string();
+    switch(programming_type)
+    {
+        case  PT_CPP:
+        {
+            
+        }
+        case PT_PYTHON:
+        {
+
+        }
+    }
+}
+
+std::string CodeEditor::Recursively_FindEntryPointFile_FromDirectory(const DirectoryNode& parentNode)
+{
+    if(parentNode.IsDirectory)
+    {
+        for(const DirectoryNode& child_node : parentNode.Children)
+            Recursively_FindEntryPointFile_FromDirectory(child_node);
+    }
+    else
+    {
+        std::string text;
+        std::ifstream file(parentNode.FullPath.c_str());
+        if(file.good())
+        {   
+            file.seekg(0, std::ios::end);
+                text.reserve(file.tellg());
+            file.seekg(0, std::ios::beg);
+            text.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+            file.close();
+        }
+
+        //Look for the entry point; if found, exit the function
+        if(!text.empty())
+        {   
+            std::string pattern = (programming_type == PT_CPP)? cpp_entry_point : python_entry_point;
+            const auto it = std::search(text.begin(), text.end(), std::boyer_moore_searcher(pattern.begin(), pattern.begin()));
+            if(it != text.end())
+                return parentNode.FullPath;
+        }
+    }
+}
+
+CodeEditor::DirStatus CodeEditor::CreateProjectDirectory(const fs::path &path, const char *ProjectName, fs::path *out)
 {
     const fs::path temp = path / ProjectName;
     if(fs::exists(temp))
@@ -551,8 +600,6 @@ void CodeEditor::ShowFileExplorer(float top_margin, float bottom_margin)
 void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
 {
     std::lock_guard<std::mutex> lock(editor_mutex);
-
-    static bool show_welcome = true;
     ImVec2 MainPanelSize;
 
     ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -585,7 +632,7 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
         if(ImGui::BeginTabBar("##tabs", ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_AutoSelectNewTabs | ImGuiTabBarFlags_FittingPolicyScroll))
         {   
             ImGui::PushStyleColor(ImGuiCol_Tab, bg_col.GetCol());
-            if(Opened_TextEditors.empty() && project_root_node.FileName.empty() && project_root_node.FullPath.empty() || show_welcome)
+            if(Opened_TextEditors.empty() && project_root_node.FileName.empty() && project_root_node.FullPath.empty())
             {
                 if(ImGui::BeginTabItem("\tWelcome\t")){
                     ImGui::PushStyleColor(ImGuiCol_ChildBg, bg_col.GetCol());
@@ -603,8 +650,6 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
 
             if(!Opened_TextEditors.empty())
             {
-                show_welcome = false;
-
                 //make sure to have no duplicates      
                 static size_t prev_size = 0;
                 if(Opened_TextEditors.size() != prev_size)
@@ -996,7 +1041,8 @@ void CodeEditor::LoadEditor(const std::string& file)
         t.close();
         editor.SetText(str);
     }
-    
+
+    // Changing color
     // ArmSimPro::TextEditor::Palette palette = editor.GetPalette();
     // palette[(int)ArmSimPro::TextEditor::PaletteIndex::Background] = ImGui::ColorConvertFloat4ToU32(child_col.GetCol());
     // palette[(int)ArmSimPro::TextEditor::PaletteIndex::Number] = ImGui::ColorConvertFloat4ToU32(RGBA(189, 219, 173, 255).GetCol());

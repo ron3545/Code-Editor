@@ -6,7 +6,7 @@
 #include <locale>
 #include <codecvt>
 #include "../filesystem.hpp"
-
+#include "CommandHandler.hpp"
 
 ArmSimPro::CmdPanel::CmdPanel(const char* IDname, float status_bar_thickness, const RGBA& bg_col, const RGBA& highlighter_col) 
     : _IDname(IDname), _status_bar_thickness(status_bar_thickness), _height(120),  _bg_col(bg_col), _highlighter_col(highlighter_col)
@@ -51,16 +51,11 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
         ImGui::Splitter(std::string(_IDname + " splitter").c_str(), ImGui::GetColorU32(_bg_col.GetCol()),
                         ImGui::GetColorU32(_highlighter_col.GetCol()), splitter_size, splitter_pos, 
                         &_height, ImGuiAxis_X);
-        
-        ImGuiMouseCursor cursor = ImGuiMouseCursor_Arrow;
-        if(ImGui::IsItemActive() || ImGui::IsItemHovered())
-                cursor = ImGuiMouseCursor_ResizeNS;
-        ImGui::SetMouseCursor(cursor);
 
 //===========================================================Tab Bar===============================================================================
         ImGui::PushStyleColor(ImGuiCol_Tab, _bg_col.GetCol());
         if(ImGui::BeginTabBar("##tabbar", ImGuiTabBarFlags_NoCloseWithMiddleMouseButton))
-        {
+        {  
             if(ImGui::BeginTabItem("\tOUTPUT\t", nullptr, ImGuiTabItemFlags_NoCloseWithMiddleMouseButton | ImGuiTabItemFlags_NoReorder))
             {
                 ImGui::EndTabItem();
@@ -92,8 +87,9 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
     ImGui::PopStyleVar(3);
 }
 
-void ArmSimPro::CmdPanel::TerminalControl(const std::string& current_path)
+void ArmSimPro::CmdPanel::TerminalControl(const std::string& path)
 {
+    std::string current_path = path;
     const std::string path_identifier = current_path + ">";
 
     if(!ExecutedTerminalCMDs.empty()){
@@ -102,6 +98,7 @@ void ArmSimPro::CmdPanel::TerminalControl(const std::string& current_path)
         }
     }
 
+    std::filesystem::current_path(current_path);
     ImGui::Text("%s", path_identifier.c_str());
     ImGui::SameLine();
 
@@ -121,7 +118,20 @@ void ArmSimPro::CmdPanel::TerminalControl(const std::string& current_path)
         }
         else
         {
-            std::string result = ExecuteCommand(cmd, current_path);
+            std::string result;
+            if(cmd.find("cd") != std::string::npos)
+            {
+                if(cmd.length() < 4)
+                    result = current_path;
+                else
+                { 
+                    const std::string path_arg = cmd.substr(3); //removes the "cd" command
+                    current_path = current_path + "\\" + path_arg;
+                }
+            }
+            else
+                result = ExecuteCommand(cmd, current_path);
+
             ExecutedTerminalCMDs.push_back(path_identifier + " " + cmd + "\n" + result);
         }
     }
@@ -130,102 +140,4 @@ void ArmSimPro::CmdPanel::TerminalControl(const std::string& current_path)
     ImGui::PopStyleColor(2);
 }
 
-std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string& command, const std::string& current_path)
-{
-    std::string result;
 
-#ifdef _WIN32
-    //Windows specific code
-    SECURITY_ATTRIBUTES sa;
-    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-    sa.bInheritHandle = TRUE;
-    sa.lpSecurityDescriptor = nullptr;
-
-    HANDLE hRead, hWrite;
-    if (CreatePipe(&hRead, &hWrite, &sa, 0)) {
-        STARTUPINFO si;
-        PROCESS_INFORMATION pi;
-
-        GetStartupInfo(&si);
-        si.hStdError = hWrite;
-        si.hStdOutput = hWrite;
-        si.dwFlags |= STARTF_USESTDHANDLES;
-
-        // Convert narrow string to wide string
-        std::wstring wCommand(command.begin(), command.end());
-        std::wstring wPath(current_path.begin(), current_path.end());
-
-        if (CreateProcess(nullptr, 
-                          const_cast<LPWSTR>(wCommand.c_str()), 
-                          nullptr, 
-                          nullptr, 
-                          TRUE,
-                          CREATE_NO_WINDOW | CREATE_PROTECTED_PROCESS, 
-                          nullptr, 
-                          const_cast<LPWSTR>(wPath.c_str()), 
-                          &si, 
-                          &pi)) 
-        {
-            CloseHandle(hWrite);
-            WaitForSingleObject(pi.hProcess, INFINITE);
-
-            DWORD bytesRead;
-            char buffer[128];
-            while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, nullptr) != 0) {
-                if (bytesRead == 0)
-                    break;
-
-                buffer[bytesRead] = '\0';
-                result += buffer;
-            }
-
-            CloseHandle(hRead);
-            CloseHandle(pi.hThread);
-            CloseHandle(pi.hProcess);
-        } else {
-            result = "Failed to execute command";
-        }
-    } else {
-        result = "Failed to create pipe";
-    }
-
-
-    // std::array<char, 128> buffer;
-    // FILE* pipe = _popen(command.c_str(), "r"); // Use FILE* instead of unique_ptr
-
-    // if (!pipe) {
-    //     throw std::runtime_error("popen() failed!");
-    // }
-
-    // while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr) {
-    //     result += buffer.data();
-    // }
-
-    // int exitCode = _pclose(pipe); // Get the exit code
-
-    // if (exitCode != 0) {
-       
-    // }
-#else
-    std::filesystem::current_path(current_path); //change the current working directory
-    // Unix-like system code
-    FILE* pipe = popen(command.c_str(), "r");
-    if (pipe) {
-        char buffer[128];
-        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-            result += buffer;
-        }
-
-        pclose(pipe);
-    } else {
-        result = "Failed to execute command";
-    }
-#endif
-
-    return result;
-}
-
-void ArmSimPro::CmdPanel::CDCommand(const std::string &cmd)
-{
-    
-}

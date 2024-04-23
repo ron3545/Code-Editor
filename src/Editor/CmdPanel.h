@@ -18,7 +18,6 @@ namespace ArmSimPro
     class CmdPanel 
     {
     private:
-        std::mutex cmd_exec_mutex;
         std::string _IDname;
 
         float _status_bar_thickness;
@@ -45,7 +44,5 @@ namespace ArmSimPro
         inline float GetCurretnHeight() const {return _height;}
     private:    
         void TerminalControl(const std::string& current_path);
-        std::string ExecuteCommand(const std::string& command, const std::string& current_path);
-        void CDCommand(const std::string& cmd);
     };
 };

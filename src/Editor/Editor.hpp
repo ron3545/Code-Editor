@@ -12,7 +12,6 @@
 
 namespace ArmSimPro
 {   
-    
     //Base class
     class Editor
     {

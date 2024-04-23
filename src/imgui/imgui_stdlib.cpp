@@ -114,12 +114,22 @@ bool ImGui::Splitter(const char* label, const ImU32& OffState, const ImU32& OnSt
     if(IsItemActive())
     {   
         ImGui::MarkItemEdited(id);
-        if(axis == ImGuiAxis_X)
+        switch(axis)
+        {
+        case ImGuiAxis_X:
             *thickness -= ImGui::GetIO().MouseDelta.y;
-        else if (axis == ImGuiAxis_Y)
+            break;
+        case ImGuiAxis_Y:
             *thickness += ImGui::GetIO().MouseDelta.x;
+            break;
+        }
+        
+        ImGuiMouseCursor cursor = ImGuiMouseCursor_Arrow;
+        if( ImGui::IsItemHovered())
+                cursor = ImGuiMouseCursor_ResizeNS;
+        ImGui::SetMouseCursor(cursor);
     }
-    
+
     return pressed;
 }
 

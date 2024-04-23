@@ -77,9 +77,11 @@ private:
 
     std::string selected_window_path, prev_selected_window_path; // for editing
     std::string current_editor, found_selected_editor;
-    std::string Project_Name; 
+    std::string Project_Name;
+    std::string build_result; 
 
     std::string to_find, to_replace;  bool use_search_panel = false;//for searching
+    std::filesystem::path entry_point_file; //file that is the entry point of the program
     
     typedef std::vector<ArmSimPro::TextEditorState> TextEditors;
     TextEditors Opened_TextEditors;  //Storage for all the instances of text editors that has been opened
@@ -128,7 +130,12 @@ private:
         PT_PYTHON
     };
 
-    int programming_type = PT_CPP;
+    int programming_type = PT_CPP; // type of programming language used for the project
+
+    //For Finding the entry point file
+    const std::string python_entry_point = "__main__";
+    const std::string cpp_entry_point = "int main()";
+
 public:
     enum class TwoStateIconsIndex
     {
@@ -168,6 +175,9 @@ public:
     bool ShouldEditorClose() const { return ShouldCloseEditor; }
 
 private:
+    void Build_Run_UserCode();
+    std::string Recursively_FindEntryPointFile_FromDirectory(const DirectoryNode& parentNode);
+
 //=======================================Directory Tree===================================================================================================
     DirStatus CreateProjectDirectory(const fs::path& path, const char* ProjectName, fs::path* out);
     DirStatus CreatesDefaultProjectDirectory(const fs::path& NewProjectPath, const char* ProjectName, fs::path* output_path);
