@@ -156,10 +156,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 
     two_states_images[(int)CodeEditor::TwoStateIconsIndex::Upload] = LoadTwoStateTextureFromFile(ICONS"/ON/Upload.png", ICONS"/OFF/Upload.png");
     two_states_images[(int)CodeEditor::TwoStateIconsIndex::Verify] = LoadTwoStateTextureFromFile(ICONS"/ON/Verify.png", ICONS"/OFF/Verify.png");
-    two_states_images[(int)CodeEditor::TwoStateIconsIndex::Folder] = LoadTwoStateTextureFromFile(ICONS"/ON/Folder.png", ICONS"/OFF/Folder.png");
-    two_states_images[(int)CodeEditor::TwoStateIconsIndex::Debug] = LoadTwoStateTextureFromFile(ICONS"/ON/Debug.png", ICONS"/OFF/Debug.png");
-    two_states_images[(int)CodeEditor::TwoStateIconsIndex::RobotArm] = LoadTwoStateTextureFromFile(ICONS"/ON/RobotArm.png", ICONS"/OFF/RobotArm.png");
-    two_states_images[(int)CodeEditor::TwoStateIconsIndex::Search] = LoadTwoStateTextureFromFile(ICONS"/ON/Search.png", ICONS"/OFF/Search.png");
+    // two_states_images[(int)CodeEditor::TwoStateIconsIndex::Folder] = LoadTwoStateTextureFromFile(ICONS"/ON/Folder.png", ICONS"/OFF/Folder.png");
+    // two_states_images[(int)CodeEditor::TwoStateIconsIndex::Debug] = LoadTwoStateTextureFromFile(ICONS"/ON/Debug.png", ICONS"/OFF/Debug.png");
+    // two_states_images[(int)CodeEditor::TwoStateIconsIndex::RobotArm] = LoadTwoStateTextureFromFile(ICONS"/ON/RobotArm.png", ICONS"/OFF/RobotArm.png");
+    // two_states_images[(int)CodeEditor::TwoStateIconsIndex::Search] = LoadTwoStateTextureFromFile(ICONS"/ON/Search.png", ICONS"/OFF/Search.png");
 
     code_editor->InitializeEditor(two_states_images);
 

@@ -68,7 +68,7 @@ namespace ArmSimPro
         bool pressed = button.SetButton();
 
         if(Tool.tool.ptr_to_func && pressed)
-        {   
+        {  
             auto future = std::async(std::launch::async, [&](){
                 std::lock_guard<std::mutex> lock(ToolItem_Mutex);
                 Tool.tool.ptr_to_func(); 

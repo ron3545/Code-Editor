@@ -2,7 +2,6 @@ add_library( Editor
     CmdPanel.cpp
     TextEditor.cpp
     Editor.cpp
-    CommandHandler.cpp
 )
 
 target_link_libraries(Editor PRIVATE 

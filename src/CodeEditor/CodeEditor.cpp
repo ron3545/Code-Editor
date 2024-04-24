@@ -89,7 +89,7 @@ void CodeEditor::InitializeEditor(const TwoStateIconPallete& two_states_icon)
 
     horizontal_tool_bar = std::make_unique< ArmSimPro::ToolBar >("Horizontal", bg_col, 30, ImGuiAxis_X);
     {   
-        horizontal_tool_bar->AppendTool("verify", two_states_icon[(int)TwoStateIconsIndex::Verify], [&](){  }, true);   horizontal_tool_bar->SetPaddingBefore("verify", 10);
+        horizontal_tool_bar->AppendTool("verify", two_states_icon[(int)TwoStateIconsIndex::Verify], [&](){ VerifyCode(); }, true);   horizontal_tool_bar->SetPaddingBefore("verify", 10);
         horizontal_tool_bar->AppendTool("Upload", two_states_icon[(int)TwoStateIconsIndex::Upload], [&](){  }, true);  horizontal_tool_bar->SetPaddingBefore("Upload", 5);
     }
 
@@ -194,7 +194,7 @@ void CodeEditor::RunEditor()
         if (username != nullptr)
             organizationPath = "C:\\Users\\" + std::string(username);
 
-        cmd_panel->SetPanel((SelectedProjectPath.empty())? organizationPath : SelectedProjectPath, 100, explorer_panel_width - 20);
+        cmd_panel->SetPanel((SelectedProjectPath.empty())? organizationPath : SelectedProjectPath, 100, explorer_panel_width - 20, &build_result);
         
     ImGui::PopFont(); //default font
 
@@ -202,58 +202,55 @@ void CodeEditor::RunEditor()
     future.wait();
 }
 
-void CodeEditor::Build_Run_UserCode()
-{
-    std::string entry_point_file;
-    if(!project_root_node.Children.empty())
-        entry_point_file = Recursively_FindEntryPointFile_FromDirectory(project_root_node);
+void CodeEditor::VerifyCode()
+{           
+    if(SelectedProjectPath.empty() || project_root_node.FileName.empty())
+        return;
+
+    build_result.clear();
+
+    const auto build = FileHandler::GetInstance().CreateNewFolder(project_root_node, SelectedProjectPath, BUILD_FOLDER); 
+    if(!build.empty())
+        build_folder_path = build;
+
+    const std::string entry_point_file = Recursively_FindEntryPointFile_FromDirectory(project_root_node).substr(SelectedProjectPath.u8string().length() + 1);
     
     if(entry_point_file.empty())
-        return;
-    
-    const std::string str_path = SelectedProjectPath.u8string();
-    switch(programming_type)
     {
-        case  PT_CPP:
-        {
-            
-        }
-        case PT_PYTHON:
-        {
-
-        }
+        build_result = "[Build] Error: Unable to find the entry point file";
+        return;
     }
+
+    build_result = "[Build] entry point: " + entry_point_file;
+
+    const auto output_location = build_folder_path.substr(SelectedProjectPath.u8string().length() + 1);
+
+    const std::string python_compile_command = "Python " + entry_point_file;
+    const std::string cpp_compile_command = "g++ -Wall " + entry_point_file + " -o " + output_location + "\\" + project_root_node.FileName;
+    cmd_panel->BuildRunCode((programming_type == PT_CPP)? cpp_compile_command : python_compile_command);
 }
 
 std::string CodeEditor::Recursively_FindEntryPointFile_FromDirectory(const DirectoryNode& parentNode)
 {
-    if(parentNode.IsDirectory)
-    {
-        for(const DirectoryNode& child_node : parentNode.Children)
-            Recursively_FindEntryPointFile_FromDirectory(child_node);
-    }
-    else
-    {
-        std::string text;
-        std::ifstream file(parentNode.FullPath.c_str());
-        if(file.good())
-        {   
-            file.seekg(0, std::ios::end);
-                text.reserve(file.tellg());
-            file.seekg(0, std::ios::beg);
-            text.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-            file.close();
-        }
+    if (!parentNode.IsDirectory) {
+        std::ifstream t(parentNode.FullPath);
+        if (t.good()) {
+            std::string content((std::istreambuf_iterator<char>(t)),
+                                std::istreambuf_iterator<char>());
+            t.close();
 
-        //Look for the entry point; if found, exit the function
-        if(!text.empty())
-        {   
-            std::string pattern = (programming_type == PT_CPP)? cpp_entry_point : python_entry_point;
-            const auto it = std::search(text.begin(), text.end(), std::boyer_moore_searcher(pattern.begin(), pattern.begin()));
-            if(it != text.end())
+            if (content.find((programming_type == PT_CPP)? cpp_entry_point : python_entry_point) != std::string::npos) 
                 return parentNode.FullPath;
         }
     }
+
+    for(const auto& child : parentNode.Children)
+    {
+        const auto result = Recursively_FindEntryPointFile_FromDirectory(child);
+        if(!result.empty())
+            return result;
+    }
+    return std::string();
 }
 
 CodeEditor::DirStatus CodeEditor::CreateProjectDirectory(const fs::path &path, const char *ProjectName, fs::path *out)
@@ -1056,7 +1053,7 @@ void CodeEditor::GetRecentlyOpenedProjects()
     std::lock_guard<std::mutex> lock(RecentFile_Mutex);
 
     typedef std::string Root_Path;
-    typedef std::set<std::string> Prev_Files;
+    typedef std::tuple<ProgrammingType, std::set<std::string>> Prev_Files;
     std::map<Root_Path, Prev_Files> Application_data;
 
     const nlohmann::json data = LoadUserData();
@@ -1072,8 +1069,8 @@ void CodeEditor::GetRecentlyOpenedProjects()
             std::set<std::string> files;
             for(const auto& file : element[OPENED_FILES])
                 files.insert(file);
-            
-            Application_data[project_path] = files;
+
+            Application_data[project_path] = std::make_tuple((element[PROGRAMMING_LANGUAGE] == CPP)? PT_CPP : PT_PYTHON, files);
         }
     }
 
@@ -1100,8 +1097,11 @@ void CodeEditor::GetRecentlyOpenedProjects()
                     {
                         SelectedProjectPath = data.first;
                         
+                        programming_type = std::get<0>(data.second);
+                        const auto files = std::get<1>(data.second);
+
                         std::vector<std::future<void>> m_futures;
-                        for(const auto& file : data.second)
+                        for(const auto& file : files)
                         {
                             if(fs::exists(file))
                                 m_futures.push_back(std::async(std::launch::async, &CodeEditor::LoadEditor, this,file));
@@ -1413,6 +1413,7 @@ void CodeEditor::SaveUserData()
         nlohmann::json json_data; 
 
         nlohmann::json new_data;
+        new_data[PROGRAMMING_LANGUAGE] = (programming_type == PT_CPP)? CPP : PYTHON;
         new_data[OPENED_FILES] = FilePath_OpenedEditors;
         new_data[ROOT_PROJECT] = SelectedProjectPath.u8string();
 

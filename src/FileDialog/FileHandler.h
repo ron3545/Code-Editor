@@ -17,6 +17,7 @@ struct DirectoryNode
     bool Selected;
 };
 
+std::string GetFolderName(const std::string& path);
 void RecursivelyAddDirectoryNodes(DirectoryNode& parentNode, std::filesystem::directory_iterator directoryIterator);
 DirectoryNode CreateDirectryNodeTreeFromPath(const std::filesystem::path& rootPath);
 
@@ -43,8 +44,8 @@ public:
 
     void SetFont(ImFont* font) { this->text_font = font; }
 
-    bool CreateNewFile(DirectoryNode& ParentNode, const std::filesystem::path& path, const char* file_name);
-    bool CreateNewFolder(DirectoryNode& ParentNode, const std::filesystem::path& path, const char* folder_name);
+    std::string CreateNewFile(DirectoryNode& ParentNode, const std::filesystem::path& path, const char* file_name);
+    std::string CreateNewFolder(DirectoryNode& ParentNode, const std::filesystem::path& path, const char* folder_name);
 
     bool DeleteSelectedFile(DirectoryNode& ParentNode, const std::filesystem::path& path);
     bool DeleteSelectedFolder(DirectoryNode& ParentNode, const std::filesystem::path& path);

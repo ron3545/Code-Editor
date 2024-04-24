@@ -101,6 +101,7 @@ public:
     void SearchOnLine(const std::string_view& line_view, std::string_view key, size_t line_number, size_t* occurances, KeyLocations* lines);
 
     KeyFound_Containter::Offset RabinKarp(const std::string& Text, const std::string& Pattern);    
+    bool IskeyFoundOn(const std::string& haystack, const std::string& needle);
 };
 
 

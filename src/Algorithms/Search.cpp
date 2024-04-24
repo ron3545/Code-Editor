@@ -194,3 +194,8 @@ Search::KeyFound_Containter::Offset Search::RabinKarp(const std::string &Text, c
 
     return offset;
 }
+
+bool Search::IskeyFoundOn(const std::string &haystack, const std::string &needle)
+{
+    return RabinKarp(haystack, needle).size() > 0;
+}

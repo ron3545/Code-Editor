@@ -78,10 +78,8 @@ private:
     std::string selected_window_path, prev_selected_window_path; // for editing
     std::string current_editor, found_selected_editor;
     std::string Project_Name;
-    std::string build_result; 
 
     std::string to_find, to_replace;  bool use_search_panel = false;//for searching
-    std::filesystem::path entry_point_file; //file that is the entry point of the program
     
     typedef std::vector<ArmSimPro::TextEditorState> TextEditors;
     TextEditors Opened_TextEditors;  //Storage for all the instances of text editors that has been opened
@@ -136,6 +134,8 @@ private:
     const std::string python_entry_point = "__main__";
     const std::string cpp_entry_point = "int main()";
 
+    std::string build_result, build_folder_path;
+
 public:
     enum class TwoStateIconsIndex
     {
@@ -175,7 +175,7 @@ public:
     bool ShouldEditorClose() const { return ShouldCloseEditor; }
 
 private:
-    void Build_Run_UserCode();
+    void VerifyCode();
     std::string Recursively_FindEntryPointFile_FromDirectory(const DirectoryNode& parentNode);
 
 //=======================================Directory Tree===================================================================================================

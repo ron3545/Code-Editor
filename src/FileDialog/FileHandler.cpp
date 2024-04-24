@@ -46,32 +46,43 @@ DirectoryNode CreateDirectryNodeTreeFromPath(const std::filesystem::path& rootPa
  * true => success
  * false => failed | already exist 
 */
-bool FileHandler::CreateNewFile(DirectoryNode& ParentNode, const std::filesystem::path& path, const char* file_name)
+std::string  FileHandler::CreateNewFile(DirectoryNode& ParentNode, const std::filesystem::path& path, const char* file_name)
 {
     std::filesystem::path new_file_path = path / file_name;
     if(fs::exists(new_file_path))
-        return false;
+        return std::string();
     
     const std::string file = new_file_path.u8string();
     std::ofstream new_file(file);
     new_file.close();
 
     AddNode(ParentNode, path.u8string(), file_name, std::filesystem::is_directory(new_file_path));
-    return true;
+    return new_file_path.u8string();
 }
 
 /**
  * true => success
  * false => failed | already exist 
 */
-bool FileHandler::CreateNewFolder(DirectoryNode& ParentNode, const std::filesystem::path& path, const char* folder_name)
+std::string  FileHandler::CreateNewFolder(DirectoryNode& ParentNode, const std::filesystem::path& path, const char* folder_name)
 {
     const std::filesystem::path new_path(path / folder_name);
     if(!fs::exists(new_path) && fs::create_directories(new_path)){
         AddNode(ParentNode, path.u8string(), folder_name, std::filesystem::is_directory(new_path));
-        return true;
+        return new_path.u8string();
     }
-    return false;
+    return std::string();
+}
+
+std::string GetFolderName(const std::string& path) {
+    // Find the last occurrence of the path separator (either '/' or '\\')
+    size_t lastSeparator = path.find_last_of("/\\");
+    if (lastSeparator != std::string::npos) {
+        // Extract the folder name
+        return path.substr(lastSeparator + 1);
+    }
+    // If no separator is found, return the entire path
+    return path;
 }
 
 bool FileHandler::DeleteSelectedFile(DirectoryNode& ParentNode, const std::filesystem::path& path)
@@ -289,7 +300,14 @@ bool FileHandler::Search_AddNode(DirectoryNode& ParentNode, const std::string& t
     {
         ParentNode.Children.push_back(to_add);
 
-        auto moveDirectoriesToFront = [](const DirectoryNode& a, const DirectoryNode& b) { return (a.IsDirectory > b.IsDirectory); };
+        auto moveDirectoriesToFront = [](const DirectoryNode& a, const DirectoryNode& b) {
+            if (a.IsDirectory && !b.IsDirectory)
+                return true; // Move directories to the front
+            else if (!a.IsDirectory && b.IsDirectory)
+                return false; // Keep files after directories
+            else
+                return a.FullPath < b.FullPath; // Sort alphabetically
+        };
 	    std::sort(ParentNode.Children.begin(), ParentNode.Children.end(), moveDirectoriesToFront);
         return true;
     }

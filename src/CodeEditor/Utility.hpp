@@ -4,6 +4,10 @@
 #define RECENT_FILES "recent_files"
     #define ROOT_PROJECT "root"
     #define OPENED_FILES "Opened_Files"
+    #define PROGRAMMING_LANGUAGE "Programming_language"
+        #define CPP "cpp"
+        #define PYTHON "python"
+#define BUILD_FOLDER "Build"
 
 
 static const char* ppnames[] = { "NULL", "PM_REMOVE",

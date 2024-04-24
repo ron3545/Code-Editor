@@ -6,7 +6,6 @@
 #include <locale>
 #include <codecvt>
 #include "../filesystem.hpp"
-#include "CommandHandler.hpp"
 
 ArmSimPro::CmdPanel::CmdPanel(const char* IDname, float status_bar_thickness, const RGBA& bg_col, const RGBA& highlighter_col) 
     : _IDname(IDname), _status_bar_thickness(status_bar_thickness), _height(120),  _bg_col(bg_col), _highlighter_col(highlighter_col)
@@ -15,7 +14,7 @@ ArmSimPro::CmdPanel::CmdPanel(const char* IDname, float status_bar_thickness, co
     viewportp = (ImGuiViewportP*)(void*)(viewport);
 }
 
-void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, float top_margin, float right_margin)
+void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, float top_margin, float right_margin, std::string* output_display)
 {
     
     //Set the status bar to the very bottom of the window
@@ -55,9 +54,22 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
 //===========================================================Tab Bar===============================================================================
         ImGui::PushStyleColor(ImGuiCol_Tab, _bg_col.GetCol());
         if(ImGui::BeginTabBar("##tabbar", ImGuiTabBarFlags_NoCloseWithMiddleMouseButton))
-        {  
-            if(ImGui::BeginTabItem("\tOUTPUT\t", nullptr, ImGuiTabItemFlags_NoCloseWithMiddleMouseButton | ImGuiTabItemFlags_NoReorder))
-            {
+        {   
+            ImGuiTabItemFlags flag = ImGuiTabItemFlags_NoCloseWithMiddleMouseButton | ImGuiTabItemFlags_NoReorder;
+
+            if(ImGui::BeginTabItem("\tOUTPUT\t", nullptr, flag))
+            {   
+                if(ImGui::BeginChild("Output", ImVec2(0,0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
+                {
+                    if(!command.empty())
+                    {
+                        const auto message = ExecuteCommand(command, current_path.u8string());
+                        
+                        
+                        command.clear();
+                    }
+                    ImGui::EndChild();
+                }
                 ImGui::EndTabItem();
             }
 
@@ -70,7 +82,6 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
                 }
                 ImGui::EndTabItem();
             }
-
             ImGui::EndTabBar();
         }
         ImGui::PopStyleColor();
@@ -114,7 +125,7 @@ void ArmSimPro::CmdPanel::TerminalControl(const std::string& path)
         if(cmd == "cls" || cmd == "clear")
         {
             ExecutedTerminalCMDs.clear();
-            ExecutedTerminalCMDs.push_back(path_identifier + " " + cmd);
+            ExecutedTerminalCMDs.push_back(path_identifier);
         }
         else
         {
@@ -140,4 +151,78 @@ void ArmSimPro::CmdPanel::TerminalControl(const std::string& path)
     ImGui::PopStyleColor(2);
 }
 
+std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string &command, const std::string &current_path)
+{
+    std::string result;
+#ifdef _WIN32
+    //Windows specific code
+    SECURITY_ATTRIBUTES sa;
+    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+    sa.bInheritHandle = TRUE;
+    sa.lpSecurityDescriptor = nullptr;
 
+    HANDLE hRead, hWrite;
+    if (CreatePipe(&hRead, &hWrite, &sa, 0)) {
+        STARTUPINFO si;
+        PROCESS_INFORMATION pi;
+
+        GetStartupInfo(&si);
+        si.hStdError = hWrite;
+        si.hStdOutput = hWrite;
+        si.dwFlags |= STARTF_USESTDHANDLES;
+
+        // Convert narrow string to wide string
+        std::wstring wCommand(command.begin(), command.end());
+        std::wstring wPath(current_path.begin(), current_path.end());
+
+        if (CreateProcess(nullptr, 
+                          const_cast<LPWSTR>(wCommand.c_str()), 
+                          nullptr, 
+                          nullptr, 
+                          TRUE,
+                          CREATE_NO_WINDOW, 
+                          nullptr, 
+                          const_cast<LPWSTR>(wPath.c_str()), 
+                          &si, 
+                          &pi)) 
+        {
+            CloseHandle(hWrite);
+            WaitForSingleObject(pi.hProcess, INFINITE);
+
+            DWORD bytesRead;
+            char buffer[128];
+            while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, nullptr) != 0) {
+                if (bytesRead == 0)
+                    break;
+
+                buffer[bytesRead] = '\0';
+                result += buffer;
+            }
+
+            CloseHandle(hRead);
+            CloseHandle(pi.hThread);
+            CloseHandle(pi.hProcess);
+        } else {
+            result = "Failed to execute command";
+        }
+    } else {
+        result = "Failed to create pipe";
+    }
+#else
+    std::filesystem::current_path(current_path); //change the current working directory
+    // Unix-like system code
+    FILE* pipe = popen(command.c_str(), "r");
+    if (pipe) {
+        char buffer[128];
+        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+            result += buffer;
+        }
+
+        pclose(pipe);
+    } else {
+        result = "Failed to execute command";
+    }
+#endif
+
+    return result;
+}

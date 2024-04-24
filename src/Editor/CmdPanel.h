@@ -32,17 +32,21 @@ namespace ArmSimPro
         const RGBA _highlighter_col;
         ImVec2 size, pos;
         
+        std::string command;
+
         std::vector<std::string> ExecutedTerminalCMDs;
     public:
         CmdPanel() : viewportp(nullptr) {}
         CmdPanel(const char* IDname, float status_bar_thickness, const RGBA& bg_col, const RGBA& highlighter_col);
         ~CmdPanel() {}
 
-        void SetPanel(const std::filesystem::path current_path, float top_margin, float right_margin);
+        void SetPanel(const std::filesystem::path current_path, float top_margin, float right_margin, std::string* output_display);
+        void BuildRunCode(const std::string& cmd) { command = cmd; };
         void SetHeight(float height) {_height = height;}
         
         inline float GetCurretnHeight() const {return _height;}
     private:    
         void TerminalControl(const std::string& current_path);
+        std::string ExecuteCommand(const std::string& command, const std::string& current_path);
     };
 };
