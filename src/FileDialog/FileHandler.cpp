@@ -71,7 +71,7 @@ std::string  FileHandler::CreateNewFolder(DirectoryNode& ParentNode, const std::
         AddNode(ParentNode, path.u8string(), folder_name, std::filesystem::is_directory(new_path));
         return new_path.u8string();
     }
-    return std::string();
+    return new_path.u8string();
 }
 
 std::string GetFolderName(const std::string& path) {

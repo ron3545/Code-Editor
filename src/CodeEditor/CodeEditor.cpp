@@ -225,9 +225,10 @@ void CodeEditor::VerifyCode()
 
     const auto output_location = build_folder_path.substr(SelectedProjectPath.u8string().length() + 1);
 
-    const std::string python_compile_command = "Python " + entry_point_file;
-    const std::string cpp_compile_command = "g++ -Wall " + entry_point_file + " -o " + output_location + "\\" + project_root_node.FileName;
-    cmd_panel->BuildRunCode((programming_type == PT_CPP)? cpp_compile_command : python_compile_command);
+    const std::string python_compile_command = "Python -u " + entry_point_file;
+    const std::string cpp_compile_command = "g++ -Wall " + entry_point_file + " -o " + output_location + "\\" + project_root_node.FileName + " && " + SelectedProjectPath.u8string() + "\\" + output_location + "\\" + project_root_node.FileName;
+    
+    cmd_panel->BuildRunCode((programming_type == PT_CPP)? cpp_compile_command : python_compile_command, (programming_type == PT_CPP)? ArmSimPro::CmdPanel::PL_CPP : ArmSimPro::CmdPanel::PL_PYTHON);
 }
 
 std::string CodeEditor::Recursively_FindEntryPointFile_FromDirectory(const DirectoryNode& parentNode)
