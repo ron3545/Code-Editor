@@ -7,7 +7,6 @@
 #include <future>
 #include <vector>
 #include <unordered_set>
-
 #include "Coordinate.hpp"
 
 namespace ArmSimPro

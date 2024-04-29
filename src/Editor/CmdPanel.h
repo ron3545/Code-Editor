@@ -43,8 +43,7 @@ namespace ArmSimPro
         void RunPythonProgram(const std::string command, const std::string& current_path);
         void RunCPPProgram(const std::string command, const std::string& current_path);
 
-        std::string ExecuteCommand(const std::string& command, const std::string& current_path);
-        std::string ExecuteCommand(const std::string& exe_file_path);
+        std::string ExecuteCommand(const std::string& command, bool should_run_file = false);        
     private:
         std::string _IDname;
 
@@ -65,5 +64,8 @@ namespace ArmSimPro
 
         std::vector<std::string> ExecutedTerminalCMDs;
         std::vector<std::string> Output_messages;
+
+        std::mutex run_cpp_program_mutex, run_python_program, run_terminal_commands;
     };
 };
+

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.14)
 
 project(ARMSIMPRO_core LANGUAGES CXX)
 
@@ -15,10 +15,9 @@ add_subdirectory(Algorithms)
 add_subdirectory(Dependencies)
 add_subdirectory(ImageHandler)
 
-
 add_executable(${PROJECT_NAME} WIN32  RoboMaster_Core.cpp)
 
-target_link_libraries(${PROJECT_NAME} PUBLIC 
+target_link_libraries(${PROJECT_NAME} PRIVATE 
     imgui 
     CodeEditor
     d3d11.lib 

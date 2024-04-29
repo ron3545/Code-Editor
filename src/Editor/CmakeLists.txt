@@ -2,13 +2,11 @@ add_library( Editor
     CmdPanel.cpp
     TextEditor.cpp
     Editor.cpp
+    Async_Wrapper.hpp
 )
 
-target_link_libraries(Editor PRIVATE 
-                        d3d11.lib )
-
 target_include_directories( Editor
-    PUBLIC 
+    PRIVATE 
         ${CMAKE_CURRENT_LIST_DIR}
-        imgui       
+        imgui    
 )

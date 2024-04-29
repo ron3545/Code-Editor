@@ -72,6 +72,7 @@ private:
     bool UseDefault_Location;
     bool ShouldCloseEditor;
 
+    fs::path prev_system_path;
     fs::path SelectedProjectPath; 
     fs::path NewProjectDir; 
 

@@ -5,6 +5,7 @@
 #include <shellapi.h>
 #include <string_view>
 
+
 namespace ArmSimPro
 {
     struct MenuItemData{
@@ -106,7 +107,7 @@ float CodeEditor::SetupMenuTab()
         if (ImGui::BeginMenu("File"))
         {
             if (ImGui::MenuItem("\tNew Window", "CTRL+Shift+N")) 
-                ShellExecute(NULL, L"open", Path_To_Wstring(std::filesystem::current_path() / "ARMSIMPRO_core.exe").c_str(), NULL, NULL, SW_SHOWDEFAULT);
+                ShellExecute(NULL, L"open", Path_To_Wstring("ARMSIMPRO_core.exe").c_str(), NULL, NULL, SW_SHOWDEFAULT);
             
             ImGui::Separator();
             ImGui::MenuItem("\tAuto Save", "", &auto_save);
@@ -160,11 +161,14 @@ float CodeEditor::SetupMenuTab()
 
 
 void CodeEditor::RunEditor()
-{
+{   
     // Create a project
     if(!SelectedProjectPath.empty() && project_root_node.FileName.empty() && project_root_node.FullPath.empty()){
         auto task = std::async(std::launch::async, CreateDirectryNodeTreeFromPath, SelectedProjectPath);
         project_root_node = task.get();
+
+        prev_system_path = std::filesystem::current_path(); //save the system path
+        std::filesystem::current_path(SelectedProjectPath); //Set new path
     }
 
     ImGui::PushFont(DefaultFont);
@@ -172,7 +176,6 @@ void CodeEditor::RunEditor()
         float main_menubar_height = SetupMenuTab();
         horizontal_tool_bar->SetToolBar(main_menubar_height + 10);
         ShowFileExplorer(horizontal_tool_bar->GetThickness(), status_bar->GetHeight() + 17);
-        //vertical_tool_bar->SetToolBar(horizontal_tool_bar->GetThickness(), status_bar->GetHeight() + 17);
 
 //===================================================STATUS BAR==============================================================================================
         status_bar->BeginStatusBar();
@@ -194,12 +197,12 @@ void CodeEditor::RunEditor()
         if (username != nullptr)
             organizationPath = "C:\\Users\\" + std::string(username);
 
+       
         cmd_panel->SetPanel((SelectedProjectPath.empty())? organizationPath : SelectedProjectPath, 100, explorer_panel_width - 20, &build_result);
-        
+
     ImGui::PopFont(); //default font
 
-    auto future = std::async(std::launch::async, &CodeEditor::EditorWithoutDockSpace, this, main_menubar_height);
-    future.wait();
+    EditorWithoutDockSpace(main_menubar_height);
 }
 
 void CodeEditor::VerifyCode()
@@ -226,7 +229,7 @@ void CodeEditor::VerifyCode()
     const auto output_location = build_folder_path.substr(SelectedProjectPath.u8string().length() + 1);
 
     const std::string python_compile_command = "Python -u " + entry_point_file;
-    const std::string cpp_compile_command = "g++ -Wall " + entry_point_file + " -o " + output_location + "\\" + project_root_node.FileName + " && " + SelectedProjectPath.u8string() + "\\" + output_location + "\\" + project_root_node.FileName;
+    const std::string cpp_compile_command = "g++ -Wall " + entry_point_file + " -o " + output_location + "\\" + project_root_node.FileName + " && " + SelectedProjectPath.u8string() + "\\" + output_location + "\\" + project_root_node.FileName + ".exe";
     
     cmd_panel->BuildRunCode((programming_type == PT_CPP)? cpp_compile_command : python_compile_command, (programming_type == PT_CPP)? ArmSimPro::CmdPanel::PL_CPP : ArmSimPro::CmdPanel::PL_PYTHON);
 }
@@ -629,9 +632,10 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
 
         if(ImGui::BeginTabBar("##tabs", ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_AutoSelectNewTabs | ImGuiTabBarFlags_FittingPolicyScroll))
         {   
-            ImGui::PushStyleColor(ImGuiCol_Tab, bg_col.GetCol());
-            if(Opened_TextEditors.empty() && project_root_node.FileName.empty() && project_root_node.FullPath.empty())
+            
+            if(project_root_node.FullPath.empty())
             {
+                ImGui::PushStyleColor(ImGuiCol_Tab, bg_col.GetCol());
                 if(ImGui::BeginTabItem("\tWelcome\t")){
                     ImGui::PushStyleColor(ImGuiCol_ChildBg, bg_col.GetCol());
                     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 12.5);
@@ -643,10 +647,10 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
 
                     ImGui::EndTabItem();
                 }
+                ImGui::PopStyleColor();
             }
-            ImGui::PopStyleColor();
-
-            if(!Opened_TextEditors.empty())
+            
+            else if (!project_root_node.FullPath.empty())
             {
                 //make sure to have no duplicates      
                 static size_t prev_size = 0;
@@ -1371,15 +1375,14 @@ void CodeEditor::FilesHintWithKeys(const std::filesystem::path &path, const Sear
 //========================================Loading and Saving User Data Helper Functions==============================================
 nlohmann::json CodeEditor::LoadUserData()
 {
-    fs::path current_exe_path = fs::current_path();
-        std::string file_path(current_exe_path.u8string() + "\\ArmSim.json");
-        nlohmann::json data;
-        
-        std::ifstream config_file(file_path);
-            data = nlohmann::json::parse(config_file);
-        config_file.close();
+    std::string file_path("ArmSim.json");
+    nlohmann::json data;
+    
+    std::ifstream config_file(file_path);
+        data = nlohmann::json::parse(config_file);
+    config_file.close();
 
-        return data;
+    return data;
 }
 
 bool CodeEditor::IsRootKeyExist(const std::string& root, const std::string& path)
@@ -1399,53 +1402,52 @@ bool CodeEditor::IsRootKeyExist(const std::string& root, const std::string& path
 }
 
 void CodeEditor::SaveUserData()
-{
-    fs::path current_exe_path = fs::current_path();
-        std::string file_path(current_exe_path.u8string() + "\\ArmSim.json");
+{   
+    std::string file_path(prev_system_path.u8string() + "\\ArmSim.json");
+    
+    if(SelectedProjectPath.empty() && Opened_TextEditors.empty())
+        return;
+
+    std::vector<std::string> FilePath_OpenedEditors;
+    for(auto it = Opened_TextEditors.cbegin(); it != Opened_TextEditors.cend(); ++it)
+        if(it->Open)
+            FilePath_OpenedEditors.push_back(it->editor.GetPath());
+
+    nlohmann::json json_data; 
+
+    nlohmann::json new_data;
+    new_data[PROGRAMMING_LANGUAGE] = (programming_type == PT_CPP)? CPP : PYTHON;
+    new_data[OPENED_FILES] = FilePath_OpenedEditors;
+    new_data[ROOT_PROJECT] = SelectedProjectPath.u8string();
+
+    bool file_exist = fs::exists(fs::path(file_path));
+    if(file_exist)
+    {
+        std::ifstream config_file(file_path);
+        json_data = nlohmann::json::parse(config_file);
+        config_file.close();
         
-        if(SelectedProjectPath.empty() && Opened_TextEditors.empty())
-            return;
-
-        std::vector<std::string> FilePath_OpenedEditors;
-        for(auto it = Opened_TextEditors.cbegin(); it != Opened_TextEditors.cend(); ++it)
-            if(it->Open)
-                FilePath_OpenedEditors.push_back(it->editor.GetPath());
-
-        nlohmann::json json_data; 
-
-        nlohmann::json new_data;
-        new_data[PROGRAMMING_LANGUAGE] = (programming_type == PT_CPP)? CPP : PYTHON;
-        new_data[OPENED_FILES] = FilePath_OpenedEditors;
-        new_data[ROOT_PROJECT] = SelectedProjectPath.u8string();
-
-        bool file_exist = fs::exists(fs::path(file_path));
-        if(file_exist)
+        if(IsRootKeyExist(SelectedProjectPath.u8string(), file_path))
         {
-            std::ifstream config_file(file_path);
-            json_data = nlohmann::json::parse(config_file);
-            config_file.close();
-            
-            if(IsRootKeyExist(SelectedProjectPath.u8string(), file_path))
+            for(auto& element : json_data[RECENT_FILES])
             {
-                for(auto& element : json_data[RECENT_FILES])
+                if(element[ROOT_PROJECT] == SelectedProjectPath.u8string())
                 {
-                    if(element[ROOT_PROJECT] == SelectedProjectPath.u8string())
-                    {
-                        element[OPENED_FILES] = FilePath_OpenedEditors;
-                        break;
-                    }
+                    element[OPENED_FILES] = FilePath_OpenedEditors;
+                    break;
                 }
             }
-            else
-                json_data[RECENT_FILES].push_back(new_data);
         }
         else
             json_data[RECENT_FILES].push_back(new_data);
+    }
+    else
+        json_data[RECENT_FILES].push_back(new_data);
 
-        if(json_data.empty())
-            return;
+    if(json_data.empty())
+        return;
 
-        std::ofstream file(file_path, std::ios::trunc);
-        file << std::setw(4) << json_data << "\n\n";
-        file.close();
+    std::ofstream file(file_path, std::ios::trunc);
+    file << std::setw(4) << json_data << "\n\n";
+    file.close();
 }

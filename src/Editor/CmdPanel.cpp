@@ -1,14 +1,17 @@
 #include "CmdPanel.h"
 #include <windows.h>
 #include <string>
-
+#include <atlstr.h>
 #include <ctime>
 #include <sstream>
 #include <locale>
 #include <codecvt>
+
 #include "../filesystem.hpp"
+#include "Async_Wrapper.hpp"
 
 #define COMMAND_EXEC_FAILED "Failed to execute command"
+#define BUFFER_SIZE 128
 
 ArmSimPro::CmdPanel::CmdPanel(const char* IDname, float status_bar_thickness, const RGBA& bg_col, const RGBA& highlighter_col) 
     : _IDname(IDname), _status_bar_thickness(status_bar_thickness), _height(120),  _bg_col(bg_col), _highlighter_col(highlighter_col), programming_language(PL_CPP)
@@ -58,6 +61,9 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
         if(ImGui::BeginTabBar("##tabbar", ImGuiTabBarFlags_NoCloseWithMiddleMouseButton))
         {   
             ImGuiTabItemFlags flag = ImGuiTabItemFlags_NoCloseWithMiddleMouseButton | ImGuiTabItemFlags_NoReorder;
+            
+            if(!command.empty())
+                flag = ImGuiTabItemFlags_SetSelected;
 
             if(ImGui::BeginTabItem("\tOUTPUT\t", nullptr, flag))
             {   
@@ -69,16 +75,26 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
                     if(!command.empty() )
                     {
                         Output_messages.clear();
-                        Output_messages.push_back("\n[Running] " + command);
-                        
+                        Output_messages.push_back("[Running] " + command);
+
                         switch(programming_language)
                         {
                         case PL_CPP:
-                            RunCPPProgram(command, current_path.u8string());
-                            break;
+                            {
+                                void_async(&ArmSimPro::CmdPanel::RunCPPProgram, this, command, current_path.u8string()); 
+
+                                //RunCPPProgram(command, current_path.u8string());  //Slow version
+                                //std::async(std::launc::async, &ArmSimPro::CmdPanel::RunCPPProgram, this, command, current_path.u8string());
+                                break;
+                            }
                         case PL_PYTHON:
-                            RunPythonProgram(command, current_path.u8string());
-                            break;
+                            {
+                                void_async(&ArmSimPro::CmdPanel::RunPythonProgram, this, command, current_path.u8string());
+
+                                //RunPythonProgram(command, current_path.u8string()); //Slow version
+                                //std::async(std::launc::async, &ArmSimPro::CmdPanel::RunPythonProgram, this, command, current_path.u8string());
+                                break;
+                            }
                         }
 
                         command.clear();
@@ -93,7 +109,8 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
             {   
                 if(ImGui::BeginChild("Terminal", ImVec2(0,0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
                 {
-                    TerminalControl(current_path.u8string());
+                    void_async(&ArmSimPro::CmdPanel::TerminalControl, this, current_path.u8string());
+                    //TerminalControl(current_path.u8string());
                     ImGui::EndChild();
                 }
                 ImGui::EndTabItem();
@@ -120,8 +137,108 @@ void ArmSimPro::CmdPanel::BuildRunCode(const std::string &cmd, ProgrammingLangua
     programming_language = pl;
 }
 
+//https://stackoverflow.com/questions/478898/how-do-i-execute-a-command-and-get-the-output-of-the-command-within-c-using-po
+std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string &command,  bool should_run_file)
+{
+#ifdef _WIN32
+    std::string strResult;
+    HANDLE hPipeRead, hPipeWrite;
+
+    SECURITY_ATTRIBUTES saAttr = {sizeof(SECURITY_ATTRIBUTES)};
+    saAttr.bInheritHandle = TRUE; // Pipe handles are inherited by child process.
+    saAttr.lpSecurityDescriptor = NULL;
+
+     // Create a pipe to get results from child's stdout.
+    if (!CreatePipe(&hPipeRead, &hPipeWrite, &saAttr, 0))
+        return strResult;
+    
+    STARTUPINFOW si = {sizeof(STARTUPINFOW)};
+    si.dwFlags     = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
+    si.hStdOutput  = hPipeWrite;
+    si.hStdError   = hPipeWrite;
+    si.wShowWindow = SW_HIDE; // Prevents cmd window from flashing.
+                              // Requires STARTF_USESHOWWINDOW in dwFlags.
+
+    PROCESS_INFORMATION pi = { 0 };
+
+    BOOL fSuccess = FALSE;
+    if(should_run_file) //executes an exe file
+    {
+        std::wstring stemp = std::wstring(command.begin(), command.end());
+        LPCWSTR sw = stemp.c_str();
+        
+        fSuccess = CreateProcessW(sw,NULL, NULL, NULL, TRUE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi);
+    }
+    else //executes a command
+    {
+        std::wstring wCommand(command.begin(), command.end());
+        fSuccess = CreateProcessW(NULL, const_cast<LPWSTR>(wCommand.c_str()), NULL, NULL, TRUE, 0, NULL,NULL, &si, &pi);//const_cast<LPWSTR>(wPath.c_str()), &si, &pi);
+    }
+   
+    if (!fSuccess)
+    {
+        CloseHandle(hPipeWrite);
+        CloseHandle(hPipeRead);
+        return strResult;
+    }
+
+    bool bProcessEnded = false;
+    while (!bProcessEnded)
+    {
+        // Give some timeslice (50 ms), so we won't waste 100% CPU.
+        bProcessEnded = WaitForSingleObject( pi.hProcess, 50) == WAIT_OBJECT_0;
+
+        while(true)
+        {
+            char buf[1024];
+            DWORD dwRead = 0;
+            DWORD dwAvail = 0;
+
+            if (!::PeekNamedPipe(hPipeRead, NULL, 0, NULL, &dwAvail, NULL))
+                break;
+
+            if (!dwAvail) // No data available, return
+                break;
+
+            if (!::ReadFile(hPipeRead, buf, min(sizeof(buf) - 1, dwAvail), &dwRead, NULL) || !dwRead)
+                // Error, the child process might ended
+                break;
+
+            buf[dwRead] = 0;
+            std::string cstemp = buf;
+            strResult += cstemp;
+        }
+    }
+
+    CloseHandle(hPipeWrite);
+    CloseHandle(hPipeRead);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    return strResult;
+#else
+    std::filesystem::current_path(current_path); //change the current working directory
+    // Unix-like system code
+    std::string result;
+    FILE* pipe = popen(command.c_str(), "r");
+    if (pipe) {
+        char buffer[128];
+        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+            result += buffer;
+        }
+
+        pclose(pipe);
+    } else {
+        result = "Failed to execute command";
+    }
+    return result;
+#endif
+}
+
+
 void ArmSimPro::CmdPanel::TerminalControl(const std::string& path)
 {
+    std::lock_guard<std::mutex> lock(run_terminal_commands);
     std::string current_path = path;
     const std::string path_identifier = current_path + ">";
 
@@ -162,7 +279,7 @@ void ArmSimPro::CmdPanel::TerminalControl(const std::string& path)
                 }
             }
             else
-                result = ExecuteCommand(cmd, current_path);
+                result = ExecuteCommand(cmd);
 
             ExecutedTerminalCMDs.push_back(path_identifier + " " + cmd + "\n" + result);
         }
@@ -172,86 +289,13 @@ void ArmSimPro::CmdPanel::TerminalControl(const std::string& path)
     ImGui::PopStyleColor(2);
 }
 
-std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string &command, const std::string &current_path)
-{
-    std::string result;
-#ifdef _WIN32
-    //Windows specific code
-    SECURITY_ATTRIBUTES sa;
-    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-    sa.bInheritHandle = TRUE;
-    sa.lpSecurityDescriptor = nullptr;
-
-    STARTUPINFO si = { sizeof(si) };
-    PROCESS_INFORMATION pi;
-
-    HANDLE hRead, hWrite;
-    if (CreatePipe(&hRead, &hWrite, &sa, 0)) 
-    {
-        GetStartupInfo(&si);
-        si.hStdError = hWrite;
-        si.hStdOutput = hWrite;
-        si.dwFlags |= STARTF_USESTDHANDLES;
-
-        // Convert narrow string to wide string
-        std::wstring wCommand(command.begin(), command.end());
-        std::wstring wPath(current_path.begin(), current_path.end());
-
-        if (CreateProcess(nullptr, 
-                          const_cast<LPWSTR>(wCommand.c_str()), 
-                          nullptr, 
-                          nullptr, 
-                          TRUE,
-                          CREATE_NO_WINDOW, 
-                          nullptr, 
-                          const_cast<LPWSTR>(wPath.c_str()), 
-                          &si, 
-                          &pi)) 
-        {
-            CloseHandle(hWrite);
-            WaitForSingleObject(pi.hProcess, INFINITE);
-
-            DWORD bytesRead;
-            char buffer[128];
-            while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, nullptr) != 0) {
-                if (bytesRead == 0)
-                    break;
-
-                buffer[bytesRead] = '\0';
-                result += buffer;
-            }
-
-            CloseHandle(hRead);
-            CloseHandle(pi.hThread);
-            CloseHandle(pi.hProcess);
-        } 
-        else 
-            result = COMMAND_EXEC_FAILED;
-    }
-#else
-    std::filesystem::current_path(current_path); //change the current working directory
-    // Unix-like system code
-    FILE* pipe = popen(command.c_str(), "r");
-    if (pipe) {
-        char buffer[128];
-        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-            result += buffer;
-        }
-
-        pclose(pipe);
-    } else {
-        result = "Failed to execute command";
-    }
-#endif
-    return result;
-}
 
 void ArmSimPro::CmdPanel::RunPythonProgram(const std::string command, const std::string &current_path)
 {
     std::stringstream ss;
     const auto start = std::chrono::high_resolution_clock::now();
 
-    std::string message = ExecuteCommand(command, current_path);
+    std::string message = ExecuteCommand(command);
     const bool has_no_error_message = message.find("error") == std::string::npos || message.find("syntaxerror") == std::string::npos;
     
     const auto stop = std::chrono::high_resolution_clock::now();
@@ -264,124 +308,53 @@ void ArmSimPro::CmdPanel::RunPythonProgram(const std::string command, const std:
     ss << duration.count();
     ss << " microseconds";
 
+    std::lock_guard<std::mutex> lock(run_python_program);
     Output_messages.push_back(ss.str());
 }
+
 
 void ArmSimPro::CmdPanel::RunCPPProgram(const std::string command, const std::string& current_path)
 {
     std::stringstream ss;
     const auto start = std::chrono::high_resolution_clock::now();
 
-    std::string first_command, second_command;
+    bool has_error_message = false; std::string compile_result;
+    
     size_t pos = command.find("&&");
     if(pos != std::string::npos)
     {
+        std::string first_command, second_command;
         first_command = command.substr(0, pos);
         first_command.erase(0, first_command.find_first_not_of(" "));
         first_command.erase(first_command.find_last_not_of(" ") + 1);
         
         second_command += command.substr(pos + 2);
-        second_command += ".exe";
         second_command.erase(0, second_command.find_first_not_of(" "));
         second_command.erase(second_command.find_last_not_of(" ") + 1);
 
-    }
-    
-    const std::string compile_result = ExecuteCommand(first_command, current_path);
-    ss << "\n" + compile_result;
-    const bool has_no_error_message = compile_result.find("error") == std::string::npos || compile_result.find("return 1") == std::string::npos;
+        compile_result = ExecuteCommand(first_command); 
+        ss << "\n" + compile_result;
+        has_error_message = compile_result.find("error") != std::string::npos;
 
-    if(has_no_error_message)
-    {
-        std::string execution_result = ExecuteCommand(second_command);
-
-        //modify the string; Replace every "?" with an apostrophe
-        for(size_t pos = execution_result.find("?");  pos != std::string::npos; pos = execution_result.find("?", pos + 1))
-            execution_result.replace(pos, 1, "\"");
-
-        ss << "[Executing] " + second_command + "\n";
-        ss << execution_result;
+        if(!has_error_message)
+        {
+            std::string execution_result = ExecuteCommand(second_command, !has_error_message);
+            ss << "[Executing] " + second_command + "\n";
+            ss << execution_result;
+        }
     }
 
     const auto stop = std::chrono::high_resolution_clock::now();
     const auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     
     ss << "\n[Done] exited with code=";
-    ss << (has_no_error_message && !compile_result.empty())? "0" : "1";
+    ss << (!has_error_message && !compile_result.empty())? "0" : "1";
     ss << " in ";
     ss << duration.count();
     ss << " microseconds";
+
+    std::lock_guard<std::mutex> lock(run_cpp_program_mutex);
     Output_messages.push_back(ss.str());
 }
 
-std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string &exe_file_path)
-{
-    std::string result;
-#ifdef _WIN32
-    //Windows specific code
-    SECURITY_ATTRIBUTES sa;
-    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-    sa.bInheritHandle = TRUE;
-    sa.lpSecurityDescriptor = nullptr;
 
-    STARTUPINFO si = { sizeof(si) };
-    PROCESS_INFORMATION pi;
-
-    HANDLE hRead, hWrite;
-    if (CreatePipe(&hRead, &hWrite, &sa, 0)) 
-    {
-        GetStartupInfo(&si);
-        si.hStdError = hWrite;
-        si.hStdOutput = hWrite;
-        si.dwFlags |= STARTF_USESTDHANDLES;
-        
-        std::wstring stemp = std::wstring(exe_file_path.begin(), exe_file_path.end());
-        LPCWSTR sw = stemp.c_str();
-        if (CreateProcess(sw,
-                          nullptr, 
-                          nullptr, 
-                          nullptr, 
-                          TRUE,
-                          NORMAL_PRIORITY_CLASS | CREATE_NO_WINDOW, 
-                          nullptr, 
-                          nullptr, 
-                          &si, 
-                          &pi)) 
-        {
-            CloseHandle(hWrite);
-            WaitForSingleObject(pi.hProcess, INFINITE);
-
-            DWORD bytesRead;
-            char buffer[255];
-            while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, nullptr) != 0) {
-                if (bytesRead == 0)
-                    break;
-
-                buffer[bytesRead] = '\0';
-                result += buffer;
-            }
-
-            CloseHandle(hRead);
-            CloseHandle(pi.hThread);
-            CloseHandle(pi.hProcess);
-        } 
-        else 
-            result = COMMAND_EXEC_FAILED;
-    }
-#else
-    std::filesystem::current_path(current_path); //change the current working directory
-    // Unix-like system code
-    FILE* pipe = popen(command.c_str(), "r");
-    if (pipe) {
-        char buffer[128];
-        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-            result += buffer;
-        }
-
-        pclose(pipe);
-    } else {
-        result = "Failed to execute command";
-    }
-#endif
-    return result;
-}
