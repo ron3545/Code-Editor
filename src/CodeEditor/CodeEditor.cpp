@@ -4,7 +4,7 @@
 #include "../ImageHandler/ImageHandler.h"
 #include <shellapi.h>
 #include <string_view>
-
+#include "../Editor/Async_Wrapper.hpp"
 
 namespace ArmSimPro
 {
@@ -90,8 +90,11 @@ void CodeEditor::InitializeEditor(const TwoStateIconPallete& two_states_icon)
 
     horizontal_tool_bar = std::make_unique< ArmSimPro::ToolBar >("Horizontal", bg_col, 30, ImGuiAxis_X);
     {   
-        horizontal_tool_bar->AppendTool("verify", two_states_icon[(int)TwoStateIconsIndex::Verify], [&](){ VerifyCode(); }, true);   horizontal_tool_bar->SetPaddingBefore("verify", 10);
-        horizontal_tool_bar->AppendTool("Upload", two_states_icon[(int)TwoStateIconsIndex::Upload], [&](){  }, true);  horizontal_tool_bar->SetPaddingBefore("Upload", 5);
+        auto verify_code = [&](){ void_async(&CodeEditor::VerifyCode, this); };
+        auto upload_code = [&](){  };
+        
+        horizontal_tool_bar->AppendTool("verify", two_states_icon[(int)TwoStateIconsIndex::Verify], verify_code, true);   horizontal_tool_bar->SetPaddingBefore("verify", 10);
+        horizontal_tool_bar->AppendTool("Upload", two_states_icon[(int)TwoStateIconsIndex::Upload], upload_code, true);  horizontal_tool_bar->SetPaddingBefore("Upload", 5);
     }
 
     status_bar = std::make_unique< ArmSimPro::StatusBar >("status", 30, horizontal_tool_bar->GetbackgroundColor());
@@ -166,9 +169,6 @@ void CodeEditor::RunEditor()
     if(!SelectedProjectPath.empty() && project_root_node.FileName.empty() && project_root_node.FullPath.empty()){
         auto task = std::async(std::launch::async, CreateDirectryNodeTreeFromPath, SelectedProjectPath);
         project_root_node = task.get();
-
-        prev_system_path = std::filesystem::current_path(); //save the system path
-        std::filesystem::current_path(SelectedProjectPath); //Set new path
     }
 
     ImGui::PushFont(DefaultFont);
@@ -197,8 +197,7 @@ void CodeEditor::RunEditor()
         if (username != nullptr)
             organizationPath = "C:\\Users\\" + std::string(username);
 
-       
-        cmd_panel->SetPanel((SelectedProjectPath.empty())? organizationPath : SelectedProjectPath, 100, explorer_panel_width - 20, &build_result);
+        cmd_panel->SetPanel((SelectedProjectPath.empty())? organizationPath : SelectedProjectPath, 100, explorer_panel_width );
 
     ImGui::PopFont(); //default font
 
@@ -210,33 +209,38 @@ void CodeEditor::VerifyCode()
     if(SelectedProjectPath.empty() || project_root_node.FileName.empty())
         return;
 
-    build_result.clear();
-
     const auto build = FileHandler::GetInstance().CreateNewFolder(project_root_node, SelectedProjectPath, BUILD_FOLDER); 
     if(!build.empty())
         build_folder_path = build;
 
+    std::string files_to_copile;
     const std::string entry_point_file = Recursively_FindEntryPointFile_FromDirectory(project_root_node).substr(SelectedProjectPath.u8string().length() + 1);
-    
-    if(entry_point_file.empty())
-    {
-        build_result = "[Build] Error: Unable to find the entry point file";
-        return;
-    }
+    files_to_copile = entry_point_file;
 
-    build_result = "[Build] entry point: " + entry_point_file;
+    if(programming_type == PT_CPP)
+    {
+        std::vector<std::string> cpp_list; std::string library_files;
+        Recursively_List_All_CPP_Files(project_root_node, cpp_list);
+
+        if(!cpp_list.empty())
+            cpp_list.erase(std::remove(cpp_list.begin(), cpp_list.end(), entry_point_file), cpp_list.end());
+
+        for(const auto& file : cpp_list)
+            files_to_copile += " " + file;
+    }
 
     const auto output_location = build_folder_path.substr(SelectedProjectPath.u8string().length() + 1);
 
-    const std::string python_compile_command = "Python -u " + entry_point_file;
-    const std::string cpp_compile_command = "g++ -Wall " + entry_point_file + " -o " + output_location + "\\" + project_root_node.FileName + " && " + SelectedProjectPath.u8string() + "\\" + output_location + "\\" + project_root_node.FileName + ".exe";
+    const std::string python_compile_command = "Python -u " + files_to_copile;
+    const std::string cpp_compile_command = "g++ -Wall -Iincludes " + files_to_copile + " -o " + output_location + "\\" + project_root_node.FileName + " && " + SelectedProjectPath.u8string() + "\\" + output_location + "\\" + project_root_node.FileName + ".exe";
     
     cmd_panel->BuildRunCode((programming_type == PT_CPP)? cpp_compile_command : python_compile_command, (programming_type == PT_CPP)? ArmSimPro::CmdPanel::PL_CPP : ArmSimPro::CmdPanel::PL_PYTHON);
 }
 
 std::string CodeEditor::Recursively_FindEntryPointFile_FromDirectory(const DirectoryNode& parentNode)
 {
-    if (!parentNode.IsDirectory) {
+    if (!parentNode.IsDirectory) 
+    {
         std::ifstream t(parentNode.FullPath);
         if (t.good()) {
             std::string content((std::istreambuf_iterator<char>(t)),
@@ -255,6 +259,18 @@ std::string CodeEditor::Recursively_FindEntryPointFile_FromDirectory(const Direc
             return result;
     }
     return std::string();
+}
+
+void CodeEditor::Recursively_List_All_CPP_Files(const DirectoryNode &parentNode, std::vector<std::string>& cpp_list)
+{
+    if(!parentNode.IsDirectory)
+    {
+        if(parentNode.FullPath.find(".cpp") != std::string::npos)
+            cpp_list.push_back(parentNode.FullPath.substr(SelectedProjectPath.u8string().length() + 1));
+    }
+
+    for(const auto& child : parentNode.Children)
+        Recursively_List_All_CPP_Files(child, cpp_list);
 }
 
 CodeEditor::DirStatus CodeEditor::CreateProjectDirectory(const fs::path &path, const char *ProjectName, fs::path *out)
@@ -611,7 +627,7 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
         pos[ImGuiAxis_X]  = viewport->Pos[ImGuiAxis_X] + explorer_panel_width;
         pos[ImGuiAxis_Y]  = viewport->Pos[ImGuiAxis_Y] + menubar_toolbar_total_thickness + 8;
 
-        size[ImGuiAxis_X] = viewport->WorkSize.x - explorer_panel_width;
+        size[ImGuiAxis_X] = viewport->WorkSize.x - (explorer_panel_width - 0.5);
         size[ImGuiAxis_Y] = viewport->WorkSize.y - (cmd_panel->GetCurretnHeight() + status_bar->GetHeight() + 47);
     }
 
@@ -802,7 +818,7 @@ void CodeEditor::RenderTextEditors()
     {
         if(fs::exists(it->editor.GetPath()))
         {
-            m_futures.push_back(std::async(std::launch::async, &CodeEditor::RenderTextEditorEx, this, it, i, (found_selected_editor == it->editor.GetPath())? ImGuiTabItemFlags_SetSelected : 0, auto_save));
+            m_futures.push_back(std::async(std::launch::async, &CodeEditor::RenderTextEditorEx, this, it, i,  0, auto_save));
             ++i;
             ++it;
         }
@@ -1105,15 +1121,12 @@ void CodeEditor::GetRecentlyOpenedProjects()
                         programming_type = std::get<0>(data.second);
                         const auto files = std::get<1>(data.second);
 
-                        std::vector<std::future<void>> m_futures;
+                        ThreadPool pool;
                         for(const auto& file : files)
                         {
                             if(fs::exists(file))
-                                m_futures.push_back(std::async(std::launch::async, &CodeEditor::LoadEditor, this,file));
+                                pool.AddTask(&CodeEditor::LoadEditor, this,file);
                         }
-
-                        for(auto& future : m_futures)
-                            future.wait();
                     }
                     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
                     ImGui::SetItemTooltip(data.first.c_str());
@@ -1161,8 +1174,8 @@ void CodeEditor::WelcomPage()
                 ImGui::Text("Recent");
             ImGui::PopFont();
             
-            auto future = std::async(std::launch::async, &CodeEditor::GetRecentlyOpenedProjects, this);
-            future.wait();
+            ThreadPool pool;
+            pool.AddTask(&CodeEditor::GetRecentlyOpenedProjects, this);            
         }
     ImGui::Columns();
 }
@@ -1403,7 +1416,7 @@ bool CodeEditor::IsRootKeyExist(const std::string& root, const std::string& path
 
 void CodeEditor::SaveUserData()
 {   
-    std::string file_path(prev_system_path.u8string() + "\\ArmSim.json");
+    std::string file_path(std::filesystem::current_path().u8string() + "\\ArmSim.json");
     
     if(SelectedProjectPath.empty() && Opened_TextEditors.empty())
         return;

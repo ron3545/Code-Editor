@@ -10,7 +10,6 @@
 #include <unordered_map>
 
 #include <mutex>
-#include <future>
 #include <regex>
 #include <sstream>
 #include <fstream>
@@ -135,7 +134,7 @@ private:
     const std::string python_entry_point = "__main__";
     const std::string cpp_entry_point = "int main()";
 
-    std::string build_result, build_folder_path;
+    std::string build_folder_path;
 
 public:
     enum class TwoStateIconsIndex
@@ -178,6 +177,7 @@ public:
 private:
     void VerifyCode();
     std::string Recursively_FindEntryPointFile_FromDirectory(const DirectoryNode& parentNode);
+    void Recursively_List_All_CPP_Files(const DirectoryNode& parentNode, std::vector<std::string>& cpp_list);
 
 //=======================================Directory Tree===================================================================================================
     DirStatus CreateProjectDirectory(const fs::path& path, const char* ProjectName, fs::path* out);

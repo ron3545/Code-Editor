@@ -4,6 +4,7 @@
 #include <cassert>
 #include <chrono>
 #include <future>
+#include "../Editor/Async_Wrapper.hpp"
 
 using namespace std::chrono_literals;
 
@@ -68,13 +69,7 @@ namespace ArmSimPro
         bool pressed = button.SetButton();
 
         if(Tool.tool.ptr_to_func && pressed)
-        {  
-            auto future = std::async(std::launch::async, [&](){
-                std::lock_guard<std::mutex> lock(ToolItem_Mutex);
-                Tool.tool.ptr_to_func(); 
-            });
-            future.wait();
-        }
+            Tool.tool.ptr_to_func();
 
         if(_toolbar_axis == ImGuiAxis_X)
             ImGui::SameLine();

@@ -66,17 +66,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         );
     }
 
-    const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-    const int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-
-    const int windowWidth = 1100;  // Set your desired width
-    const int windowHeight = 700; // Set your desired height
-
-    const int x = (screenWidth - windowWidth) / 2;
-    const int y = (screenHeight - windowHeight) / 2;
-
-    SetWindowPos(hwnd, NULL, x, y, windowWidth, windowHeight, SWP_SHOWWINDOW);
-
     if (!CreateDeviceD3D(hwnd))
     {
         CleanupDeviceD3D();
@@ -375,6 +364,9 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             const RECT* suggested_rect = (RECT*)lParam;
             ::SetWindowPos(hWnd, nullptr, suggested_rect->left, suggested_rect->top, suggested_rect->right - suggested_rect->left, suggested_rect->bottom - suggested_rect->top, SWP_NOZORDER | SWP_NOACTIVATE);
         }
+        break;
+    case WM_CREATE:
+        SendMessage(hWnd, WM_SYSCOMMAND, SC_MAXIMIZE, 0);
         break;
     }
     return ::DefWindowProcW(hWnd, msg, wParam, lParam);

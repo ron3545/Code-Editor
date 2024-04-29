@@ -20,19 +20,20 @@ ArmSimPro::CmdPanel::CmdPanel(const char* IDname, float status_bar_thickness, co
     viewportp = (ImGuiViewportP*)(void*)(viewport);
 }
 
-void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, float top_margin, float right_margin, std::string* output_display)
+void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, float top_margin, float right_margin)
 {
     //Set the status bar to the very bottom of the window
     ImRect available_rect = viewportp->GetBuildWorkRect();
     //ImVec2 contentRegionAvailable = ImGui::GetContentRegionAvail();
-    {
+    {   
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
         pos = available_rect.Min;
         pos[ImGuiAxis_Y] = (available_rect.Max[ImGuiAxis_Y] - _height) - _status_bar_thickness;
-        pos[ImGuiAxis_X] += right_margin + 20;
+        pos[ImGuiAxis_X] = pos[ImGuiAxis_X]  = viewport->Pos[ImGuiAxis_X] + right_margin;
 
         size = available_rect.GetSize();
         size[ImGuiAxis_Y] = _height;
-        size[ImGuiAxis_X] += right_margin;
+        size[ImGuiAxis_X] = viewport->WorkSize.x - (right_margin - 0.5);
     }
 
     ImGui::SetNextWindowSize(size);
@@ -75,24 +76,19 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
                     if(!command.empty() )
                     {
                         Output_messages.clear();
-                        Output_messages.push_back("[Running] " + command);
+                        Output_messages.push_back("[Running] cd " + current_path.u8string());
+                        Output_messages.push_back(command);
 
                         switch(programming_language)
                         {
                         case PL_CPP:
                             {
                                 void_async(&ArmSimPro::CmdPanel::RunCPPProgram, this, command, current_path.u8string()); 
-
-                                //RunCPPProgram(command, current_path.u8string());  //Slow version
-                                //std::async(std::launc::async, &ArmSimPro::CmdPanel::RunCPPProgram, this, command, current_path.u8string());
                                 break;
                             }
                         case PL_PYTHON:
                             {
                                 void_async(&ArmSimPro::CmdPanel::RunPythonProgram, this, command, current_path.u8string());
-
-                                //RunPythonProgram(command, current_path.u8string()); //Slow version
-                                //std::async(std::launc::async, &ArmSimPro::CmdPanel::RunPythonProgram, this, command, current_path.u8string());
                                 break;
                             }
                         }
@@ -109,8 +105,7 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
             {   
                 if(ImGui::BeginChild("Terminal", ImVec2(0,0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
                 {
-                    void_async(&ArmSimPro::CmdPanel::TerminalControl, this, current_path.u8string());
-                    //TerminalControl(current_path.u8string());
+                    TerminalControl(current_path.u8string());
                     ImGui::EndChild();
                 }
                 ImGui::EndTabItem();
@@ -138,7 +133,7 @@ void ArmSimPro::CmdPanel::BuildRunCode(const std::string &cmd, ProgrammingLangua
 }
 
 //https://stackoverflow.com/questions/478898/how-do-i-execute-a-command-and-get-the-output-of-the-command-within-c-using-po
-std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string &command,  bool should_run_file)
+std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string &command, const std::string& current_path, bool should_run_file)
 {
 #ifdef _WIN32
     std::string strResult;
@@ -161,18 +156,21 @@ std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string &command,  boo
 
     PROCESS_INFORMATION pi = { 0 };
 
+    std::wstring w_curr_path = std::wstring(current_path.begin(), current_path.end());
+    LPCWSTR lp_curr_path = w_curr_path.c_str();
+
     BOOL fSuccess = FALSE;
     if(should_run_file) //executes an exe file
     {
         std::wstring stemp = std::wstring(command.begin(), command.end());
         LPCWSTR sw = stemp.c_str();
         
-        fSuccess = CreateProcessW(sw,NULL, NULL, NULL, TRUE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi);
+        fSuccess = CreateProcessW(sw, NULL, NULL, NULL, TRUE, CREATE_NEW_CONSOLE | CREATE_NO_WINDOW , NULL, lp_curr_path, &si, &pi);
     }
     else //executes a command
     {
         std::wstring wCommand(command.begin(), command.end());
-        fSuccess = CreateProcessW(NULL, const_cast<LPWSTR>(wCommand.c_str()), NULL, NULL, TRUE, 0, NULL,NULL, &si, &pi);//const_cast<LPWSTR>(wPath.c_str()), &si, &pi);
+        fSuccess = CreateProcessW(NULL, const_cast<LPWSTR>(wCommand.c_str()), NULL, NULL, TRUE, 0, NULL, lp_curr_path, &si, &pi);//const_cast<LPWSTR>(wPath.c_str()), &si, &pi);
     }
    
     if (!fSuccess)
@@ -216,7 +214,8 @@ std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string &command,  boo
     CloseHandle(pi.hThread);
 
     return strResult;
-#else
+
+#else //Linux way
     std::filesystem::current_path(current_path); //change the current working directory
     // Unix-like system code
     std::string result;
@@ -279,7 +278,7 @@ void ArmSimPro::CmdPanel::TerminalControl(const std::string& path)
                 }
             }
             else
-                result = ExecuteCommand(cmd);
+                result = ExecuteCommand(cmd, current_path);
 
             ExecutedTerminalCMDs.push_back(path_identifier + " " + cmd + "\n" + result);
         }
@@ -295,7 +294,7 @@ void ArmSimPro::CmdPanel::RunPythonProgram(const std::string command, const std:
     std::stringstream ss;
     const auto start = std::chrono::high_resolution_clock::now();
 
-    std::string message = ExecuteCommand(command);
+    std::string message = ExecuteCommand(command, current_path);
     const bool has_no_error_message = message.find("error") == std::string::npos || message.find("syntaxerror") == std::string::npos;
     
     const auto stop = std::chrono::high_resolution_clock::now();
@@ -303,7 +302,7 @@ void ArmSimPro::CmdPanel::RunPythonProgram(const std::string command, const std:
 
     ss << message + "\n";
     ss << "[Done] exited with code=";
-    ss << (has_no_error_message && !message.empty())? "0" : "1";
+    ss << (has_no_error_message)? "0" : "1";
     ss << " in ";
     ss << duration.count();
     ss << " microseconds";
@@ -332,13 +331,13 @@ void ArmSimPro::CmdPanel::RunCPPProgram(const std::string command, const std::st
         second_command.erase(0, second_command.find_first_not_of(" "));
         second_command.erase(second_command.find_last_not_of(" ") + 1);
 
-        compile_result = ExecuteCommand(first_command); 
+        compile_result = ExecuteCommand(first_command, current_path); 
         ss << "\n" + compile_result;
         has_error_message = compile_result.find("error") != std::string::npos;
 
         if(!has_error_message)
         {
-            std::string execution_result = ExecuteCommand(second_command, !has_error_message);
+            std::string execution_result = ExecuteCommand(second_command, current_path, !has_error_message);
             ss << "[Executing] " + second_command + "\n";
             ss << execution_result;
         }

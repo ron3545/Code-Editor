@@ -33,7 +33,7 @@ namespace ArmSimPro
         CmdPanel(const char* IDname, float status_bar_thickness, const RGBA& bg_col, const RGBA& highlighter_col);
         ~CmdPanel() {}
 
-        void SetPanel(const std::filesystem::path current_path, float top_margin, float right_margin, std::string* output_display);
+        void SetPanel(const std::filesystem::path current_path, float top_margin, float right_margin);
         void BuildRunCode(const std::string& cmd, ProgrammingLanguage pl);
         void SetHeight(float height) {_height = height;}
         
@@ -43,7 +43,7 @@ namespace ArmSimPro
         void RunPythonProgram(const std::string command, const std::string& current_path);
         void RunCPPProgram(const std::string command, const std::string& current_path);
 
-        std::string ExecuteCommand(const std::string& command, bool should_run_file = false);        
+        std::string ExecuteCommand(const std::string& command, const std::string& current_path, bool should_run_file = false);        
     private:
         std::string _IDname;
 
