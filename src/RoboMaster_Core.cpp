@@ -5,11 +5,29 @@
 #include <iterator>
 #include "ImageHandler/ImageHandler.h"
 
+#define ANSI
+#define WIN32_LEAN_AND_MEAN
+#define _WIN32_WINNT   0x0501
+
+#include <windows.h>
+#include <winuser.h>
+#include <initguid.h>
+#include <usbiodef.h>
+#include <Dbt.h>
+
+#include <string>
+#include <iostream>
+#include <stdexcept>
+#include "CodeEditor/AppLog.hpp"
+
+#define HID_CLASSGUID {0x4d1e55b2, 0xf16f, 0x11cf,{ 0x88, 0xcb, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30}}
+
 #define ICONS "../../../Utils/icons"
+#define LIBFOLDER "../../../Utils/LibraryFolder/"
 
 std::unique_ptr<CodeEditor> code_editor;
 
-constexpr wchar_t* SOFTWARE_NAME = L"RMR";
+constexpr wchar_t* SOFTWARE_NAME = L"RobLy";
 const char* LOGO = "";
 
 HWND                     hwnd = NULL;
@@ -43,6 +61,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     ImGui_ImplWin32_EnableDpiAwareness();
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"Code editor", nullptr };
     ::RegisterClassExW(&wc);
+
+    GUID guid = HID_CLASSGUID;
     hwnd = ::CreateWindowW(wc.lpszClassName, 
                     SOFTWARE_NAME, 
                     WS_OVERLAPPEDWINDOW, 
@@ -53,7 +73,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
                     nullptr, 
                     nullptr, 
                     hInstance, 
-                    nullptr 
+                    (void*)&guid 
                 );
 
     // Make the title bar of the window dark mode           
@@ -141,10 +161,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     const char* Menlo_Regular_Font   = "../../../Utils/Fonts/Menlo-Regular.ttf";
     const char* MONACO_Font          = "../../../Utils/Fonts/MONACO.TTF"; 
     
-    code_editor = std::make_unique<CodeEditor>(Consolas_Font, DroidSansMono_Font, Menlo_Regular_Font, MONACO_Font);
+    code_editor = std::make_unique<CodeEditor>(Consolas_Font, DroidSansMono_Font, Menlo_Regular_Font, MONACO_Font, LIBFOLDER);
 
-    two_states_images[(int)CodeEditor::TwoStateIconsIndex::Upload] = LoadTwoStateTextureFromFile(ICONS"/ON/Upload.png", ICONS"/OFF/Upload.png");
-    two_states_images[(int)CodeEditor::TwoStateIconsIndex::Verify] = LoadTwoStateTextureFromFile(ICONS"/ON/Verify.png", ICONS"/OFF/Verify.png");
+    two_states_images[(int)CodeEditor::TwoStateIconsIndex::Simulate] = LoadTwoStateTextureFromFile(ICONS"/ON/simulator_dark.png", ICONS"/OFF/simulator.png");
+    two_states_images[(int)CodeEditor::TwoStateIconsIndex::Run] = LoadTwoStateTextureFromFile(ICONS"/ON/run_dark.png", ICONS"/OFF/run.png");
     // two_states_images[(int)CodeEditor::TwoStateIconsIndex::Folder] = LoadTwoStateTextureFromFile(ICONS"/ON/Folder.png", ICONS"/OFF/Folder.png");
     // two_states_images[(int)CodeEditor::TwoStateIconsIndex::Debug] = LoadTwoStateTextureFromFile(ICONS"/ON/Debug.png", ICONS"/OFF/Debug.png");
     // two_states_images[(int)CodeEditor::TwoStateIconsIndex::RobotArm] = LoadTwoStateTextureFromFile(ICONS"/ON/RobotArm.png", ICONS"/OFF/RobotArm.png");
@@ -357,16 +377,20 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         ::PostQuitMessage(0);
         return 0;
     case WM_DPICHANGED:
-        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports)
         {
-            //const int dpi = HIWORD(wParam);
-            //printf("WM_DPICHANGED to %d (%.0f%%)\n", dpi, (float)dpi / 96.0f * 100.0f);
-            const RECT* suggested_rect = (RECT*)lParam;
-            ::SetWindowPos(hWnd, nullptr, suggested_rect->left, suggested_rect->top, suggested_rect->right - suggested_rect->left, suggested_rect->bottom - suggested_rect->top, SWP_NOZORDER | SWP_NOACTIVATE);
+            if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports)
+            {
+                //const int dpi = HIWORD(wParam);
+                //printf("WM_DPICHANGED to %d (%.0f%%)\n", dpi, (float)dpi / 96.0f * 100.0f);
+                const RECT* suggested_rect = (RECT*)lParam;
+                ::SetWindowPos(hWnd, nullptr, suggested_rect->left, suggested_rect->top, suggested_rect->right - suggested_rect->left, suggested_rect->bottom - suggested_rect->top, SWP_NOZORDER | SWP_NOACTIVATE);
+            }
         }
         break;
     case WM_CREATE:
-        SendMessage(hWnd, WM_SYSCOMMAND, SC_MAXIMIZE, 0);
+        {
+            SendMessage(hWnd, WM_SYSCOMMAND, SC_MAXIMIZE, 0); //Full screen message
+        }
         break;
     }
     return ::DefWindowProcW(hWnd, msg, wParam, lParam);

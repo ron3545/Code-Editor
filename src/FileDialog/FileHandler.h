@@ -32,6 +32,11 @@ private:
 
     FileHandler() {}
 public:
+    enum Language {
+        Language_CPP,
+        Lanugae_Python
+    };
+
     //delete this methods.
     FileHandler(FileHandler const&) = delete;
     void operator=(FileHandler const&) = delete;
@@ -56,7 +61,7 @@ public:
     void Paste(DirectoryNode& ParentNode, const std::filesystem::path& target_path, bool IsDirectory);
     void Paste(DirectoryNode& ParentNode, const std::filesystem::path& src_file, const std::filesystem::path& target_file);
 
-    void CreateWholeProjectDirectory(const std::filesystem::path& project_dir);
+    void CreateWholeProjectDirectory(const std::filesystem::path& project_dir, const std::filesystem::path& library_directory, Language language = Language_CPP);
 
     //barowed from https://github.com/ocornut/imgui/issues/3730
     void Rename(std::string& selected_path, const std::string& new_name);
@@ -71,4 +76,5 @@ private:
     bool Search_RemoveNode(DirectoryNode& ParentNode, const std::string& target_path);
 
     void CreateMainCPPFile(const std::filesystem::path& path);
+    void CreateMainPythonFile(const std::filesystem::path& path);
 };

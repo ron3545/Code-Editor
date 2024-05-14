@@ -15,6 +15,15 @@ add_subdirectory(Algorithms)
 add_subdirectory(Dependencies)
 add_subdirectory(ImageHandler)
 
+include(FetchContent)
+FetchContent_Declare(LoguruGitRepo
+	GIT_REPOSITORY "https://github.com/emilk/loguru" # can be a filesystem path
+	GIT_TAG        "master"
+)
+# set any loguru compile-time flags before calling MakeAvailable()
+set(LOGURU_WITH_STREAMS TRUE)
+FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
+
 add_executable(${PROJECT_NAME} WIN32  RoboMaster_Core.cpp)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE 
@@ -24,5 +33,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Algo
     mio
     Imagehandler
+    user32.lib
+    loguru::loguru
 )
 

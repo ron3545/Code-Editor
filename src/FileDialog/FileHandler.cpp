@@ -9,6 +9,7 @@
 #include <functional>
 #include <iomanip>
 #include <string_view>
+#include <loguru.hpp>
 
 namespace fs = std::filesystem;
 
@@ -186,8 +187,7 @@ void FileHandler::Paste(DirectoryNode& ParentNode, const std::filesystem::path& 
             }
             catch(const std::exception& e)
             {
-                std::filesystem::path current_path(std::filesystem::current_path() / "ArmSimPro_Log.txt");
-                
+                LOG_F(INFO, "%s", e.what());
             }
         }break;
             
@@ -203,8 +203,7 @@ void FileHandler::Paste(DirectoryNode& ParentNode, const std::filesystem::path& 
             }
             catch(const std::exception& e)
             {
-                std::filesystem::path current_path(std::filesystem::current_path() / "ArmSimPro_Log.txt");
-                
+                LOG_F(INFO, "%s", e.what());                
             }
         }break;
     }
@@ -223,12 +222,11 @@ void FileHandler::Paste(DirectoryNode& ParentNode, const std::filesystem::path& 
     }
     catch(const std::exception& e)
     {
-        std::filesystem::path current_path(std::filesystem::current_path() / "ArmSimPro_Log.txt");
-        
+        LOG_F(INFO, "%s", e.what());        
     }
 }
 
-void FileHandler::CreateWholeProjectDirectory(const std::filesystem::path &project_dir)
+void FileHandler::CreateWholeProjectDirectory(const std::filesystem::path &project_dir, const std::filesystem::path& library_directory, Language language)
 {
     /** Project Directory layout:
      *      Root Project Directory
@@ -238,10 +236,27 @@ void FileHandler::CreateWholeProjectDirectory(const std::filesystem::path &proje
      *              main.cpp
     */
 
-    std::filesystem::create_directory(project_dir / "includes");
+    std::filesystem::path include_dir(project_dir / "includes");
+    std::filesystem::create_directory(include_dir);
+    if(!library_directory.empty())
+    {
+        for(const auto & entry : std::filesystem::directory_iterator(library_directory))
+            std::filesystem::copy(entry.path(), include_dir, std::filesystem::copy_options::overwrite_existing);
+    }
 
     if(std::filesystem::create_directory(project_dir/"src"))
-        CreateMainCPPFile(project_dir/"src");
+    {
+        switch(language)
+        {
+            case Language_CPP:
+                CreateMainCPPFile(project_dir/"src");
+                break;
+            
+            case Lanugae_Python:
+                CreateMainPythonFile(project_dir/"src");
+                break;
+        }
+    }
 }
 
 void FileHandler::Rename(std::string& selected_path, const std::string& new_name)
@@ -260,8 +275,7 @@ void FileHandler::Rename(std::string& selected_path, const std::string& new_name
     }
     catch(const std::exception& e)
     {
-        std::filesystem::path current_path(std::filesystem::current_path() / "ArmSimPro_Log.txt");
-        
+        LOG_F(INFO, "%s", e.what());        
     }
 }
 
@@ -286,7 +300,15 @@ bool FileHandler::Search_RemoveNode(DirectoryNode& ParentNode, const std::string
 void FileHandler::CreateMainCPPFile(const std::filesystem::path &path)
 {
     std::ofstream outputFile(path / "main.cpp");
-        const std::string file_contents= "#include <ArmSimPro.hpp>\n\nint main()\n{\n}";
+        const std::string file_contents= "#include \"includes/RMR.h\"\n\nint main()\n{\n}";
+        outputFile << file_contents;
+    outputFile.close();
+}
+
+void FileHandler::CreateMainPythonFile(const std::filesystem::path &path)
+{   
+    std::ofstream outputFile(path / "main.py");
+        const std::string file_contents= "def main(): \n\tprint(\"Hello World!\")\n\nif __name__ == \"__main__\": \n\tmain()";
         outputFile << file_contents;
     outputFile.close();
 }

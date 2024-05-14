@@ -33,7 +33,7 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
 
         size = available_rect.GetSize();
         size[ImGuiAxis_Y] = _height;
-        size[ImGuiAxis_X] = viewport->WorkSize.x - (right_margin - 0.5);
+        size[ImGuiAxis_X] = viewport->WorkSize.x - (right_margin - 0.5f);
     }
 
     ImGui::SetNextWindowSize(size);
@@ -68,16 +68,16 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
 
             if(ImGui::BeginTabItem("\tOUTPUT\t", nullptr, flag))
             {   
-                if(ImGui::BeginChild("Output", ImVec2(0,0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar))
+                if(ImGui::BeginChild("Output", ImVec2(0,0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar ))
                 {   
+                    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + (ImGui::GetWindowWidth() - 30));
                     for(const auto message : Output_messages)
                         ImGui::Text(message.c_str());
 
                     if(!command.empty() )
                     {
                         Output_messages.clear();
-                        Output_messages.push_back("[Running] cd " + current_path.u8string());
-                        Output_messages.push_back(command);
+                        Output_messages.push_back("[Running] " + command);
 
                         switch(programming_language)
                         {
@@ -104,7 +104,11 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
             if(ImGui::BeginTabItem("\tTERMINAL\t", nullptr, ImGuiTabItemFlags_NoCloseWithMiddleMouseButton | ImGuiTabItemFlags_NoReorder))
             {   
                 if(ImGui::BeginChild("Terminal", ImVec2(0,0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
-                {
+                {      
+                    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + (ImGui::GetWindowWidth() - 3));
+                    for(const auto& cmd : ExecutedTerminalCMDs)
+                        ImGui::Text("%s", cmd.c_str());
+                    
                     TerminalControl(current_path.u8string());
                     ImGui::EndChild();
                 }
@@ -241,12 +245,6 @@ void ArmSimPro::CmdPanel::TerminalControl(const std::string& path)
     std::string current_path = path;
     const std::string path_identifier = current_path + ">";
 
-    if(!ExecutedTerminalCMDs.empty()){
-        for(const auto& cmd : ExecutedTerminalCMDs){
-            ImGui::Text("%s", cmd.c_str());
-        }
-    }
-
     ImGui::Text("%s", path_identifier.c_str());
     ImGui::SameLine();
 
@@ -298,14 +296,14 @@ void ArmSimPro::CmdPanel::RunPythonProgram(const std::string command, const std:
     const bool has_no_error_message = message.find("error") == std::string::npos || message.find("syntaxerror") == std::string::npos;
     
     const auto stop = std::chrono::high_resolution_clock::now();
-    const auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
 
     ss << message + "\n";
     ss << "[Done] exited with code=";
     ss << (has_no_error_message)? "0" : "1";
     ss << " in ";
     ss << duration.count();
-    ss << " microseconds";
+    ss << " milliseconds";
 
     std::lock_guard<std::mutex> lock(run_python_program);
     Output_messages.push_back(ss.str());
@@ -344,13 +342,13 @@ void ArmSimPro::CmdPanel::RunCPPProgram(const std::string command, const std::st
     }
 
     const auto stop = std::chrono::high_resolution_clock::now();
-    const auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
     
     ss << "\n[Done] exited with code=";
-    ss << (!has_error_message && !compile_result.empty())? "0" : "1";
+    ss << (has_error_message)? "1" : "0";
     ss << " in ";
     ss << duration.count();
-    ss << " microseconds";
+    ss << " milliseconds";
 
     std::lock_guard<std::mutex> lock(run_cpp_program_mutex);
     Output_messages.push_back(ss.str());

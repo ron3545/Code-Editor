@@ -5,6 +5,7 @@
 #include <shellapi.h>
 #include <string_view>
 #include "../Editor/Async_Wrapper.hpp"
+#include <loguru.hpp>
 
 namespace ArmSimPro
 {
@@ -32,14 +33,16 @@ namespace ArmSimPro
 CodeEditor::CodeEditor( const char *Consolas_Font, 
                         const char *DroidSansMono_Font, 
                         const char *Menlo_Regular_Font, 
-                        const char *MONACO_Font)
+                        const char *MONACO_Font, 
+                        const std::string& lib_folder_path)
     :   m_Consolas_Font(Consolas_Font),
         m_DroidSansMono_Font(DroidSansMono_Font),
         m_Menlo_Regular_Font(Menlo_Regular_Font),
         m_MONACO_Font(MONACO_Font),
         auto_save(true),
         UseDefault_Location(true),
-        ShouldCloseEditor(false)
+        ShouldCloseEditor(false),
+        _lib_folder_path(lib_folder_path)
 {
 
 }
@@ -60,6 +63,10 @@ CodeEditor::~CodeEditor()
 
 void CodeEditor::InitializeEditor(const TwoStateIconPallete& two_states_icon)
 {   
+    loguru::add_file("latest_readable.log", loguru::Truncate, loguru::Verbosity_INFO);
+    // Only show most relevant things on stderr:
+    loguru::g_stderr_verbosity = 1;
+
     ImGuiIO& io = ImGui::GetIO(); 
     
     float iconFontSize = 24; 
@@ -90,11 +97,11 @@ void CodeEditor::InitializeEditor(const TwoStateIconPallete& two_states_icon)
 
     horizontal_tool_bar = std::make_unique< ArmSimPro::ToolBar >("Horizontal", bg_col, 30, ImGuiAxis_X);
     {   
-        auto verify_code = [&](){ void_async(&CodeEditor::VerifyCode, this); };
-        auto upload_code = [&](){  };
+        auto compile_run_code = [&](){ void_async(&CodeEditor::VerifyCode, this); };
+        auto simulate = [&](){  };
         
-        horizontal_tool_bar->AppendTool("verify", two_states_icon[(int)TwoStateIconsIndex::Verify], verify_code, true);   horizontal_tool_bar->SetPaddingBefore("verify", 10);
-        horizontal_tool_bar->AppendTool("Upload", two_states_icon[(int)TwoStateIconsIndex::Upload], upload_code, true);  horizontal_tool_bar->SetPaddingBefore("Upload", 5);
+        horizontal_tool_bar->AppendTool("Compile and Run", two_states_icon[(int)TwoStateIconsIndex::Run], compile_run_code, true);   horizontal_tool_bar->SetPaddingBefore("Compile and Run", 50);
+        horizontal_tool_bar->AppendTool("Simulate", two_states_icon[(int)TwoStateIconsIndex::Simulate], simulate, true);  horizontal_tool_bar->SetPaddingBefore("Simulate", 50);
     }
 
     status_bar = std::make_unique< ArmSimPro::StatusBar >("status", 30, horizontal_tool_bar->GetbackgroundColor());
@@ -169,12 +176,17 @@ void CodeEditor::RunEditor()
     if(!SelectedProjectPath.empty() && project_root_node.FileName.empty() && project_root_node.FullPath.empty()){
         auto task = std::async(std::launch::async, CreateDirectryNodeTreeFromPath, SelectedProjectPath);
         project_root_node = task.get();
+
+        void_async(&CodeEditor::FindBuildFolder, this);
     }
+
+    OpenFileDialog(SelectedProjectPath, dialog_name.c_str());
 
     ImGui::PushFont(DefaultFont);
         
         float main_menubar_height = SetupMenuTab();
         horizontal_tool_bar->SetToolBar(main_menubar_height + 10);
+
         ShowFileExplorer(horizontal_tool_bar->GetThickness(), status_bar->GetHeight() + 17);
 
 //===================================================STATUS BAR==============================================================================================
@@ -204,6 +216,12 @@ void CodeEditor::RunEditor()
     EditorWithoutDockSpace(main_menubar_height);
 }
 
+std::string RemoveSpaces(std::string str) {
+    // Remove whitespaces using remove_if and isspace
+    str.erase(std::remove_if(str.begin(), str.end(), ::isspace), str.end());
+    return str;
+}
+
 void CodeEditor::VerifyCode()
 {           
     if(SelectedProjectPath.empty() || project_root_node.FileName.empty())
@@ -215,6 +233,7 @@ void CodeEditor::VerifyCode()
 
     std::string files_to_copile;
     const std::string entry_point_file = Recursively_FindEntryPointFile_FromDirectory(project_root_node).substr(SelectedProjectPath.u8string().length() + 1);
+
     files_to_copile = entry_point_file;
 
     if(programming_type == PT_CPP)
@@ -232,7 +251,7 @@ void CodeEditor::VerifyCode()
     const auto output_location = build_folder_path.substr(SelectedProjectPath.u8string().length() + 1);
 
     const std::string python_compile_command = "Python -u " + files_to_copile;
-    const std::string cpp_compile_command = "g++ -Wall -Iincludes " + files_to_copile + " -o " + output_location + "\\" + project_root_node.FileName + " && " + SelectedProjectPath.u8string() + "\\" + output_location + "\\" + project_root_node.FileName + ".exe";
+    const std::string cpp_compile_command = "g++ -Wall -Iincludes " + files_to_copile + " -o " + output_location + "\\" + RemoveSpaces(project_root_node.FileName) + " && " + SelectedProjectPath.u8string() + "\\" + output_location + "\\" + RemoveSpaces(project_root_node.FileName) + ".exe";
     
     cmd_panel->BuildRunCode((programming_type == PT_CPP)? cpp_compile_command : python_compile_command, (programming_type == PT_CPP)? ArmSimPro::CmdPanel::PL_CPP : ArmSimPro::CmdPanel::PL_PYTHON);
 }
@@ -273,6 +292,21 @@ void CodeEditor::Recursively_List_All_CPP_Files(const DirectoryNode &parentNode,
         Recursively_List_All_CPP_Files(child, cpp_list);
 }
 
+void CodeEditor::FindBuildFolder()
+{   
+    if(SelectedProjectPath.empty())
+        return;
+
+    for(const std::filesystem::path& path : std::filesystem::directory_iterator(SelectedProjectPath))
+    {
+        if(path.u8string().find(BUILD_FOLDER) != std::string::npos)
+        {   
+            build_folder_path = path.u8string();
+            return;
+        }
+    }
+}
+
 CodeEditor::DirStatus CodeEditor::CreateProjectDirectory(const fs::path &path, const char *ProjectName, fs::path *out)
 {
     const fs::path temp = path / ProjectName;
@@ -281,8 +315,10 @@ CodeEditor::DirStatus CodeEditor::CreateProjectDirectory(const fs::path &path, c
     
     //Create Project Directory
     if(fs::create_directory(temp)){
-        *out = temp;
-        FileHandler::GetInstance().CreateWholeProjectDirectory(temp);
+        *out = temp;  
+
+        const std::string lib_path = _lib_folder_path + ((programming_type == PT_CPP)? "CPP" : "PYTHON");
+        FileHandler::GetInstance().CreateWholeProjectDirectory(temp, lib_path, (programming_type == PT_CPP)? FileHandler::Language_CPP : FileHandler::Lanugae_Python);
         return DirStatus_Created;
     }
     
@@ -451,10 +487,8 @@ void CodeEditor::RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
 
                     auto it = std::find(Opened_TextEditors.cbegin(), Opened_TextEditors.cend(), parentNode.FullPath);
                     if(it == Opened_TextEditors.cend())
-                    {   //Does not exist. So create one
-                        auto task = std::async(std::launch::async, &CodeEditor::LoadEditor, this, parentNode.FullPath);
-                        task.wait();
-                    }
+                        LoadEditor(parentNode.FullPath);
+                    
                 }
                 else //Find the tab that is already opened and select it
                 {
@@ -543,10 +577,12 @@ void CodeEditor::ImplementDirectoryNode()
             ImGui::SetCursorPosX(posX);
             ImGui::TextWrapped("You have not opened a project folder.\n\nYou can open an existing project.\n\n");
             ImGui::SetCursorPosX(posX);
-            if(ImGui::Button("Open Folder", ImVec2(width - 30, 0)))
-                ArmSimPro::FileDialog::Instance().Open("SelectProject", "Select project directory", "");
+            if(ImGui::Button("Open Folder", ImVec2(width - 30, 0))){
+                dialog_name = "SelectProject";
+                ArmSimPro::FileDialog::Instance().Open(dialog_name, "Select project directory", "");
+            }
             
-            OpenFileDialog(SelectedProjectPath, "SelectProject");
+            //OpenFileDialog(SelectedProjectPath, "SelectProject");
 //=========================================================================Create New Project============================================================================================================================================================== 
         
             ImGui::SetCursorPosX(posX);
@@ -817,8 +853,8 @@ void CodeEditor::RenderTextEditors()
     for(auto it = Opened_TextEditors.begin(); it != Opened_TextEditors.end();)
     {
         if(fs::exists(it->editor.GetPath()))
-        {
-            m_futures.push_back(std::async(std::launch::async, &CodeEditor::RenderTextEditorEx, this, it, i,  0, auto_save));
+        {   
+            m_futures.push_back(std::async(std::launch::async, &CodeEditor::RenderTextEditorEx, this, it, i,  (found_selected_editor == it->editor.GetPath())?ImGuiTabItemFlags_SetSelected : 0, auto_save));
             ++i;
             ++it;
         }
@@ -893,6 +929,10 @@ std::tuple<bool, std::string> CodeEditor::RenderTextEditorEx( TextEditors::itera
         DisplayContents(it);
         ImGui::EndTabItem();
     }
+
+    if(flag == ImGuiTabItemFlags_SetSelected)
+        found_selected_editor.clear();
+
     return std::tuple<bool, std::string>(std::make_pair(true, it->editor.GetPath()));
 }
 
@@ -966,10 +1006,11 @@ void CodeEditor::ProjectWizard()
         std::string Project_FullPath= NewProjectDir.u8string();
         ImGui::InputText("##Location", &Project_FullPath, ImGuiInputTextFlags_ReadOnly);
 
-        if(ImGui::IsItemClicked() && !UseDefault_Location)
-            ArmSimPro::FileDialog::Instance().Open("SelectProjectDirectory", "Select new project directory", "");
-
-        OpenFileDialog(NewProjectDir, "SelectProjectDirectory");
+        if(ImGui::IsItemClicked() && !UseDefault_Location){
+            dialog_name = "SelectProjectDirectory";
+            ArmSimPro::FileDialog::Instance().Open(dialog_name, "Select new project directory", "");
+        }
+        //OpenFileDialog(NewProjectDir, "SelectProjectDirectory");
 
         ImGui::Checkbox("Use default Location", &UseDefault_Location);
         if(UseDefault_Location)
@@ -1029,21 +1070,26 @@ void CodeEditor::LoadEditor(const std::string& file)
 {
     std::lock_guard<std::mutex> lock(LoadEditor_mutex);
     ArmSimPro::TextEditor editor(file,bg_col.GetCol(), TextFont, DefaultFont);
-    auto programming_lang = ArmSimPro::TextEditor::LanguageDefinition::CPlusPlus();
 
-    for (int i = 0; i < sizeof(ppnames) / sizeof(ppnames[0]); ++i)
-    {
-        ArmSimPro::TextEditor::Identifier id;
-        id.mDeclaration = ppvalues[i];
-        programming_lang.mPreprocIdentifiers.insert(std::make_pair(std::string(ppvalues[i]), id));
-    }  
+    const bool is_file_cpp = file.find("cpp") != std::string::npos;
+    auto programming_lang = (programming_type == PT_CPP || is_file_cpp)? ArmSimPro::TextEditor::LanguageDefinition::CPlusPlus() : ArmSimPro::TextEditor::LanguageDefinition::Python();
 
-    for (int i = 0; i < sizeof(identifiers) / sizeof(identifiers[0]); ++i)
+    if((programming_type == PT_CPP || is_file_cpp))
     {
-        ArmSimPro::TextEditor::Identifier id;
-        id.mDeclaration = std::string(idecls[i]);
-        programming_lang.mIdentifiers.insert(std::make_pair(std::string(identifiers[i]), id));
-    } 
+        for (int i = 0; i < sizeof(ppnames) / sizeof(ppnames[0]); ++i)
+        {
+            ArmSimPro::TextEditor::Identifier id;
+            id.mDeclaration = ppvalues[i];
+            programming_lang.mPreprocIdentifiers.insert(std::make_pair(std::string(ppvalues[i]), id));
+        }  
+
+        for (int i = 0; i < sizeof(identifiers) / sizeof(identifiers[0]); ++i)
+        {
+            ArmSimPro::TextEditor::Identifier id;
+            id.mDeclaration = std::string(idecls[i]);
+            programming_lang.mIdentifiers.insert(std::make_pair(std::string(identifiers[i]), id));
+        } 
+    }
 
     editor.SetLanguageDefinition(programming_lang);
 
@@ -1156,11 +1202,14 @@ void CodeEditor::WelcomPage()
 
         ShowProjectWizard("Project Wizard");
 
-        if(ButtonWithIcon("Open Project...", ICON_CI_FOLDER_OPENED, "Open a project to start working (Ctrl+O)"))
-            ArmSimPro::FileDialog::Instance().Open("SelectProjectDir", "Select project directory", "");
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));
-        OpenFileDialog(SelectedProjectPath, "SelectProjectDir");
-        ImGui::PopStyleVar();
+        if(ButtonWithIcon("Open Project...", ICON_CI_FOLDER_OPENED, "Open a project to start working (Ctrl+O)")){
+            dialog_name = "SelectProjectDir";
+            ArmSimPro::FileDialog::Instance().Open(dialog_name, "Select project directory", "");
+        }
+
+        // ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));
+        // OpenFileDialog(SelectedProjectPath, "SelectProjectDir");
+        // ImGui::PopStyleVar();
 
         if(ButtonWithIcon("Clone Project...", ICON_CI_GIT_PULL_REQUEST, "Clone a remote repository to a local folder..."))
         {

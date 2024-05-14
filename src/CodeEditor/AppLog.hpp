@@ -156,7 +156,7 @@ static void ShowAppLog(bool* p_open, const std::vector<std::string>& data)
 
 static void ShowAppLog(bool* p_open, const std::string& data)
 {
-    static AppLog log;
+    AppLog log;
 
     ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
     ImGui::Begin("Example: Log", p_open);

@@ -77,7 +77,7 @@ private:
 
     std::string selected_window_path, prev_selected_window_path; // for editing
     std::string current_editor, found_selected_editor;
-    std::string Project_Name;
+    std::string Project_Name, dialog_name;
 
     std::string to_find, to_replace;  bool use_search_panel = false;//for searching
     
@@ -134,17 +134,18 @@ private:
     const std::string python_entry_point = "__main__";
     const std::string cpp_entry_point = "int main()";
 
-    std::string build_folder_path;
+    std::string build_folder_path, _lib_folder_path;
 
 public:
     enum class TwoStateIconsIndex
     {
         Upload,
-        Verify,
+        Run,
         Folder,
         Debug,
         RobotArm,
         Search,
+        Simulate,
         Max
     };
 
@@ -160,7 +161,8 @@ public:
     CodeEditor(const char* Consolas_Font, 
                const char* DroidSansMono_Font,
                const char* Menlo_Regular_Font,
-               const char* MONACO_Font);
+               const char* MONACO_Font,
+               const std::string& lib_folder_path);
 
     ~CodeEditor();
 
@@ -175,10 +177,11 @@ public:
     bool ShouldEditorClose() const { return ShouldCloseEditor; }
 
 private:
-    void VerifyCode();
+    
     std::string Recursively_FindEntryPointFile_FromDirectory(const DirectoryNode& parentNode);
+    void VerifyCode();
     void Recursively_List_All_CPP_Files(const DirectoryNode& parentNode, std::vector<std::string>& cpp_list);
-
+    void FindBuildFolder();
 //=======================================Directory Tree===================================================================================================
     DirStatus CreateProjectDirectory(const fs::path& path, const char* ProjectName, fs::path* out);
     DirStatus CreatesDefaultProjectDirectory(const fs::path& NewProjectPath, const char* ProjectName, fs::path* output_path);

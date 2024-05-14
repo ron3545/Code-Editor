@@ -58,6 +58,7 @@ namespace ArmSimPro
             }
             static const LanguageDefinition& CPlusPlus();
             static const LanguageDefinition& C();
+            static const LanguageDefinition& Python();
         };
         
         bool operator==(const std::string& full_path) const { return this->path == full_path; }
