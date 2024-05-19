@@ -9,7 +9,6 @@
 #include <functional>
 #include <iomanip>
 #include <string_view>
-#include <loguru.hpp>
 
 namespace fs = std::filesystem;
 
@@ -30,9 +29,6 @@ void RecursivelyAddDirectoryNodes(DirectoryNode& parentNode, std::filesystem::di
 
 DirectoryNode CreateDirectryNodeTreeFromPath(const std::filesystem::path& rootPath)
 {   
-    static std::mutex dir_tree;
-    std::lock_guard<std::mutex> lock_dir_tree(dir_tree);
-    
     DirectoryNode rootNode;
 	rootNode.FullPath = rootPath.u8string();
 	rootNode.FileName = rootPath.filename().u8string();
@@ -187,7 +183,6 @@ void FileHandler::Paste(DirectoryNode& ParentNode, const std::filesystem::path& 
             }
             catch(const std::exception& e)
             {
-                LOG_F(INFO, "%s", e.what());
             }
         }break;
             
@@ -203,7 +198,6 @@ void FileHandler::Paste(DirectoryNode& ParentNode, const std::filesystem::path& 
             }
             catch(const std::exception& e)
             {
-                LOG_F(INFO, "%s", e.what());                
             }
         }break;
     }
@@ -222,7 +216,6 @@ void FileHandler::Paste(DirectoryNode& ParentNode, const std::filesystem::path& 
     }
     catch(const std::exception& e)
     {
-        LOG_F(INFO, "%s", e.what());        
     }
 }
 
@@ -275,7 +268,6 @@ void FileHandler::Rename(std::string& selected_path, const std::string& new_name
     }
     catch(const std::exception& e)
     {
-        LOG_F(INFO, "%s", e.what());        
     }
 }
 

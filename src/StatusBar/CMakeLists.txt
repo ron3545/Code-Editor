@@ -13,7 +13,5 @@ target_sources( StatusBar
 target_include_directories( StatusBar
     PUBLIC 
         ${CMAKE_CURRENT_LIST_DIR}
-        imgui
-
-        d3d11.lib 
+        imgui::imgui
 )

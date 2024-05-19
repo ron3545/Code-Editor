@@ -2,10 +2,13 @@
 
 #include "CodeEditor.hpp"
 #include "../ImageHandler/ImageHandler.h"
-#include <shellapi.h>
-#include <string_view>
 #include "../Editor/Async_Wrapper.hpp"
-#include <loguru.hpp>
+
+#include <string_view>
+
+#if defined(__WIN32) || defined(_WIN64)
+    #include <shellapi.h>
+#endif
 
 namespace ArmSimPro
 {
@@ -61,42 +64,40 @@ CodeEditor::~CodeEditor()
     SafeDelete<ImFont>(TextFont);
 }
 
-void CodeEditor::InitializeEditor(const TwoStateIconPallete& two_states_icon)
+bool CodeEditor::InitializeEditor(const TwoStateIconPallete& two_states_icon)
 {   
-    loguru::add_file("latest_readable.log", loguru::Truncate, loguru::Verbosity_INFO);
-    // Only show most relevant things on stderr:
-    loguru::g_stderr_verbosity = 1;
-
     ImGuiIO& io = ImGui::GetIO(); 
     
     float iconFontSize = 24; 
     static const ImWchar icons_ranges_CI[] = { ICON_MIN_CI, ICON_MAX_CI, 0 };
-    static const ImWchar icons_ranges_MDI[] = { ICON_MIN_MDI, ICON_MAX_MDI, 0 };
+    static const ImWchar icons_ranges_MDI[] = { static_cast<unsigned char>(ICON_MIN_MDI), static_cast<unsigned char>(ICON_MAX_MDI), 0 };
 
     ImFontConfig icons_config; 
     icons_config.MergeMode = true; 
     icons_config.GlyphMinAdvanceX = iconFontSize;
 
-    static std::mutex font_lock;
-    auto font = std::async(std::launch::async, ([&]()
-    {
-        std::lock_guard<std::mutex> lock(font_lock);
-        ICFont = io.Fonts->AddFontFromFileTTF( FONT_ICON_FILE_NAME_CI, iconFontSize, &icons_config, icons_ranges_CI );
-        IMDIFont = io.Fonts->AddFontFromFileTTF( FONT_ICON_FILE_NAME_MDI, iconFontSize, &icons_config, icons_ranges_MDI);
-        
-        DefaultFont         = io.Fonts->AddFontFromFileTTF(m_Consolas_Font     , 14);
-        CodeEditorFont      = io.Fonts->AddFontFromFileTTF(m_DroidSansMono_Font, 24);
-        FileTreeFont        = io.Fonts->AddFontFromFileTTF(m_Menlo_Regular_Font, 24);
-        StatusBarFont       = io.Fonts->AddFontFromFileTTF(m_MONACO_Font       , 11);
-        TextFont            = io.Fonts->AddFontFromFileTTF(m_Menlo_Regular_Font, 18);
-    }));
-    font.wait();
+    ICFont = io.Fonts->AddFontFromFileTTF( FONT_ICON_FILE_NAME_CI, iconFontSize, &icons_config, icons_ranges_CI );
+    IMDIFont = io.Fonts->AddFontFromFileTTF( FONT_ICON_FILE_NAME_MDI, iconFontSize, &icons_config, icons_ranges_MDI);
+    
+    DefaultFont         = io.Fonts->AddFontFromFileTTF(m_Consolas_Font     , 14);
+    CodeEditorFont      = io.Fonts->AddFontFromFileTTF(m_DroidSansMono_Font, 24);
+    FileTreeFont        = io.Fonts->AddFontFromFileTTF(m_Menlo_Regular_Font, 24);
+    StatusBarFont       = io.Fonts->AddFontFromFileTTF(m_MONACO_Font       , 11);
+    TextFont            = io.Fonts->AddFontFromFileTTF(m_Menlo_Regular_Font, 18);
+
+    if( DefaultFont    == nullptr &&
+        CodeEditorFont == nullptr &&
+        FileTreeFont   == nullptr &&
+        StatusBarFont  == nullptr &&
+        TextFont       == nullptr )
+            return false;
 
 //==================================Initializations===============================================================================================================
     FileHandler::GetInstance().SetFont(TextFont);
 
     horizontal_tool_bar = std::make_unique< ArmSimPro::ToolBar >("Horizontal", bg_col, 30, ImGuiAxis_X);
     {   
+        
         auto compile_run_code = [&](){ void_async(&CodeEditor::VerifyCode, this); };
         auto simulate = [&](){  };
         
@@ -106,6 +107,8 @@ void CodeEditor::InitializeEditor(const TwoStateIconPallete& two_states_icon)
 
     status_bar = std::make_unique< ArmSimPro::StatusBar >("status", 30, horizontal_tool_bar->GetbackgroundColor());
     cmd_panel = std::make_unique< ArmSimPro::CmdPanel >("Command Line", status_bar->GetHeight(), bg_col, highlighter_col);
+
+    return true;
 }
 //====================================================================================================================================================================================
 
@@ -116,9 +119,14 @@ float CodeEditor::SetupMenuTab()
     {   
         if (ImGui::BeginMenu("File"))
         {
-            if (ImGui::MenuItem("\tNew Window", "CTRL+Shift+N")) 
-                ShellExecute(NULL, L"open", Path_To_Wstring("ARMSIMPRO_core.exe").c_str(), NULL, NULL, SW_SHOWDEFAULT);
-            
+            if (ImGui::MenuItem("\tNew Window", "CTRL+Shift+N")) {
+                #if defined(__WIN32) || defined(_WIN64)
+                    ShellExecute(NULL, L"open", Path_To_Wstring("RobLy.exe").c_str(), NULL, NULL, SW_SHOWDEFAULT);
+                #else
+                    system("RobLy");
+                #endif
+            }
+
             ImGui::Separator();
             ImGui::MenuItem("\tAuto Save", "", &auto_save);
             if (ImGui::MenuItem("\tQuit", "CTRL+Q")){
@@ -174,10 +182,8 @@ void CodeEditor::RunEditor()
 {   
     // Create a project
     if(!SelectedProjectPath.empty() && project_root_node.FileName.empty() && project_root_node.FullPath.empty()){
-        auto task = std::async(std::launch::async, CreateDirectryNodeTreeFromPath, SelectedProjectPath);
-        project_root_node = task.get();
-
-        void_async(&CodeEditor::FindBuildFolder, this);
+        project_root_node = CreateDirectryNodeTreeFromPath(SelectedProjectPath);
+        //void_async(&CodeEditor::FindBuildFolder, this);
     }
 
     OpenFileDialog(SelectedProjectPath, dialog_name.c_str());
@@ -196,7 +202,7 @@ void CodeEditor::RunEditor()
             if(!current_editor.empty())
             {
                 static ImVec2 textSize; 
-                if(textSize.x == NULL)
+                if(textSize.x == 0)
                     textSize = ImGui::CalcTextSize(current_editor.c_str());
                 ImGui::SetCursorPosX(width - (textSize.x));
                 ImGui::Text(current_editor.c_str());
@@ -253,7 +259,7 @@ void CodeEditor::VerifyCode()
     const std::string python_compile_command = "Python -u " + files_to_copile;
     const std::string cpp_compile_command = "g++ -Wall -Iincludes " + files_to_copile + " -o " + output_location + "\\" + RemoveSpaces(project_root_node.FileName) + " && " + SelectedProjectPath.u8string() + "\\" + output_location + "\\" + RemoveSpaces(project_root_node.FileName) + ".exe";
     
-    cmd_panel->BuildRunCode((programming_type == PT_CPP)? cpp_compile_command : python_compile_command, (programming_type == PT_CPP)? ArmSimPro::CmdPanel::PL_CPP : ArmSimPro::CmdPanel::PL_PYTHON);
+    //cmd_panel->BuildRunCode((programming_type == PT_CPP)? cpp_compile_command : python_compile_command, (programming_type == PT_CPP)? ArmSimPro::CmdPanel::PL_CPP : ArmSimPro::CmdPanel::PL_PYTHON);
 }
 
 std::string CodeEditor::Recursively_FindEntryPointFile_FromDirectory(const DirectoryNode& parentNode)
@@ -652,7 +658,6 @@ void CodeEditor::ShowFileExplorer(float top_margin, float bottom_margin)
 
 void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
 {
-    std::lock_guard<std::mutex> lock(editor_mutex);
     ImVec2 MainPanelSize;
 
     ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -1014,7 +1019,14 @@ void CodeEditor::ProjectWizard()
 
         ImGui::Checkbox("Use default Location", &UseDefault_Location);
         if(UseDefault_Location)
-            NewProjectDir = fs::path(getenv("USERPROFILE")) / "Documents" / "ArmSimPro Projects";
+        {
+            #if defined(__WIN32) || defined(_WIN64)
+                    NewProjectDir = fs::path(getenv("USERPROFILE")) / "Documents" / "ArmSimPro Projects";
+            #else   
+                    const std::filesystem::path username = getlogin();
+                    NewProjectDir = fs::path("/home" / username / "Documents" / "ArmSimPro Projects");
+            #endif
+        }
 
         ImGui::SetCursorPosY(240);
         ImGui::Separator();
@@ -1050,7 +1062,7 @@ void CodeEditor::ProjectWizard()
 
 void CodeEditor::ShowProjectWizard(const char *label)
 {
-    bool is_Open;
+    bool is_Open = true;
     ImGui::PushFont(TextFont);
         ImGui::SetNextWindowSize(ImVec2(700, 300));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(50.0f, 10.0f));
@@ -1167,11 +1179,10 @@ void CodeEditor::GetRecentlyOpenedProjects()
                         programming_type = std::get<0>(data.second);
                         const auto files = std::get<1>(data.second);
 
-                        ThreadPool pool;
                         for(const auto& file : files)
                         {
                             if(fs::exists(file))
-                                pool.AddTask(&CodeEditor::LoadEditor, this,file);
+                                LoadEditor(file);
                         }
                     }
                     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
@@ -1197,6 +1208,7 @@ void CodeEditor::WelcomPage()
         ImGui::PopFont();             
 
         ImGui::SetCursorPosY(140);
+        
         if(ButtonWithIcon("New Project...", ICON_CI_ADD, "Create new project"))
             ImGui::OpenPopup("Project Wizard");
 
@@ -1222,9 +1234,8 @@ void CodeEditor::WelcomPage()
             ImGui::PushFont(FileTreeFont);
                 ImGui::Text("Recent");
             ImGui::PopFont();
-            
-            ThreadPool pool;
-            pool.AddTask(&CodeEditor::GetRecentlyOpenedProjects, this);            
+        
+            GetRecentlyOpenedProjects();        
         }
     ImGui::Columns();
 }
@@ -1425,19 +1436,20 @@ int CodeEditor::GetTextEditorIndex(const std::string txt_editor_path)
     return index;
 }
 
-void CodeEditor::FilesHintWithKeys(const std::filesystem::path &path, const Search::Handler_KeyLocation& line)
-{
-    ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap;
-    node_flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-
-    //ImGui::TreeNodeEx(line.m_Line.c_str(), node_flags);
-
-}
-
 //========================================Loading and Saving User Data Helper Functions==============================================
 nlohmann::json CodeEditor::LoadUserData()
 {
-    std::string file_path("ArmSim.json");
+    std::string file_path;
+#if defined(__WIN32) || defined(_WIN64)
+    file_path = "ArmSim.json";
+#else
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) != NULL)
+        file_path = std::filesystem::path(std::filesystem::path(cwd) / "RobLy.json");
+#endif
+    if(!std::filesystem::exists(file_path))
+        return nlohmann::json();
+
     nlohmann::json data;
     
     std::ifstream config_file(file_path);
@@ -1464,9 +1476,15 @@ bool CodeEditor::IsRootKeyExist(const std::string& root, const std::string& path
 }
 
 void CodeEditor::SaveUserData()
-{   
-    std::string file_path(std::filesystem::current_path().u8string() + "\\ArmSim.json");
-    
+{    
+    std::string file_path;
+#if defined(__WIN32) || defined(_WIN64)
+    file_path = "ArmSim.json";
+#else   
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) != NULL)
+        file_path = std::filesystem::path(std::filesystem::path(cwd) / "RobLy.json");
+#endif
     if(SelectedProjectPath.empty() && Opened_TextEditors.empty())
         return;
 

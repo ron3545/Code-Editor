@@ -4,7 +4,7 @@
 // from https://raw.githubusercontent.com/Templarian/MaterialDesign-Webfont/master/css/materialdesignicons.css
 // for use with https://github.com/Templarian/MaterialDesign-Webfont/raw/master/fonts/materialdesignicons-webfont.ttf
 #pragma once
-#define FONT_ICON_FILE_NAME_MDI "../../../Utils/Fonts/materialdesignicons-webfont.ttf"
+#define FONT_ICON_FILE_NAME_MDI "./Utils/Fonts/materialdesignicons-webfont.ttf"
 
 #define ICON_MIN_MDI 0xF68C
 #define ICON_MAX_16_MDI 0xF68C

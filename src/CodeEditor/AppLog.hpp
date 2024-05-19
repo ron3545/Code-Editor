@@ -5,6 +5,7 @@
 
 #include "../filesystem.hpp"
 #include <set>
+#include <vector>
 
 struct AppLog
 {
@@ -179,7 +180,7 @@ static void ShowAppLog(bool* p_open, size_t data)
     // Most of the contents of the window will be added by the log.Draw() call.
     ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
     ImGui::Begin("Example: Log", p_open);
-        log.AddLog("offset: '%d'\n", data);
+        log.AddLog("offset: '%ld'\n", data);
     
     ImGui::End();
 

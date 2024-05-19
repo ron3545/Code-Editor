@@ -1,23 +1,30 @@
 #pragma once
 
-#include <windows.h>
+#if defined(__WIN32) || defined(_WIN64)
+    #include <windows.h>
+    #include <shlobj.h>
+    #include <d3d11.h>
+    #include <dwmapi.h>
+
+    #define DIRECTINPUT_VERSION 0x0800
+    #include <dinput.h>
+    #include <tchar.h>
+#else 
+    #if defined(IMGUI_IMPL_OPENGL_ES2)
+        #include <GLES2/gl2.h>
+    #endif
+    #include <unistd.h>
+#endif
+
 #include <string>
-#include <shlobj.h>
-#include <sstream>
-#include <d3d11.h>
-#include <dwmapi.h>
 #include <map>
 #include <unordered_map>
-
 #include <mutex>
 #include <regex>
 #include <sstream>
 #include <fstream>
 #include <streambuf>
 
-#define DIRECTINPUT_VERSION 0x0800
-#include <dinput.h>
-#include <tchar.h>
 #include <set>
 #include <algorithm>
 #include <functional>
@@ -30,8 +37,6 @@
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_internal.h"
 #include "../imgui/imgui_stdlib.h"
-#include "../imgui/imgui_impl_win32.h"
-#include "../imgui/imgui_impl_dx11.h"
 
 #include <nlohmann/json.hpp>
 
@@ -167,7 +172,7 @@ public:
     ~CodeEditor();
 
 
-    void InitializeEditor(const TwoStateIconPallete& two_states_icon);
+    bool InitializeEditor(const TwoStateIconPallete& two_states_icon);
     void RunEditor();
     void SaveUserData();
 

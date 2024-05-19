@@ -22,11 +22,6 @@ set(FETCHCONTENT_UPDATES_DISCONNECTED TRUE)
 FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
 FetchContent_MakeAvailable(json)
 
-target_include_directories( CodeEditor
-    PUBLIC 
-        ${CMAKE_CURRENT_LIST_DIR}
-        imgui
-)
 
 target_link_libraries(CodeEditor
     
@@ -37,9 +32,5 @@ target_link_libraries(CodeEditor
     FileDialog
     nlohmann_json::nlohmann_json
 
-    Shell32.lib
-    d3d11.lib 
-    mio
-
-    loguru::loguru
+    imgui
 )

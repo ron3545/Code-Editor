@@ -10,7 +10,8 @@
 #include <iomanip>
 #include <array>
 #include <cmath>
-#include <mio/mmap.hpp>
+
+#include "Search.h"
 #include "../CodeEditor/AppLog.hpp"
 
 void Search::Search_String_On_Files(const std::filesystem::path &project_path, const std::string &key, std::set<std::filesystem::path>* dest)

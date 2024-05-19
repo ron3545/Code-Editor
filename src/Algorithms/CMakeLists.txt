@@ -8,7 +8,3 @@ target_include_directories( Algo
         ${CMAKE_CURRENT_LIST_DIR}
         imgui
 )
-
-target_link_libraries(Algo
-    mio
-)
