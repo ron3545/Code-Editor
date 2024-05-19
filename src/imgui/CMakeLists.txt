@@ -10,8 +10,10 @@ target_sources( imgui
         ${HeadersFiles}
 )
 
-target_include_directories( imgui
-    PUBLIC 
-        ${CMAKE_CURRENT_LIST_DIR}
-        d3d11.lib 
-)
+if (WIN32)
+    target_include_directories( imgui
+        PUBLIC 
+            ${CMAKE_CURRENT_LIST_DIR}
+            d3d11.lib 
+    )
+endif (WIN32)

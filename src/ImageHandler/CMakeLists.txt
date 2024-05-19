@@ -4,7 +4,6 @@ add_library( Imagehandler
 )
 
 target_include_directories( Imagehandler
-    PUBLIC 
-        ${CMAKE_CURRENT_LIST_DIR}
-        d3d11.lib 
+PUBLIC 
+    imgui
 )

@@ -1,5 +1,11 @@
 #pragma once
-#include <d3d11.h>
+#if defined(__WIN32) || defined(_WIN64)
+    #include <d3d11.h>
+    typedef ID3D11ShaderResourceView* TEXTURE_TYPE;
+#else
+    #include <GLFW/glfw3.h>
+    typedef GLuint TEXTURE_TYPE;
+#endif
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "../imgui/imgui.h"
@@ -11,7 +17,7 @@ struct RGBA
     typedef unsigned int uint;
     uint R, G, B, A;
     
-    RGBA() : R(NULL), G(NULL), B(NULL), A(NULL) {}
+    RGBA() : R(0), G(0), B(0), A(0) {}
     RGBA(uint r, uint g, uint b, uint a) : R(r), G(g), B(b), A(a) {}
 
     RGBA operator=(const RGBA& other)
@@ -37,21 +43,15 @@ struct RGBA
 
 struct TwoStateImageData
 {
-    ID3D11ShaderResourceView* ON_textureID;
-    ID3D11ShaderResourceView* OFF_textureID;
+    TEXTURE_TYPE ON_textureID;
+    TEXTURE_TYPE OFF_textureID;
     int width, height;
 };
 
 struct SingleStateImageData
 {
-    ID3D11ShaderResourceView* textureID;
+    TEXTURE_TYPE textureID;
     int width, height;
-
-    void SafeDelete()
-    {
-        delete this->textureID;
-        this->textureID = NULL;
-    }
 };
 
 void Free_STBI_Image(void* retval_from_stbi_load);

@@ -5,6 +5,7 @@
 #include <chrono>
 #include <future>
 #include "../Editor/Async_Wrapper.hpp"
+#include "../StatusBar/imgui_addOns.hpp"
 
 using namespace std::chrono_literals;
 
@@ -92,7 +93,7 @@ namespace ArmSimPro
         
         ImGui::SetNextWindowSize(requested_size);
         ImGui::SetNextWindowPos(pos);
-        ImGui::SetNextWindowViewport(viewport->ID);
+        //ImGui::SetNextWindowViewport(viewport->ID);
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(5.0f, 5.0f));
@@ -143,11 +144,12 @@ namespace ArmSimPro
 
         ImGui::SetNextWindowSize(ImVec2(_primary_sidebar_width, _toolbart_height));
         ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + (_toolbar_thickness + 20), _primary_sidebar_posY));
-        ImGui::SetNextWindowViewport(viewport->ID);
+        //ImGui::SetNextWindowViewport(viewport->ID);
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         ImGui::PushStyleColor(ImGuiCol_WindowBg, _bg_col.GetCol());
+        
         ImGui::Begin(std::string(Tool.button_name + " Primary SideBar").c_str(), NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoDocking);
         {   
             ImVec2 windowPos = ImGui::GetWindowPos();
