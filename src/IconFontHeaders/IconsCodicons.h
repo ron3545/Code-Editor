@@ -3,7 +3,7 @@
 // for use with https://github.com/microsoft/vscode-codicons/blob/main/dist/codicon.ttf
 #pragma once
 
-#define FONT_ICON_FILE_NAME_CI "../../../Utils/Fonts/codicon.ttf"
+#define FONT_ICON_FILE_NAME_CI "./Utils/Fonts/codicon.ttf"
 
 #define ICON_MIN_CI 0xea60
 #define ICON_MAX_16_CI 0xec23

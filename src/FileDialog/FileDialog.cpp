@@ -7,22 +7,20 @@
 #include <fstream>
 #include <algorithm>
 #include <sys/stat.h>
-#include <Windows.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_internal.h"
 
 #ifdef _WIN32
-#include <windows.h>
-#include <shellapi.h>
-#include <lmcons.h>
-#pragma comment(lib, "Shell32.lib")
+	#include <windows.h>
+	#include <shellapi.h>
+	#include <lmcons.h>
+	#pragma comment(lib, "Shell32.lib")
 #else
-#include <unistd.h>
-#include <pwd.h>
+	#include <unistd.h>
+	#include <pwd.h>
 #endif
 
-#include <d3d11.h>
 #include "../ImageHandler/ImageHandler.h"
 
 namespace ArmSimPro {
@@ -786,16 +784,16 @@ namespace ArmSimPro {
 
 		// light theme - load default icons
 		if ((wndBg.x + wndBg.y + wndBg.z) / 3.0f > 0.5f) {
-			uint8_t* data = (uint8_t*)ifd::GetDefaultFileIcon();
+			uint8_t* data = (uint8_t*)ArmSimPro::GetDefaultFileIcon();
 			if (iconID == 0)
-				data = (uint8_t*)ifd::GetDefaultFolderIcon();
+				data = (uint8_t*)ArmSimPro::GetDefaultFolderIcon();
 			m_icons[pathU8] = this->CreateTexture(data, DEFAULT_ICON_SIZE, DEFAULT_ICON_SIZE, 0);
 		}
 		// dark theme - invert the colors
 		else {
-			uint8_t* data = (uint8_t*)ifd::GetDefaultFileIcon();
+			uint8_t* data = (uint8_t*)ArmSimPro::GetDefaultFileIcon();
 			if (iconID == 0)
-				data = (uint8_t*)ifd::GetDefaultFolderIcon();
+				data = (uint8_t*)ArmSimPro::GetDefaultFolderIcon();
 
 			uint8_t* invData = (uint8_t*)malloc(DEFAULT_ICON_SIZE * DEFAULT_ICON_SIZE * 4);
 			for (int y = 0; y < 32; y++) {

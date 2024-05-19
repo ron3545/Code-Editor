@@ -1,12 +1,15 @@
-#include "CmdPanel.h"
-#include <windows.h>
 #include <string>
-#include <atlstr.h>
 #include <ctime>
 #include <sstream>
 #include <locale>
 #include <codecvt>
 
+#if defined(__WIN32) || defined(_WIN64)
+    #include <atlstr.h>
+    #include <windows.h>
+#endif
+
+#include "CmdPanel.h"
 #include "../filesystem.hpp"
 #include "Async_Wrapper.hpp"
 
@@ -83,12 +86,14 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
                         {
                         case PL_CPP:
                             {
-                                void_async(&ArmSimPro::CmdPanel::RunCPPProgram, this, command, current_path.u8string()); 
+                                //void_async(&ArmSimPro::CmdPanel::RunCPPProgram, this, command, current_path.u8string()); 
+                                void_async([&](){ RunCPPProgram(command, current_path.u8string()); });
                                 break;
                             }
                         case PL_PYTHON:
                             {
-                                void_async(&ArmSimPro::CmdPanel::RunPythonProgram, this, command, current_path.u8string());
+                                //void_async(&ArmSimPro::CmdPanel::RunPythonProgram, this, command, current_path.u8string());
+                                void_async([&](){ RunPythonProgram(command, current_path.u8string()); });
                                 break;
                             }
                         }
@@ -139,7 +144,7 @@ void ArmSimPro::CmdPanel::BuildRunCode(const std::string &cmd, ProgrammingLangua
 //https://stackoverflow.com/questions/478898/how-do-i-execute-a-command-and-get-the-output-of-the-command-within-c-using-po
 std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string &command, const std::string& current_path, bool should_run_file)
 {
-#ifdef _WIN32
+#if defined(__WIN32) || defined(_WIN64)
     std::string strResult;
     HANDLE hPipeRead, hPipeWrite;
 

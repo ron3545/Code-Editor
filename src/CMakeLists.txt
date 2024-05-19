@@ -1,39 +1,41 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.5)
 
-project(ARMSIMPRO_core LANGUAGES CXX)
-
-#set(CMAKE_TOOLCHAIN_FILE "C:/DEV/vcpkg/scripts/buildsystems/vcpkg.cmake")
-#set(CMAKE_PREFIX_PATH "C:/DEV/vcpkg/installed/x64-windows/share")  #pakage manager for C++
+SET(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake")
+project(RobLy_Core 
+        DESCRIPTION "Custome Code Editor for 6 DOF Robotic Arm"
+        LANGUAGES CXX)
 
 add_subdirectory(imgui)
+add_subdirectory(WindowManager)
 add_subdirectory(CodeEditor)
 add_subdirectory(ToolBar)
 add_subdirectory(StatusBar)
 add_subdirectory(Editor)
 add_subdirectory(FileDialog)
 add_subdirectory(Algorithms)
-add_subdirectory(Dependencies)
 add_subdirectory(ImageHandler)
 
-include(FetchContent)
-FetchContent_Declare(LoguruGitRepo
-	GIT_REPOSITORY "https://github.com/emilk/loguru" # can be a filesystem path
-	GIT_TAG        "master"
-)
-# set any loguru compile-time flags before calling MakeAvailable()
-set(LOGURU_WITH_STREAMS TRUE)
-FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
+find_package(glfw3 REQUIRED)
+# Use  cmake -S . -B build/ -DOpenGL_GL_PREFERENCE=GLVND
+# to skip legacy OpenGL library
+set(OpenGL_GL_PREFERENCE GLVND)
+#find_package(OpenGL REQUIRED)
+find_package(GLEW REQUIRED)
 
-add_executable(${PROJECT_NAME} WIN32  RoboMaster_Core.cpp)
+add_executable(${PROJECT_NAME} RobLy_Core.cpp)
+
+include_directories(${GLEW_INCLUDE_DIRS})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE 
+    Window_Manager
+    
     imgui 
     CodeEditor
-    d3d11.lib 
     Algo
-    mio
     Imagehandler
-    user32.lib
-    loguru::loguru
+    
+    glfw 
+    #OpenGL
+    ${GLEW_LIBRARIES}
 )
 
