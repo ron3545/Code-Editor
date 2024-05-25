@@ -6,18 +6,61 @@
 
 https://github.com/ron3545/Code-Editor/assets/86136180/9e385664-3607-48e1-a6a7-000e7c6b014b
 
+## Install and Configure
+### On Windows
+Install dependencies using [vcpkg - (VC++ Package Manager)](https://vcpkg.io/en/index.html) 
+```bash
+# Clone this repository with recursive option
+> git clone --recursive https://github.com/ron3545/Code-Editor.git
+> cd Code-Editor
 
-## Clone using this command
+# Run the bootstrap script for vcpkg
+> .\vcpkg\bootstrap-vcpkg.bat
+
+# Install imgui dependencies using vcpkg manifest (vcpkg.json)
+> .\vcpkg\vcpkg install 
+
+# Compile and Run (or run  .\win-build.bat)
+> cmake . -B build/
+> cmake --build build
+> build/src/RobLy_Core .exe
+
 ```
-git clone --recursive https://github.com/ron3545/Code-Editor.git
+We are ready to open the project in Visual Studio and Run too!  
+Use `Open Folder` option in Visual Studio to use `CMake` support.
+
+
+### On Linux/WSL2
+Install dependencies using [vcpkg - (VC++ Package Manager)](https://vcpkg.io/en/index.html) 
+
+```bash
+# Clone this repository with recursive option
+$ git clone --recursive https://github.com/ron3545/Code-Editor.git
+$ cd Code-Editor
+
+# Run the bootstrap script for vcpkg
+$ ./vcpkg/bootstrap-vcpkg.sh
+
+# Install dependencies required (will add to manifest later)
+$ sudo apt install libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev pkg-config
+
+# Install GLFW
+$ sudo apt install libglfw3-dev -y
+
+# Install OpenGL for WSL (if it complains during compilation)
+$ sudo apt install mesa-utils libglu1-mesa-dev freeglut3-dev mesa-common-dev
+
+
+# Install imgui dependencies using vcpkg manifest (vcpkg.json)
+$ ./vcpkg/vcpkg install 
+
+# Compile and Run (or run ./linux-build.sh)
+$ cmake . -B build/ 
+$ cmake --build build
+$ ./build/src/RobLy_Core 
+
 ```
-## Build on Release
-```
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake --build .
-```
+That's it!
 
 ## Overview
 The ArmSimPro Code Editor is a versatile text editor designed specifically for programming microcontrollers that control a 6 Degrees of Freedom (6 DOF) robotic arm kit for kids. It provides a user-friendly interface for writing, editing, and debugging code related to the control and movement of the robotic arm.
@@ -71,62 +114,6 @@ I usually develop on my own, so there could be bad design patterns and bugs that
 
 [**OpenGL**](https://www.opengl.org/) (Open Graphics Library) is a cross-language, cross-platform application programming interface (API) for rendering 2D and 3D vector graphics. The API is typically used to interact with a graphics processing unit (GPU), to achieve hardware-accelerated rendering.
 
-## Install and Configure
-### On Windows
-Install dependencies using [vcpkg - (VC++ Package Manager)](https://vcpkg.io/en/index.html) 
-```bash
-# Clone this repository with recursive option
-> git clone --recursive https://github.com/sukesh-ak/ImGui-GLFW-OpenGL3
-> cd ImGui-GLFW-OpenGL3
-
-# Run the bootstrap script for vcpkg
-> .\vcpkg\bootstrap-vcpkg.bat
-
-# Install imgui dependencies using vcpkg manifest (vcpkg.json)
-> .\vcpkg\vcpkg install 
-
-# Compile and Run (or run  .\win-build.bat)
-> cmake . -B build/
-> cmake --build build
-> build\Debug\ImGui-GLFW-OpenGL3.exe
-
-```
-We are ready to open the project in Visual Studio and Run too!  
-Use `Open Folder` option in Visual Studio to use `CMake` support.
-
-
-### On Linux/WSL2
-Install dependencies using [vcpkg - (VC++ Package Manager)](https://vcpkg.io/en/index.html) 
-
-```bash
-# Clone this repository with recursive option
-$ git clone --recursive https://github.com/sukesh-ak/ImGui-GLFW-OpenGL3
-$ cd ImGui-GLFW-OpenGL3
-
-# Run the bootstrap script for vcpkg
-$ ./vcpkg/bootstrap-vcpkg.sh
-
-# Install dependencies required (will add to manifest later)
-$ sudo apt install libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev pkg-config
-
-# Install OpenGL for WSL (if it complains during compilation)
-$ sudo apt install mesa-utils libglu1-mesa-dev freeglut3-dev mesa-common-dev
-
-
-# Install imgui dependencies using vcpkg manifest (vcpkg.json)
-$ ./vcpkg/vcpkg install 
-
-# Compile and Run (or run ./linux-build.sh)
-$ cmake . -B build/ 
-$ cmake --build build
-$ ./build/ImGui-GLFW-OpenGL3
-
-```
-That's it!
-
-### Screenshot
-![Screenshot](assets/screenshot.png)  
-
 ## Docs and Helpful links
 - Live Documentation [here](https://pthom.github.io/imgui_manual_online/manual/imgui_manual.html)
 - Docs on Examples [here](https://github.com/ocornut/imgui/blob/master/docs/EXAMPLES.md)
@@ -136,12 +123,6 @@ That's it!
 - Dear ImGui - https://github.com/ocornut/imgui  
 - GLFW - https://www.glfw.org/  
 - OpenGL - https://www.opengl.org/  
-- ImPlot - https://github.com/epezent/implot  
-- ImGui Knobs - https://github.com/altschuler/imgui-knobs  
-- ImSpinner - https://github.com/dalerank/imspinner
-
-
-
 
 ## Contributing
 Contributions to the ArmSimPro Code Editor are welcome. Feel free to submit issues, pull requests, or feature requests to enhance the editor's functionality and usability.

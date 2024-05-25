@@ -19,3 +19,6 @@
 	url = https://github.com/mandreyel/mio.git
 	branch = master
 
+[submodule "vcpkg"]
+	path = vcpkg
+	url = https://github.com/microsoft/vcpkg.git
