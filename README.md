@@ -7,29 +7,6 @@
 https://github.com/ron3545/Code-Editor/assets/86136180/9e385664-3607-48e1-a6a7-000e7c6b014b
 
 ## Install and Configure
-### On Windows
-Install dependencies using [vcpkg - (VC++ Package Manager)](https://vcpkg.io/en/index.html) 
-```bash
-# Clone this repository with recursive option
-> git clone --recursive https://github.com/ron3545/Code-Editor.git
-> cd Code-Editor
-
-# Run the bootstrap script for vcpkg
-> .\vcpkg\bootstrap-vcpkg.bat
-
-# Install imgui dependencies using vcpkg manifest (vcpkg.json)
-> .\vcpkg\vcpkg install 
-
-# Compile and Run (or run  .\win-build.bat)
-> cmake . -B build/
-> cmake --build build
-> build/src/RobLy_Core .exe
-
-```
-We are ready to open the project in Visual Studio and Run too!  
-Use `Open Folder` option in Visual Studio to use `CMake` support.
-
-
 ### On Linux/WSL2
 Install dependencies using [vcpkg - (VC++ Package Manager)](https://vcpkg.io/en/index.html) 
 
@@ -61,6 +38,39 @@ $ ./build/src/RobLy_Core
 
 ```
 That's it!
+
+## Installing Catkin on Ubuntu
+First you must have the ROS repositories which contain the .deb for catkin_tools:\
+
+```
+$ sudo sh \
+    -c 'echo "deb http://packages.ros.org/ros/ubuntu `lsb_release -sc` main" \
+        > /etc/apt/sources.list.d/ros-latest.list'
+$ wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
+```
+
+Once you have added that repository, run these commands to install catkin_tools:
+
+```
+$ sudo apt-get update
+$ sudo apt-get install python3-catkin-tools
+```
+
+Setting Up
+```
+sudo su 
+apt install python-rosdep2 
+apt-get-update
+apt-get dist-upgrade
+```
+
+in new terminal:
+```
+sudo pip3 install -U catkin_tools
+sudo apt-get install ros-iron-moveit
+source /opt/ros/iron/setup.bash
+sudo apt-get install ros-iron-moveit ros-iron-moveit-visual-tools
+```
 
 ## Overview
 The ArmSimPro Code Editor is a versatile text editor designed specifically for programming microcontrollers that control a 6 Degrees of Freedom (6 DOF) robotic arm kit for kids. It provides a user-friendly interface for writing, editing, and debugging code related to the control and movement of the robotic arm.
