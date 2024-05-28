@@ -12,65 +12,163 @@ Install dependencies using [vcpkg - (VC++ Package Manager)](https://vcpkg.io/en/
 
 ```bash
 # Clone this repository with recursive option
-$ git clone --recursive https://github.com/ron3545/Code-Editor.git
-$ cd Code-Editor
+git clone --recursive https://github.com/ron3545/Code-Editor.git
+cd Code-Editor
 
 # Run the bootstrap script for vcpkg
-$ ./vcpkg/bootstrap-vcpkg.sh
+./vcpkg/bootstrap-vcpkg.sh
 
 # Install dependencies required (will add to manifest later)
-$ sudo apt install libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev pkg-config
+sudo apt install libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev pkg-config
 
 # Install GLFW
-$ sudo apt install libglfw3-dev -y
+sudo apt install libglfw3-dev -y
 
 # Install OpenGL for WSL (if it complains during compilation)
-$ sudo apt install mesa-utils libglu1-mesa-dev freeglut3-dev mesa-common-dev
+sudo apt install mesa-utils libglu1-mesa-dev freeglut3-dev mesa-common-dev
 
 
 # Install imgui dependencies using vcpkg manifest (vcpkg.json)
-$ ./vcpkg/vcpkg install 
+./vcpkg/vcpkg install 
 
 # Compile and Run (or run ./linux-build.sh)
-$ cmake . -B build/ 
-$ cmake --build build
-$ ./build/src/RobLy_Core 
+cmake . -B build/ 
+cmake --build build
+./build/src/RobLy_Core 
 
 ```
 That's it!
 
-## Installing Catkin on Ubuntu
-First you must have the ROS repositories which contain the .deb for catkin_tools:\
+## Setup ROS Melodic and MoveIt on Ubuntu 18.04
+```
+su root 
+nano /etc/sudoers
 
+<username> user_name ALL=(ALL)  ALL
 ```
-$ sudo sh \
-    -c 'echo "deb http://packages.ros.org/ros/ubuntu `lsb_release -sc` main" \
-        > /etc/apt/sources.list.d/ros-latest.list'
-$ wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
 ```
+sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
+sudo apt install curl # if you haven't already installed curl
+curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add -
+sudo apt update
 
-Once you have added that repository, run these commands to install catkin_tools:
+sudo apt install ros-melodic-desktop 
+echo "source /opt/ros/melodic/setup.bash" >> ~/.bashrc
+source ~/.bashrc
 
-```
-$ sudo apt-get update
-$ sudo apt-get install python3-catkin-tools
-```
-
-Setting Up
-```
 sudo su 
 apt install python-rosdep2 
-apt-get-update
+apt-get update
 apt-get dist-upgrade
 ```
+in new terminal: 
+```
+sudo apt-get install ros-melodic-catkin python-catkin-tools 
+sudo apt install ros-melodic-moveit
+source /opt/ros/melodic/setup.bash 
+sudo apt-get install ros-melodic-moveit ros-melodic-moveit-visual-tools 
 
-in new terminal:
+sudo apt-get install git
+git clone https://github.com/ArctosRobotics/ROS
+
+cd ROS 
+catkin build 
+source devel/setup.bash 
+
+nano ~/.bashrc
+	#add this line: 
+	source /home/<your username>/ROS/devel/setup.bash 
+
+cd
 ```
-sudo pip3 install -U catkin_tools
-sudo apt-get install ros-iron-moveit
-source /opt/ros/iron/setup.bash
-sudo apt-get install ros-iron-moveit ros-iron-moveit-visual-tools
+
+
 ```
+sudo apt update
+sudo apt install python3-pip
+pip3 install python-can[serial]
+sudo apt-get install python3-tk
+pip3 install sv-ttk
+ ```
+```
+git clone https://github.com/ArctosRobotics/arctosgui
+
+
+pip3 install ttkthemes
+
+sudo apt install python3-rosdep python3-rosinstall-generator python3-wstool build-essential 
+
+# optional part
+sudo apt install python3-rosinstall python3-catkin-tools python3-osrf-pycommon
+
+sudo apt-get install ros-melodic-robot-state-publisher 
+sudo apt-get install ros-melodic-joint-state-publisher 
+
+# make sure the arduino mega is pluged in before executing this command. This is my usb port name on my device. Yours can be different
+sudo chmod a+rw /dev/ttyUSB1
+
+# make sure this is updated before running RVIZ and gui
+sudo rosdep init
+rosdep update
+
+cd arctosgui 
+ls 
+chmod +x run.sh 
+ls # rin.sh should turn green 
+./run.sh 
+```
+4 tabs will open 
+you can manually open them by: 
+```
+roslaunch arctos_config demo.launch
+rosrun moveo_moveit interface.py 
+rosrun moveo_moveit transform.py 
+python3 ui.py 
+```
+
+if rosrun causing command not found. do this:
+```
+sudo apt install ros-melodic-rosbash
+```
+
+Wait for the gui and rviz to show 
+
+In moveit rviz go File>Open config or Ctrl+O and open 
+arctosgui_config.rviz
+
+Connect the robot 
+
+If you have other port than /dev/ttyACM0 edit files 
+send.py and ros.py to adress your specific port 
+
+Plan new toolpath by moving joints or tool
+Run ROS button will send CAN messages from new pose 
+
+Run RoboDK will send gcode.tap file to robot 
+Make sure that you copy the gcode from RoboDK post processor to gcode.tap or adapt it to export code to arctos gui location under the name gcode.tap and replace it. 
+
+Set gear ratios in convert.py and roscan.py 
+gear_ratios = [1, 1, 1, 1, 1, 1]  # Replace with your actual gearbox ratios
+
+Raw gear ratios. 
+X  13.5
+Y  150
+Z  150
+A  48
+B  67.82
+C  67.82
+
+In theory raw gear ratios should be multiplied to 0.5, so gear_ratios would be
+[6.75, 75, 75, 24, 33.91, 33.91]
+They are not tested! 
+
+# Change this according to your folder 
+```
+user_path = "/home/ee/arctosgui" 
+```
+
+you can also refer to [this video](https://www.youtube.com/watch?v=R71iVkeIhtA&t=141s) or [this github repo](https://github.com/ArctosRobotics/arctosgui/blob/main/README.md?plain=1).
+
 
 ## Overview
 The ArmSimPro Code Editor is a versatile text editor designed specifically for programming microcontrollers that control a 6 Degrees of Freedom (6 DOF) robotic arm kit for kids. It provides a user-friendly interface for writing, editing, and debugging code related to the control and movement of the robotic arm.
@@ -130,9 +228,9 @@ I usually develop on my own, so there could be bad design patterns and bugs that
 - Wiki with examples and usage [here](https://github.com/ocornut/imgui/wiki)
 - Useful Extensions [here](https://github.com/ocornut/imgui/wiki/Useful-Extensions)
 ## Credits
-- Dear ImGui - https://github.com/ocornut/imgui  
-- GLFW - https://www.glfw.org/  
-- OpenGL - https://www.opengl.org/  
+- [Dear ImGui](https://github.com/ocornut/imgui)  
+- [GLFW] (https://www.glfw.org/)  
+- [OpenGL](https://www.opengl.org/) 
 
 ## Contributing
 Contributions to the ArmSimPro Code Editor are welcome. Feel free to submit issues, pull requests, or feature requests to enhance the editor's functionality and usability.
