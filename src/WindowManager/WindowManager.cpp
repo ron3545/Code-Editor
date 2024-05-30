@@ -421,6 +421,10 @@ bool Initialize_Window()
 		return (void*)tex;
 	};
 
+    ArmSimPro::FileDialog::Instance().DeleteTexture = [](void* tex) {
+        GLuint texID = (GLuint)((uintptr_t)tex);
+        glDeleteTextures(1, &texID);
+    };
     return code_editor->InitializeEditor(two_states_images);
 }
 

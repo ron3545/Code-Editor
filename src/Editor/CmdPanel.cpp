@@ -87,13 +87,13 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
                         case PL_CPP:
                             {
                                 //void_async(&ArmSimPro::CmdPanel::RunCPPProgram, this, command, current_path.u8string()); 
-                                void_async([&](){ RunCPPProgram(command, current_path.u8string()); });
+                                auto future = std::async(std::launch::async, [&](){ RunCPPProgram(command, current_path.u8string()); });
                                 break;
                             }
                         case PL_PYTHON:
                             {
                                 //void_async(&ArmSimPro::CmdPanel::RunPythonProgram, this, command, current_path.u8string());
-                                void_async([&](){ RunPythonProgram(command, current_path.u8string()); });
+                                auto future = std::async(std::launch::async, [&](){ RunPythonProgram(command, current_path.u8string()); });
                                 break;
                             }
                         }
@@ -114,7 +114,8 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
                     for(const auto& cmd : ExecutedTerminalCMDs)
                         ImGui::Text("%s", cmd.c_str());
                     
-                    TerminalControl(current_path.u8string());
+                    auto future = std::async(std::launch::async, [&](){ TerminalControl(current_path.u8string()); });
+
                     ImGui::EndChild();
                 }
                 ImGui::EndTabItem();
@@ -225,8 +226,6 @@ std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string &command, cons
     return strResult;
 
 #else //Linux way
-    std::filesystem::current_path(current_path); //change the current working directory
-    // Unix-like system code
     std::string result;
     FILE* pipe = popen(command.c_str(), "r");
     if (pipe) {
@@ -234,7 +233,6 @@ std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string &command, cons
         while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
             result += buffer;
         }
-
         pclose(pipe);
     } else {
         result = "Failed to execute command";
@@ -242,7 +240,6 @@ std::string ArmSimPro::CmdPanel::ExecuteCommand(const std::string &command, cons
     return result;
 #endif
 }
-
 
 void ArmSimPro::CmdPanel::TerminalControl(const std::string& path)
 {

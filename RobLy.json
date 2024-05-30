@@ -1,0 +1,43 @@
+{
+    "recent_files": [
+        {
+            "Opened_Files": [
+                "/home/ron/Documents/ArmSimPro Projects/dasd/src/main.py"
+            ],
+            "Programming_language": "python",
+            "root": "/home/ron/Documents/ArmSimPro Projects/dasd"
+        },
+        {
+            "Opened_Files": [
+                "/home/ron/Documents/ArmSimPro Projects/fasfa/src/main.cpp"
+            ],
+            "Programming_language": "cpp",
+            "root": "/home/ron/Documents/ArmSimPro Projects/fasfa"
+        },
+        {
+            "Opened_Files": [],
+            "Programming_language": "cpp",
+            "root": "/home/ron/Documents/ArmSimPro Projects/das"
+        },
+        {
+            "Opened_Files": [],
+            "Programming_language": "python",
+            "root": "./Utils/Examples/PYTHON"
+        },
+        {
+            "Opened_Files": [
+                "./Utils/Examples/Sample-UI/jog.tap"
+            ],
+            "Programming_language": "python",
+            "root": "./Utils/Examples/Sample-UI"
+        },
+        {
+            "Opened_Files": [
+                "/home/ron/Documents/ArmSimPro Projects/python sample/src/main.py"
+            ],
+            "Programming_language": "python",
+            "root": "/home/ron/Documents/ArmSimPro Projects/python sample"
+        }
+    ]
+}
+

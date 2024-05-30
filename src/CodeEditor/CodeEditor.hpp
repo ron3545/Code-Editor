@@ -59,6 +59,10 @@
 #include <array>
 #include <memory>
 
+#include <iostream>
+
+#define EXAMPLE_FOLDER "./Utils/Examples"
+
 namespace fs = std::filesystem;
 
 class CodeEditor
@@ -75,13 +79,14 @@ private:
     bool auto_save;
     bool UseDefault_Location;
     bool ShouldCloseEditor;
+    bool Read_Only_File = false; // for sample projects only.
 
     fs::path prev_system_path;
     fs::path SelectedProjectPath; 
     fs::path NewProjectDir; 
 
     std::string selected_window_path, prev_selected_window_path; // for editing
-    std::string current_editor, found_selected_editor;
+    std::string current_editor_stat, current_editor_path, found_selected_editor;
     std::string Project_Name, dialog_name;
 
     std::string to_find, to_replace;  bool use_search_panel = false;//for searching
@@ -133,7 +138,7 @@ private:
         PT_PYTHON
     };
 
-    int programming_type = PT_CPP; // type of programming language used for the project
+    int programming_type = PT_PYTHON; // type of programming language used for the project
 
     //For Finding the entry point file
     const std::string python_entry_point = "__main__";
@@ -210,6 +215,7 @@ private:
     void ShowProjectWizard(const char* label);
 
     void GetRecentlyOpenedProjects();
+    void GetSampleProjects(const std::string& sample_folder_path);   
     void WelcomPage();
     
 //===================================================Used for renaming and adding files/folders============================================================
@@ -234,3 +240,9 @@ private:
 };
 
 
+static void removeSubstring(std::string& str, const std::string& substr) {
+    size_t pos = str.find(substr);
+    if (pos != std::string::npos) {
+        str.erase(pos, substr.length());
+    }
+}

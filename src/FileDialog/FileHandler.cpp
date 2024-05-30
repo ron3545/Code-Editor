@@ -19,7 +19,8 @@ void RecursivelyAddDirectoryNodes(DirectoryNode& parentNode, std::filesystem::di
 		DirectoryNode& childNode = parentNode.Children.emplace_back();
 		childNode.FullPath = entry.path().u8string();
 		childNode.FileName = entry.path().filename().u8string();
-		if (childNode.IsDirectory = entry.is_directory(); childNode.IsDirectory)
+        childNode.IsDirectory = std::filesystem::is_directory(entry.path()); 
+		if (childNode.IsDirectory)
 			RecursivelyAddDirectoryNodes(childNode, std::filesystem::directory_iterator(entry));
 	}
 

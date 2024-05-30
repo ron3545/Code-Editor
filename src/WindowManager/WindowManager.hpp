@@ -2,7 +2,7 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #define IMGUI_DEFINE_MATH_OPERATORS
-#define GLFW_DLL
+//#define GLFW_DLL
 
 #if defined(__WIN32) || defined(_WIN64)
     #define ANSI

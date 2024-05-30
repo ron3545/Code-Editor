@@ -1,5 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 
+#include "../filesystem.hpp"
 #include "CodeEditor.hpp"
 #include "../ImageHandler/ImageHandler.h"
 #include "../Editor/Async_Wrapper.hpp"
@@ -98,8 +99,8 @@ bool CodeEditor::InitializeEditor(const TwoStateIconPallete& two_states_icon)
     horizontal_tool_bar = std::make_unique< ArmSimPro::ToolBar >("Horizontal", bg_col, 30, ImGuiAxis_X);
     {   
         
-        auto compile_run_code = [&](){ void_async(&CodeEditor::VerifyCode, this); };
-        auto simulate = [&](){  };
+        auto compile_run_code = [&](){ auto future = std::async(std::launch::async, &CodeEditor::VerifyCode, this); };
+        auto simulate = [&](){ auto future = std::async(std::launch::async, [&](){ system("roslaunch arctos_config demo.launch"); }); };
         
         horizontal_tool_bar->AppendTool("Compile and Run", two_states_icon[(int)TwoStateIconsIndex::Run], compile_run_code, true);   horizontal_tool_bar->SetPaddingBefore("Compile and Run", 50);
         horizontal_tool_bar->AppendTool("Simulate", two_states_icon[(int)TwoStateIconsIndex::Simulate], simulate, true);  horizontal_tool_bar->SetPaddingBefore("Simulate", 50);
@@ -177,13 +178,13 @@ float CodeEditor::SetupMenuTab()
     return main_menubar_height;
 }
 
-
 void CodeEditor::RunEditor()
 {   
     // Create a project
     if(!SelectedProjectPath.empty() && project_root_node.FileName.empty() && project_root_node.FullPath.empty()){
         project_root_node = CreateDirectryNodeTreeFromPath(SelectedProjectPath);
         //void_async(&CodeEditor::FindBuildFolder, this);
+        prev_system_path = std::filesystem::current_path();
     }
 
     OpenFileDialog(SelectedProjectPath, dialog_name.c_str());
@@ -199,13 +200,13 @@ void CodeEditor::RunEditor()
         status_bar->BeginStatusBar();
         {
             float width = ImGui::GetWindowWidth();
-            if(!current_editor.empty())
+            if(!current_editor_stat.empty())
             {
                 static ImVec2 textSize; 
                 if(textSize.x == 0)
-                    textSize = ImGui::CalcTextSize(current_editor.c_str());
+                    textSize = ImGui::CalcTextSize(current_editor_stat.c_str());
                 ImGui::SetCursorPosX(width - (textSize.x));
-                ImGui::Text(current_editor.c_str());
+                ImGui::Text(current_editor_stat.c_str());
             }
         }
         status_bar->EndStatusBar();
@@ -233,10 +234,6 @@ void CodeEditor::VerifyCode()
     if(SelectedProjectPath.empty() || project_root_node.FileName.empty())
         return;
 
-    const auto build = FileHandler::GetInstance().CreateNewFolder(project_root_node, SelectedProjectPath, BUILD_FOLDER); 
-    if(!build.empty())
-        build_folder_path = build;
-
     std::string files_to_copile;
     const std::string entry_point_file = Recursively_FindEntryPointFile_FromDirectory(project_root_node).substr(SelectedProjectPath.u8string().length() + 1);
 
@@ -244,6 +241,10 @@ void CodeEditor::VerifyCode()
 
     if(programming_type == PT_CPP)
     {
+        const auto build = FileHandler::GetInstance().CreateNewFolder(project_root_node, SelectedProjectPath, BUILD_FOLDER); 
+        if(!build.empty())
+            build_folder_path = build;
+        
         std::vector<std::string> cpp_list; std::string library_files;
         Recursively_List_All_CPP_Files(project_root_node, cpp_list);
 
@@ -259,7 +260,7 @@ void CodeEditor::VerifyCode()
     const std::string python_compile_command = "Python -u " + files_to_copile;
     const std::string cpp_compile_command = "g++ -Wall -Iincludes " + files_to_copile + " -o " + output_location + "\\" + RemoveSpaces(project_root_node.FileName) + " && " + SelectedProjectPath.u8string() + "\\" + output_location + "\\" + RemoveSpaces(project_root_node.FileName) + ".exe";
     
-    //cmd_panel->BuildRunCode((programming_type == PT_CPP)? cpp_compile_command : python_compile_command, (programming_type == PT_CPP)? ArmSimPro::CmdPanel::PL_CPP : ArmSimPro::CmdPanel::PL_PYTHON);
+    cmd_panel->BuildRunCode((programming_type == PT_CPP)? cpp_compile_command : python_compile_command, (programming_type == PT_CPP)? ArmSimPro::CmdPanel::PL_CPP : ArmSimPro::CmdPanel::PL_PYTHON);
 }
 
 std::string CodeEditor::Recursively_FindEntryPointFile_FromDirectory(const DirectoryNode& parentNode)
@@ -382,7 +383,9 @@ void CodeEditor::RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
             if(ImGui::IsItemClicked(ImGuiMouseButton_Left))
                 selected_path = parentNode.FullPath;
 
-            ImGui::PushFont(TextFont); 
+            if(!Read_Only_File)
+            {
+                ImGui::PushFont(TextFont); 
                 if(ImGui::IsItemClicked(ImGuiMouseButton_Right)){
                     ShouldRename = false;
                     ShouldAddNewFolder = false;
@@ -438,6 +441,8 @@ void CodeEditor::RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
                     }
                     ImGui::EndDragDropTarget();
                 }
+            }
+            
 //======================================================================================================================================
 
                 if (opened)
@@ -506,7 +511,7 @@ void CodeEditor::RecursivelyDisplayDirectoryNode(DirectoryNode& parentNode)
                 selected_path = parentNode.FullPath;
             }    
             //right click
-            else if(ImGui::IsItemClicked(ImGuiMouseButton_Right) && !ImGui::IsItemToggledOpen()){
+            else if(ImGui::IsItemClicked(ImGuiMouseButton_Right) && !ImGui::IsItemToggledOpen() && !Read_Only_File){
                 ShouldRename = false;
                 selected_folder.clear();
                 selected_file = parentNode.FullPath;
@@ -696,7 +701,7 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
                 if(ImGui::BeginTabItem("\tWelcome\t")){
                     ImGui::PushStyleColor(ImGuiCol_ChildBg, bg_col.GetCol());
                     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 12.5);
-                    ImGui::BeginChild("\tWelcome\t", ImVec2(width, height), false, ImGuiWindowFlags_NoDecoration);
+                    ImGui::BeginChild("\tWelcome\t", ImVec2(width, height), false, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
                         WelcomPage();
                     ImGui::EndChild();
                     ImGui::PopStyleColor();
@@ -727,7 +732,7 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
             }
             else
             {
-                current_editor.clear();
+                current_editor_stat.clear();
                 selected_window_path.clear();
             }
             ImGui::EndTabBar();
@@ -844,8 +849,8 @@ void CodeEditor::DisplayContents(TextEditors::iterator it)
                     it->editor.GetTotalLines(),
                     it->editor.GetFileExtension().c_str(),
                     it->editor.GetFileName().c_str());
-        
-        current_editor = buffer;
+        current_editor_path = it->editor.GetPath();
+        current_editor_stat = buffer;
     }
 }
 
@@ -859,7 +864,11 @@ void CodeEditor::RenderTextEditors()
     {
         if(fs::exists(it->editor.GetPath()))
         {   
-            m_futures.push_back(std::async(std::launch::async, &CodeEditor::RenderTextEditorEx, this, it, i,  (found_selected_editor == it->editor.GetPath())?ImGuiTabItemFlags_SetSelected : 0, auto_save));
+            ImGuiTabItemFlags tab_flag = ImGuiTabItemFlags_None;
+            if(found_selected_editor == it->editor.GetPath())
+                tab_flag = ImGuiTabItemFlags_SetSelected;
+
+            m_futures.push_back(std::async(std::launch::async, &CodeEditor::RenderTextEditorEx, this, it, i, tab_flag, auto_save));
             ++i;
             ++it;
         }
@@ -1003,7 +1012,8 @@ void CodeEditor::ProjectWizard()
         ImGui::InputText("##Project Name", &Project_Name);
 
         ImGui::SetCursorPosX(190);
-        ImGui::RadioButton("Cpp", &programming_type, PT_CPP); ImGui::SameLine(); ImGui::RadioButton("Python", &programming_type, PT_PYTHON);
+        ImGui::RadioButton("Cpp", &programming_type, PT_CPP); ImGui::SameLine(); 
+        ImGui::RadioButton("Python", &programming_type, PT_PYTHON);
 
         ImGui::SetCursorPosX(97);
         ImGui::Text("Location:"); ImGui::SameLine();
@@ -1103,6 +1113,7 @@ void CodeEditor::LoadEditor(const std::string& file)
         } 
     }
 
+    editor.SetReadOnly(Read_Only_File);
     editor.SetLanguageDefinition(programming_lang);
 
     std::ifstream t(file.c_str());
@@ -1129,8 +1140,6 @@ void CodeEditor::LoadEditor(const std::string& file)
 
 void CodeEditor::GetRecentlyOpenedProjects()
 {
-    std::lock_guard<std::mutex> lock(RecentFile_Mutex);
-
     typedef std::string Root_Path;
     typedef std::tuple<ProgrammingType, std::set<std::string>> Prev_Files;
     std::map<Root_Path, Prev_Files> Application_data;
@@ -1196,11 +1205,45 @@ void CodeEditor::GetRecentlyOpenedProjects()
     }
 }
 
+void CodeEditor::GetSampleProjects(const std::string& sample_folder_path)
+{
+    ImGui::SetCursorPosY(120);
+    for(auto& p : std::filesystem::directory_iterator(sample_folder_path))
+    {   
+        if (!std::filesystem::is_directory(p.path()))
+            continue;
+
+        ImGui::PushFont(TextFont);
+        {
+            ImGui::Dummy(ImVec2(10, 0)); ImGui::SameLine();
+            {   
+                std::string file_name;
+                file_name = p.path().filename().u8string();
+                
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(39, 136, 255, 255));
+                ImGui::TextWrapped(file_name.c_str());
+                ImGui::PopStyleColor();
+
+                if(ImGui::IsItemClicked()){
+                    SelectedProjectPath = p.path();
+                    Read_Only_File = true;
+                }
+                
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
+                ImGui::SetItemTooltip(p.path().u8string().c_str());
+                ImGui::PopStyleColor();
+                ImGui::Dummy(ImVec2(0, 11));
+            }
+        }
+        ImGui::PopFont();
+    }
+}
+
 void CodeEditor::WelcomPage()
 {
     // Render Welcome Page
     float window_width = ImGui::GetWindowWidth();
-    ImGui::Columns(2, "mycols", false);
+    ImGui::Columns(3, "mycols", false);
         ImGui::SetCursorPos(ImVec2(60,80));
 
         ImGui::PushFont(FileTreeFont);
@@ -1236,6 +1279,16 @@ void CodeEditor::WelcomPage()
             ImGui::PopFont();
         
             GetRecentlyOpenedProjects();        
+        }
+
+        ImGui::NextColumn();
+        {
+            ImGui::SetCursorPosY(80);
+            ImGui::PushFont(FileTreeFont);
+                ImGui::Text("Sample Programs");
+            ImGui::PopFont();
+        
+            GetSampleProjects(EXAMPLE_FOLDER);      
         }
     ImGui::Columns();
 }
@@ -1477,6 +1530,8 @@ bool CodeEditor::IsRootKeyExist(const std::string& root, const std::string& path
 
 void CodeEditor::SaveUserData()
 {    
+    std::filesystem::current_path(prev_system_path);
+
     std::string file_path;
 #if defined(__WIN32) || defined(_WIN64)
     file_path = "ArmSim.json";
