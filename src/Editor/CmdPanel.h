@@ -9,6 +9,7 @@
 #include "../imgui/imgui_stdlib.h"
 #include "../ImageHandler/ImageHandler.h"
 #include "../StatusBar/imgui_addOns.hpp"
+
 #include "TextEditor.h"
 
 #include "../filesystem.hpp"

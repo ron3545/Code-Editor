@@ -21,7 +21,7 @@
 //  DEALINGS IN THE SOFTWARE.
 
 #ifndef WIN32
-#include "Hexe/System/Process.h"
+#include "../Hexe/System/Process.h"
 #include <poll.h>
 #include <pwd.h>
 #include <signal.h>

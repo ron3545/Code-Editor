@@ -38,4 +38,3 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     #OpenGL
     ${GLEW_LIBRARIES}
 )
-

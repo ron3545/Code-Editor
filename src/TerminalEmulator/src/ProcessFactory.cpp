@@ -1,6 +1,6 @@
-#include "Hexe/System/ProcessFactory.h"
-#include "Hexe/System/Process.h"
-#include "Hexe/Terminal/PseudoTerminal.h"
+#include "../Hexe/System/ProcessFactory.h"
+#include "../Hexe/System/Process.h"
+#include "../Hexe/Terminal/PseudoTerminal.h"
 
 using namespace Hexe::System;
 

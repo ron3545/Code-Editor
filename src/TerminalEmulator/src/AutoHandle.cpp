@@ -19,29 +19,52 @@
 //  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 //  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 //  DEALINGS IN THE SOFTWARE.
-#pragma once
 
-#include "Hexe/System/IPipe.h"
-#include <stdint.h>
+#include "../Hexe/AutoHandle.h"
+#ifndef WIN32
+#include <unistd.h>
+#endif
 
-namespace Hexe
+Hexe::AutoHandle::AutoHandle()
+    : m_hHandle(invalid_value())
 {
-    namespace Terminal
+}
+Hexe::AutoHandle::AutoHandle(AutoHandle &&other)
+    : m_hHandle(other.m_hHandle)
+{
+    other.m_hHandle = invalid_value();
+}
+Hexe::AutoHandle::~AutoHandle()
+{
+    Release();
+}
+
+#ifdef WIN32
+Hexe::AutoHandle::AutoHandle(HANDLE handle)
+    : m_hHandle(handle)
+{
+}
+
+void Hexe::AutoHandle::Release() const
+{
+    if (m_hHandle != INVALID_HANDLE_VALUE)
     {
-        class IPseudoTerminal : public Hexe::System::IPipe
-        {
-        public:
-            IPseudoTerminal() = default;
-            IPseudoTerminal(IPseudoTerminal &&) = delete;
-            IPseudoTerminal(const IPseudoTerminal &) = delete;
-            IPseudoTerminal &operator=(IPseudoTerminal &&) = delete;
-            IPseudoTerminal &operator=(const IPseudoTerminal &) = delete;
-            virtual ~IPseudoTerminal() = default;
+        CloseHandle(m_hHandle);
+        m_hHandle = INVALID_HANDLE_VALUE;
+    }
+}
+#else
+Hexe::AutoHandle::AutoHandle(int fd)
+    : m_hHandle(fd)
+{
+}
 
-            virtual int GetNumColumns() const = 0;
-            virtual int GetNumRows() const = 0;
+void Hexe::AutoHandle::Release() const
+{
+    if (m_hHandle != -1)
+    {
+        close(m_hHandle);
+    }
+}
 
-            virtual bool Resize(int columns, int rows) = 0;
-        };
-    } // namespace Terminal
-} // namespace Hexe
+#endif

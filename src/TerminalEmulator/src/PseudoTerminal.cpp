@@ -22,7 +22,7 @@
 
 #ifndef WIN32
 // Windows has its own source file
-#include "Hexe/Terminal/PseudoTerminal.h"
+#include "../Hexe/Terminal/PseudoTerminal.h"
 #include <cstdio>
 #include <poll.h>
 #include <pty.h>

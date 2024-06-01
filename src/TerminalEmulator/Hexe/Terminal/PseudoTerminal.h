@@ -21,7 +21,7 @@
 //  DEALINGS IN THE SOFTWARE.
 #pragma once
 
-#include "Hexe/AutoHandle.h"
+#include "../AutoHandle.h"
 #include "IPseudoTerminal.h"
 #include <memory>
 
