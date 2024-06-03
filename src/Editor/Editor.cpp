@@ -1,5 +1,6 @@
 #include "Editor.hpp"
 #include "../CodeEditor/AppLog.hpp"
+#include "../TerminalEmulator/Hexe/Terminal/ImGuiTerminal.h"
 
 namespace ArmSimPro
 {

@@ -14,13 +14,15 @@ add_subdirectory(Editor)
 add_subdirectory(FileDialog)
 add_subdirectory(Algorithms)
 add_subdirectory(ImageHandler)
+add_subdirectory(TerminalEmulator)
 
-find_package(glfw3 REQUIRED)
-# Use  cmake -S . -B build/ -DOpenGL_GL_PREFERENCE=GLVND
-# to skip legacy OpenGL library
-set(OpenGL_GL_PREFERENCE GLVND)
-#find_package(OpenGL REQUIRED)
+#find_package(glfw3 REQUIRED)
+find_package(SDL2 REQUIRED)
 find_package(GLEW REQUIRED)
+find_package(PNG)
+find_package(Freetype REQUIRED)
+
+include_directories(SDL2Test ${SDL2_INCLUDE_DIRS})
 
 add_executable(${PROJECT_NAME} RobLy_Core.cpp)
 
@@ -34,8 +36,14 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Algo
     Imagehandler
     
-    glfw 
+    #glfw 
     #OpenGL
+    TeminalEmulator
+
     ${GLEW_LIBRARIES}
+    ${FREETYPE_LIBRARIES}
+    ${SDL2_LIBRARIES}
 )
 
+
+include_directories (/usr/include/freetype2)

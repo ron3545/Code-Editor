@@ -1228,7 +1228,7 @@ namespace  ArmSimPro
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         if (!mIgnoreImGuiChild)
-            ImGui::BeginChild(aTitle.c_str(), aSize, aBorder, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NoMove);
+            ImGui::BeginChild(aTitle.c_str(), aSize, ImGuiChildFlags_Border, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NoMove);
 
             isChildWindowFocus = ImGui::IsWindowFocused();
         if (mHandleKeyboardInputs)

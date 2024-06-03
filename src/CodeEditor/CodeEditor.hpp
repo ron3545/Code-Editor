@@ -189,7 +189,10 @@ public:
 private:
     
     std::string Recursively_FindEntryPointFile_FromDirectory(const DirectoryNode& parentNode);
+    
     void VerifyCode();
+    void RunSimulator();
+
     void Recursively_List_All_CPP_Files(const DirectoryNode& parentNode, std::vector<std::string>& cpp_list);
     void FindBuildFolder();
 //=======================================Directory Tree===================================================================================================

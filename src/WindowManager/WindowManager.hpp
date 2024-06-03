@@ -20,9 +20,10 @@
     
 #else
     #include <GL/glew.h>
-    #include <GLFW/glfw3.h>
-
-    #include "../imgui/imgui_impl_glfw.h"
+    #include <SDL2/SDL.h>
+    
+    #include "../imgui/imgui.h"
+    #include "../imgui/imgui_impl_sdl2.h"
     #include "../imgui/imgui_impl_opengl3.h"
 #endif
 
@@ -77,9 +78,9 @@ static CodeEditor::TwoStateIconPallete two_states_images;
     void CleanupRenderTarget();
     bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width = nullptr, int* out_height = nullptr);
 #else
-    static GLFWwindow* window = nullptr;
+    static SDL_Window* window = nullptr;
+    static SDL_GLContext gl_context;
 
-    static void glfw_error_callback(int error, const char* description);
     bool LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_width = nullptr, int* out_height = nullptr);
 #endif
 

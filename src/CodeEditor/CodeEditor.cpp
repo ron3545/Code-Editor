@@ -100,7 +100,7 @@ bool CodeEditor::InitializeEditor(const TwoStateIconPallete& two_states_icon)
     {   
         
         auto compile_run_code = [&](){ auto future = std::async(std::launch::async, &CodeEditor::VerifyCode, this); };
-        auto simulate = [&](){ auto future = std::async(std::launch::async, [&](){ system("roslaunch arctos_config demo.launch"); }); };
+        auto simulate = [&](){ auto future = std::async(std::launch::async, &CodeEditor::RunSimulator, this); };
         
         horizontal_tool_bar->AppendTool("Compile and Run", two_states_icon[(int)TwoStateIconsIndex::Run], compile_run_code, true);   horizontal_tool_bar->SetPaddingBefore("Compile and Run", 50);
         horizontal_tool_bar->AppendTool("Simulate", two_states_icon[(int)TwoStateIconsIndex::Simulate], simulate, true);  horizontal_tool_bar->SetPaddingBefore("Simulate", 50);
@@ -263,6 +263,11 @@ void CodeEditor::VerifyCode()
     cmd_panel->BuildRunCode((programming_type == PT_CPP)? cpp_compile_command : python_compile_command, (programming_type == PT_CPP)? ArmSimPro::CmdPanel::PL_CPP : ArmSimPro::CmdPanel::PL_PYTHON);
 }
 
+void CodeEditor::RunSimulator()
+{
+    
+}
+
 std::string CodeEditor::Recursively_FindEntryPointFile_FromDirectory(const DirectoryNode& parentNode)
 {
     if (!parentNode.IsDirectory) 
@@ -324,7 +329,7 @@ CodeEditor::DirStatus CodeEditor::CreateProjectDirectory(const fs::path &path, c
     if(fs::create_directory(temp)){
         *out = temp;  
 
-        const std::string lib_path = _lib_folder_path + ((programming_type == PT_CPP)? "CPP" : "PYTHON");
+        const std::string lib_path = _lib_folder_path + ((programming_type == PT_CPP)? "CPP/includes" : "PYTHON/includes");
         FileHandler::GetInstance().CreateWholeProjectDirectory(temp, lib_path, (programming_type == PT_CPP)? FileHandler::Language_CPP : FileHandler::Lanugae_Python);
         return DirStatus_Created;
     }
@@ -633,7 +638,7 @@ void CodeEditor::ShowFileExplorer(float top_margin, float bottom_margin)
         ImGui::PushStyleColor(ImGuiCol_ChildBg, bg_col.GetCol());
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         
-        ImGui::BeginChild("Explorer", ImVec2(windowSize.x - splitter_thickness, windowSize.y - splitter_thickness), false,   ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoMove);
+        ImGui::BeginChild("Explorer", ImVec2(windowSize.x - splitter_thickness, windowSize.y - splitter_thickness), ImGuiChildFlags_None,   ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoMove);
             ImplementDirectoryNode();
         ImGui::EndChild();
         ImGui::PopStyleVar();
@@ -701,7 +706,7 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
                 if(ImGui::BeginTabItem("\tWelcome\t")){
                     ImGui::PushStyleColor(ImGuiCol_ChildBg, bg_col.GetCol());
                     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 12.5);
-                    ImGui::BeginChild("\tWelcome\t", ImVec2(width, height), false, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+                    ImGui::BeginChild("\tWelcome\t", ImVec2(width, height), ImGuiChildFlags_None, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
                         WelcomPage();
                     ImGui::EndChild();
                     ImGui::PopStyleColor();
@@ -1012,7 +1017,13 @@ void CodeEditor::ProjectWizard()
         ImGui::InputText("##Project Name", &Project_Name);
 
         ImGui::SetCursorPosX(190);
-        ImGui::RadioButton("Cpp", &programming_type, PT_CPP); ImGui::SameLine(); 
+
+        ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+            ImGui::RadioButton("Cpp", &programming_type, PT_CPP); ImGui::SameLine(); 
+        ImGui::PopItemFlag();
+        ImGui::PopStyleVar();
+
         ImGui::RadioButton("Python", &programming_type, PT_PYTHON);
 
         ImGui::SetCursorPosX(97);

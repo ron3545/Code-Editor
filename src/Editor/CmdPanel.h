@@ -45,7 +45,39 @@ namespace ArmSimPro
         void RunCPPProgram(const std::string command, const std::string& current_path);
 
         std::string ExecuteCommand(const std::string& command, const std::string& current_path, bool should_run_file = false);        
-    private:
+
+//=====================================================HEXETERMINAL=====================================================
+        struct TerminalOptions
+        {
+            std::string program;
+            ImVector<std::string> arguments;
+
+            std::string font;
+            std::string fontBold;
+            std::string fontItalic;
+            std::string fontBoldItalic;
+            std::string fontEmoji;
+
+            float fontSize;
+
+            int windowWidth;
+            int windowHeight;
+            bool fullscreen;
+        };
+
+        void LoadEmojiFont(const std::string &emojiFontPath, ImVector<unsigned char> &emojiBuffer);
+        void SetDefaultFont(TerminalOptions &options, const std::filesystem::path &basePath);
+
+        TerminalOptions options{};
+        ImVector<unsigned char> emojiFontData{};
+        ImFontConfig cfg{};
+
+        ImFont *fontDefault = nullptr;
+        ImFont *fontBold = nullptr;
+        ImFont *fontItalic = nullptr;
+        ImFont *fontBoldItalic = nullptr;
+//=============================================================================================================================
+       
         std::string _IDname;
 
         float _status_bar_thickness;

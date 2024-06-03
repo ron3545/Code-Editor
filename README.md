@@ -15,6 +15,10 @@ Install dependencies using [vcpkg - (VC++ Package Manager)](https://vcpkg.io/en/
 git clone --recursive https://github.com/ron3545/Code-Editor.git
 cd Code-Editor
 
+sudo apt-get install libftgl-dev
+sudo apt-get install libfreetype6-dev
+
+
 # Run the bootstrap script for vcpkg
 ./vcpkg/bootstrap-vcpkg.sh
 
@@ -23,6 +27,9 @@ sudo apt install libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev pkg-co
 
 # Install GLFW
 sudo apt install libglfw3-dev -y
+
+# Install sdl2
+sudo apt install libsdl2-dev libsdl2-2.0-0 -y;
 
 # Install OpenGL for WSL (if it complains during compilation)
 sudo apt install mesa-utils libglu1-mesa-dev freeglut3-dev mesa-common-dev
@@ -117,8 +124,10 @@ chmod +x run.sh
 ls # rin.sh should turn green 
 ./run.sh 
 ```
+
 4 tabs will open 
 you can manually open them by: 
+
 ```
 roslaunch arctos_config demo.launch
 rosrun moveo_moveit interface.py 

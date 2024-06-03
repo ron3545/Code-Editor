@@ -10,7 +10,8 @@ target_link_libraries(Window_Manager PRIVATE
     Algo
     Imagehandler
     
-    glfw 
+    #glfw 
     OpenGL
     ${GLEW_LIBRARIES}
+    ${SDL2_LIBRARIES}
 )

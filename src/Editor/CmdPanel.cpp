@@ -9,22 +9,150 @@
     #include <windows.h>
 #endif
 
+#define IMGUI_IMPL_OPENGL_LOADER_GLEW
 #include "CmdPanel.h"
 #include "../filesystem.hpp"
 #include "Async_Wrapper.hpp"
 
+#include "../TerminalEmulator/Hexe/Terminal/ImGuiTerminal.h"
+#include "../imgui/imgui_freetype_ex.h"
+
+#undef max
+#undef min
+
+#define BASEPATH "./Utils/Fonts/Terminal_Fonts"
 #define COMMAND_EXEC_FAILED "Failed to execute command"
 #define BUFFER_SIZE 128
+
+//======================================================HEXETERMINAL======================================================
+
+void ArmSimPro::CmdPanel::LoadEmojiFont(const std::string &emojiFontPath, ImVector<unsigned char> &emojiBuffer)
+{
+    if (std::filesystem::exists(emojiFontPath))
+    {
+        std::ifstream emojiFile(emojiFontPath.c_str(), std::ios::binary | std::ios::ate);
+        std::streamsize size = emojiFile.tellg();
+        emojiFile.seekg(0, std::ios::beg);
+
+        emojiBuffer.resize((int)size);
+        if (!emojiFile.read((char *)emojiBuffer.Data, size))
+        {
+            emojiBuffer.clear();
+        }
+    }
+}
+
+void ArmSimPro::CmdPanel::SetDefaultFont(TerminalOptions &options, const std::filesystem::path &basePath)
+{
+    using std::filesystem::exists;
+
+    auto fontDefault = basePath / "JetBrains Mono Regular Nerd Font Complete Mono.ttf";
+    auto fontBold = basePath / "JetBrains Mono Italic Nerd Font Complete Mono.ttf";
+    auto fontItalic = basePath / "JetBrains Mono Bold Nerd Font Complete Mono.ttf";
+    auto fontBoldItalic = basePath / "JetBrains Mono Bold Italic Nerd Font Complete Mono.ttf";
+    auto emojiFontPath = basePath / "NotoColorEmoji.ttf";
+
+    if (exists(fontDefault))
+    {
+        options.fontSize = 20;
+        options.font = fontDefault.string();
+        if (exists(fontBold))
+            options.fontBold = fontBold.string();
+        if (exists(fontItalic))
+            options.fontItalic = fontItalic.string();
+        if (exists(fontBoldItalic))
+            options.fontBoldItalic = fontBoldItalic.string();
+        if (exists(emojiFontPath))
+            options.fontEmoji = emojiFontPath.string();
+    }
+}
+
+//==========================================================================================================================================
+
 
 ArmSimPro::CmdPanel::CmdPanel(const char* IDname, float status_bar_thickness, const RGBA& bg_col, const RGBA& highlighter_col) 
     : _IDname(IDname), _status_bar_thickness(status_bar_thickness), _height(120),  _bg_col(bg_col), _highlighter_col(highlighter_col), programming_language(PL_CPP)
 {
     viewport = ImGui::GetMainViewport();
     viewportp = (ImGuiViewportP*)(void*)(viewport);
+
+//     ImGuiIO &io = ImGui::GetIO();
+    
+//     SetDefaultFont(options, BASEPATH);
+
+//     if (options.fontSize <= 0)
+//         options.fontSize = 13;
+
+//     if (options.program.empty())
+//     {
+// #ifdef WIN32
+//         options.program = "cmd.exe";
+// #else
+//         options.program = "/bin/sh";
+// #endif
+//     }
+
+// #ifdef WIN32
+//     SetEnvironmentVariableA("WSLENV", "TERM/u");
+//     SetEnvironmentVariableA("TERM", "st-256color");
+// #endif
+
+//     unsigned int rasterizerFlags = 0;
+
+//     const ImWchar powerlineRange[] = {0xe0a0, 0xe0d4, 0};
+//     const ImWchar deviconsRange[] = {0xe700, 0xe7c5, 0};
+//     const ImWchar setiuiRange[] = {0xe5fa, 0xe62b, 0};
+//     const ImWchar octiconsRange[] = {0xf400, 0xf67c, 0};
+//     const ImWchar fontlinuxRange[] = {0xf300, 0xf313, 0};
+
+//     // Add the symbol ranges found in Nerd Fonts
+//     ImVector<ImWchar> glyphRanges;
+//     ImFontGlyphRangesBuilder glyphRangeBuilder;
+//     glyphRangeBuilder.AddRanges(io.Fonts->GetGlyphRangesDefault());
+//     glyphRangeBuilder.AddRanges(powerlineRange);
+//     glyphRangeBuilder.AddRanges(deviconsRange);
+//     glyphRangeBuilder.AddRanges(setiuiRange);
+//     glyphRangeBuilder.AddRanges(octiconsRange);
+//     glyphRangeBuilder.AddRanges(fontlinuxRange);
+//     glyphRangeBuilder.BuildRanges(&glyphRanges);
+
+    
+//     cfg.SizePixels = options.fontSize;
+//     // cfg.OversampleH = 1;
+//     // cfg.OversampleV = 1;
+
+//      if (std::filesystem::exists(options.font))
+//     {
+//         rasterizerFlags = ImGuiFreeTypeEx::RasterizerFlags::ForceAutoHint;
+//         cfg.FontBuilderFlags = rasterizerFlags | ImGuiFreeTypeEx::EmbedEmoji;
+
+//         fontDefault = io.Fonts->AddFontFromFileTTF(options.font.c_str(), options.fontSize, &cfg, glyphRanges.Data);
+
+//         cfg.FontBuilderFlags = rasterizerFlags;
+
+//         if (std::filesystem::exists(options.fontBold))
+//             fontBold = io.Fonts->AddFontFromFileTTF(options.fontBold.c_str(), options.fontSize, &cfg);
+//         if (std::filesystem::exists(options.fontItalic))
+//             fontBold = io.Fonts->AddFontFromFileTTF(options.fontItalic.c_str(), options.fontSize, &cfg);
+//         if (std::filesystem::exists(options.fontBoldItalic))
+//             fontBold = io.Fonts->AddFontFromFileTTF(options.fontBoldItalic.c_str(), options.fontSize, &cfg);
+//     }
+//     else
+//     {
+//         cfg.FontBuilderFlags = ImGuiFreeTypeEx::EmbedEmoji;
+//         fontDefault = io.Fonts->AddFontDefault(&cfg);
+//     }
+
+    // ImVector<unsigned char> emojiFontData{};
+    // LoadEmojiFont(options.fontEmoji, emojiFontData);
+    // ImGuiFreeTypeEx::BuildFontAtlas(io.Fonts, ImGuiFreeTypeEx::ForceAutoHint, emojiFontData);
+
 }
 
 void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, float top_margin, float right_margin)
-{
+{   
+    
+
     //Set the status bar to the very bottom of the window
     ImRect available_rect = viewportp->GetBuildWorkRect();
     //ImVec2 contentRegionAvailable = ImGui::GetContentRegionAvail();
@@ -38,6 +166,9 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
         size[ImGuiAxis_Y] = _height;
         size[ImGuiAxis_X] = viewport->WorkSize.x - (right_margin - 0.5f);
     }
+
+    options.windowWidth = size[ImGuiAxis_X];
+    options.windowHeight = size[ImGuiAxis_Y];
 
     ImGui::SetNextWindowSize(size);
     ImGui::SetNextWindowPos(pos);
@@ -71,7 +202,7 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
 
             if(ImGui::BeginTabItem("\tOUTPUT\t", nullptr, flag))
             {   
-                if(ImGui::BeginChild("Output", ImVec2(0,0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar ))
+                if(ImGui::BeginChild("Output", ImVec2(0,0), ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar ))
                 {   
                     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + (ImGui::GetWindowWidth() - 30));
                     for(const auto message : Output_messages)
@@ -108,7 +239,7 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
             //For executing user defuned commands such as git
             if(ImGui::BeginTabItem("\tTERMINAL\t", nullptr, ImGuiTabItemFlags_NoCloseWithMiddleMouseButton | ImGuiTabItemFlags_NoReorder))
             {   
-                if(ImGui::BeginChild("Terminal", ImVec2(0,0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
+                if(ImGui::BeginChild("Terminal", ImVec2(0,0), ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar))
                 {      
                     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + (ImGui::GetWindowWidth() - 3));
                     for(const auto& cmd : ExecutedTerminalCMDs)

@@ -230,13 +230,8 @@ void FileHandler::CreateWholeProjectDirectory(const std::filesystem::path &proje
      *              main.cpp
     */
 
-    std::filesystem::path include_dir(project_dir / "includes");
-    std::filesystem::create_directory(include_dir);
     if(!library_directory.empty())
-    {
-        for(const auto & entry : std::filesystem::directory_iterator(library_directory))
-            std::filesystem::copy(entry.path(), include_dir, std::filesystem::copy_options::overwrite_existing);
-    }
+        std::filesystem::copy(library_directory, project_dir, std::filesystem::copy_options::recursive);
 
     if(std::filesystem::create_directory(project_dir/"src"))
     {

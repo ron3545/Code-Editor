@@ -37,6 +37,11 @@
             ],
             "Programming_language": "python",
             "root": "/home/ron/Documents/ArmSimPro Projects/python sample"
+        },
+        {
+            "Opened_Files": [],
+            "Programming_language": "python",
+            "root": "./Utils/Examples/Sample_Code"
         }
     ]
 }

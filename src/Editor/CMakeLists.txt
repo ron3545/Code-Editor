@@ -12,4 +12,5 @@ target_include_directories(Editor PRIVATE
 
 target_link_libraries(Editor
     Algo
+    TeminalEmulator
 )

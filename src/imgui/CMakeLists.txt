@@ -17,3 +17,20 @@ if (WIN32)
             d3d11.lib 
     )
 endif (WIN32)
+
+include_directories (
+    /usr/include/freetype2
+)
+
+target_include_directories(imgui PRIVATE 
+    ${FREETYPE_INCLUDE_DIRS}
+    ${SDL2_INCLUDE_DIRS}
+)
+
+target_link_libraries(imgui 
+    ${FREETYPE_LIBRARIES} 
+    ${SDL2_LIBRARIES}
+)
+
+
+
