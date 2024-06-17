@@ -100,10 +100,10 @@ bool CodeEditor::InitializeEditor(const TwoStateIconPallete& two_states_icon)
     {   
         
         auto compile_run_code = [&](){ auto future = std::async(std::launch::async, &CodeEditor::VerifyCode, this); };
-        auto simulate = [&](){ auto future = std::async(std::launch::async, [&](){ system("roslaunch arctos_config demo.launch"); }); };
+        // auto simulate = [&](){ auto future = std::async(std::launch::async, [&](){ system("roslaunch arctos_config demo.launch"); }); };
         
         horizontal_tool_bar->AppendTool("Compile and Run", two_states_icon[(int)TwoStateIconsIndex::Run], compile_run_code, true);   horizontal_tool_bar->SetPaddingBefore("Compile and Run", 50);
-        horizontal_tool_bar->AppendTool("Simulate", two_states_icon[(int)TwoStateIconsIndex::Simulate], simulate, true);  horizontal_tool_bar->SetPaddingBefore("Simulate", 50);
+        // horizontal_tool_bar->AppendTool("Simulate", two_states_icon[(int)TwoStateIconsIndex::Simulate], simulate, true);  horizontal_tool_bar->SetPaddingBefore("Simulate", 50);
     }
 
     status_bar = std::make_unique< ArmSimPro::StatusBar >("status", 30, horizontal_tool_bar->GetbackgroundColor());
@@ -674,7 +674,8 @@ void CodeEditor::EditorWithoutDockSpace(float main_menubar_height)
         pos[ImGuiAxis_Y]  = viewport->Pos[ImGuiAxis_Y] + menubar_toolbar_total_thickness + 8;
 
         size[ImGuiAxis_X] = viewport->WorkSize.x - (explorer_panel_width - 0.5);
-        size[ImGuiAxis_Y] = viewport->WorkSize.y - (cmd_panel->GetCurretnHeight() + status_bar->GetHeight() + 47);
+        //size[ImGuiAxis_Y] = viewport->WorkSize.y - (cmd_panel->GetCurretnHeight() + status_bar->GetHeight() + 47);
+        size[ImGuiAxis_Y] = viewport->WorkSize.y - (0.545 + status_bar->GetHeight() + 47);
     }
 
     ImGui::SetNextWindowPos(pos);
@@ -1113,7 +1114,7 @@ void CodeEditor::LoadEditor(const std::string& file)
         } 
     }
 
-    editor.SetReadOnly(Read_Only_File);
+    //editor.SetReadOnly(Read_Only_File);
     editor.SetLanguageDefinition(programming_lang);
 
     std::ifstream t(file.c_str());
@@ -1530,7 +1531,7 @@ bool CodeEditor::IsRootKeyExist(const std::string& root, const std::string& path
 
 void CodeEditor::SaveUserData()
 {    
-    std::filesystem::current_path(prev_system_path);
+    //std::filesystem::current_path(prev_system_path);
 
     std::string file_path;
 #if defined(__WIN32) || defined(_WIN64)

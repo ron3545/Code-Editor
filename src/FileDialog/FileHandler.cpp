@@ -222,35 +222,31 @@ void FileHandler::Paste(DirectoryNode& ParentNode, const std::filesystem::path& 
 
 void FileHandler::CreateWholeProjectDirectory(const std::filesystem::path &project_dir, const std::filesystem::path& library_directory, Language language)
 {
-    /** Project Directory layout:
+   /** Project Directory layout:
      *      Root Project Directory
      *          includes
      *              [for libraries]
-     *          src
-     *              main.cpp
+     *          
+     *           main file
     */
 
-    std::filesystem::path include_dir(project_dir / "includes");
-    std::filesystem::create_directory(include_dir);
-    if(!library_directory.empty())
-    {
-        for(const auto & entry : std::filesystem::directory_iterator(library_directory))
-            std::filesystem::copy(entry.path(), include_dir, std::filesystem::copy_options::overwrite_existing);
-    }
+    std::filesystem::copy(library_directory, project_dir, std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing);
 
-    if(std::filesystem::create_directory(project_dir/"src"))
-    {
-        switch(language)
-        {
-            case Language_CPP:
-                CreateMainCPPFile(project_dir/"src");
-                break;
+    // if(!library_directory.empty() && std::filesystem::create_directory(project_dir/"includes"))
+    //     std::filesystem::copy(library_directory, project_dir/"includes", std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing);
+
+    // {
+    //     switch(language)
+    //     {
+    //     case Language_CPP:
+    //         CreateMainCPPFile(project_dir);
+    //         break;
             
-            case Lanugae_Python:
-                CreateMainPythonFile(project_dir/"src");
-                break;
-        }
-    }
+    //     case Lanugae_Python:
+    //         CreateMainPythonFile(project_dir);
+    //         break; 
+    //     }
+    // }
 }
 
 void FileHandler::Rename(std::string& selected_path, const std::string& new_name)

@@ -20,7 +20,7 @@ find_package(glfw3 REQUIRED)
 # to skip legacy OpenGL library
 set(OpenGL_GL_PREFERENCE GLVND)
 #find_package(OpenGL REQUIRED)
-find_package(GLEW REQUIRED)
+find_package(GLEW REQUIRED) 
 
 add_executable(${PROJECT_NAME} RobLy_Core.cpp)
 

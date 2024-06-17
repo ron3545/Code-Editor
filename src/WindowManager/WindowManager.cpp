@@ -283,7 +283,7 @@ bool Initialize_Window()
     io.IniFilename = NULL;                                      // manage loading/saving by myself
     
     io.Fonts->AddFontDefault();
-    ImGui::StyleColorsDark();
+    ImGui::StyleColorsLight();
 
     ImGuiStyle& style = ImGui::GetStyle();
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
@@ -363,7 +363,7 @@ bool Initialize_Window()
     #endif
     
     // Create window with graphics context
-    window = glfwCreateWindow(1280, 720, "Dear ImGui GLFW+OpenGL3 example", NULL, NULL);
+    window = glfwCreateWindow(1280, 720, "RobLy", NULL, NULL);
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);

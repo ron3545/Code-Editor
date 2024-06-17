@@ -47,7 +47,7 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(5.0f, 5.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     ImGui::PushStyleColor(ImGuiCol_WindowBg, _bg_col.GetCol());
-    ImGui::Begin(_IDname.c_str(), NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollWithMouse);
+    ImGui::Begin(_IDname.c_str(), NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar);
     { 
         ImVec2 windowPos = ImGui::GetWindowPos();
         ImVec2 windowSize = ImGui::GetWindowSize();
@@ -106,9 +106,9 @@ void ArmSimPro::CmdPanel::SetPanel(const std::filesystem::path current_path, flo
             }
 
             //For executing user defuned commands such as git
-            if(ImGui::BeginTabItem("\tTERMINAL\t", nullptr, ImGuiTabItemFlags_NoCloseWithMiddleMouseButton | ImGuiTabItemFlags_NoReorder))
+            if(ImGui::BeginTabItem("\tTERMINAL\t", nullptr,  ImGuiWindowFlags_AlwaysVerticalScrollbar))
             {   
-                if(ImGui::BeginChild("Terminal", ImVec2(0,0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
+                if(ImGui::BeginChild("Terminal", ImVec2(0,0), false, ImGuiWindowFlags_None))
                 {      
                     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + (ImGui::GetWindowWidth() - 3));
                     for(const auto& cmd : ExecutedTerminalCMDs)

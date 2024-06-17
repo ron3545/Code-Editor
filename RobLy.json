@@ -26,7 +26,11 @@
         },
         {
             "Opened_Files": [
-                "./Utils/Examples/Sample-UI/jog.tap"
+                "./Utils/Examples/Sample-UI/jog.tap",
+                "./Utils/Examples/Sample-UI/scripts/transform.py",
+                "./Utils/Examples/Sample-UI/scripts/interface.py",
+                "./Utils/Examples/Sample-UI/ui.py",
+                "./Utils/Examples/Sample-UI/run.sh"
             ],
             "Programming_language": "python",
             "root": "./Utils/Examples/Sample-UI"
@@ -37,6 +41,28 @@
             ],
             "Programming_language": "python",
             "root": "/home/ron/Documents/ArmSimPro Projects/python sample"
+        },
+        {
+            "Opened_Files": [],
+            "Programming_language": "python",
+            "root": "/home/ron/Documents/ArmSimPro Projects/afweaw"
+        },
+        {
+            "Opened_Files": [],
+            "Programming_language": "python",
+            "root": "/home/ron/Documents/ArmSimPro Projects/a vds"
+        },
+        {
+            "Opened_Files": [],
+            "Programming_language": "python",
+            "root": "/home/ron/Documents/ArmSimPro Projects/gsagwe"
+        },
+        {
+            "Opened_Files": [
+                "/home/ron/Documents/ArmSimPro Projects/fick_dich/main.py"
+            ],
+            "Programming_language": "python",
+            "root": "/home/ron/Documents/ArmSimPro Projects/fick_dich"
         }
     ]
 }
