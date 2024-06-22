@@ -1,10 +1,15 @@
 # RobLy Code Editor
+It was part of my thesis project for BET-Mechatroonics
+
+Here is the photo:
 
 ![image](https://github.com/ron3545/Code-Editor/assets/86136180/59aaf4c9-39b4-4179-a4fe-1e414b56f94c)
 
-
-
 https://github.com/ron3545/Code-Editor/assets/86136180/9e385664-3607-48e1-a6a7-000e7c6b014b
+
+Here's the photo of a robot on which it intends to control:
+![image](https://github.com/ron3545/Code-Editor/assets/86136180/18a26145-5661-47d9-accc-3f2e69365d3a)
+
 
 ## Install and Configure
 ### On Linux/WSL2
