@@ -170,14 +170,6 @@ C  67.82
 
 In theory raw gear ratios should be multiplied to 0.5, so gear_ratios would be
 [6.75, 75, 75, 24, 33.91, 33.91]
-They are not tested! 
-
-# Change this according to your folder 
-```
-user_path = "/home/ee/arctosgui" 
-```
-
-you can also refer to [this video](https://www.youtube.com/watch?v=R71iVkeIhtA&t=141s) or [this github repo](https://github.com/ArctosRobotics/arctosgui/blob/main/README.md?plain=1).
 
 
 ## Overview
