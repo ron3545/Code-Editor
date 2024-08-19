@@ -1,6 +1,15 @@
 # RobLy Code Editor
 It was part of my thesis project for BET-Mechatroonics
 
+
+The purpose of this software is to automatically prepare all the needed script for programming the robot on either communicating with the Can-bus or by producing a gcode file for which the user can use to control the robot.
+
+The software consist of file directory tree allowing the user to navigate to all the scripts and programs. Additionally, it both supports Python and C++ programming language.
+
+The user can also interact with the terminals using the built in terminal emulator.
+
+The software will undergo a continuous development to ensure the end-user satisfaction.
+
 Here is the photo:
 
 ![image](https://github.com/ron3545/Code-Editor/assets/86136180/59aaf4c9-39b4-4179-a4fe-1e414b56f94c)
