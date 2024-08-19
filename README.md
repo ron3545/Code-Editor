@@ -8,6 +8,8 @@ The user can also interact with the terminals using the built in terminal emulat
 
 The software will undergo a continuous development to ensure the end-user satisfaction.
 
+For the mean time it only works on Ubuntu Linux 18.04 due to ROS1 specs but on the upcoming updates it'll be able to work on windows and hopefully find a way to controll the robot without using ROS.
+
 Here is the photo:
 
 ![image](https://github.com/ron3545/Code-Editor/assets/86136180/59aaf4c9-39b4-4179-a4fe-1e414b56f94c)
