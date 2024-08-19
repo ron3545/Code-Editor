@@ -1,6 +1,4 @@
 # RobLy Code Editor
-It was part of my thesis project for BET-Mechatroonics
-
 
 The purpose of this software is to automatically prepare all the needed script for programming the robot on either communicating with the Can-bus or by producing a gcode file for which the user can use to control the robot.
 
