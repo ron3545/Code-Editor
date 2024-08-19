@@ -83,7 +83,6 @@ source /opt/ros/melodic/setup.bash
 sudo apt-get install ros-melodic-moveit ros-melodic-moveit-visual-tools 
 
 sudo apt-get install git
-git clone https://github.com/ArctosRobotics/ROS
 
 cd ROS 
 catkin build 
@@ -105,9 +104,6 @@ sudo apt-get install python3-tk
 pip3 install sv-ttk
  ```
 ```
-git clone https://github.com/ArctosRobotics/arctosgui
-
-
 pip3 install ttkthemes
 
 sudo apt install python3-rosdep python3-rosinstall-generator python3-wstool build-essential 
@@ -125,7 +121,7 @@ sudo chmod a+rw /dev/ttyUSB1
 sudo rosdep init
 rosdep update
 
-cd arctosgui 
+cd samplegui 
 ls 
 chmod +x run.sh 
 ls # rin.sh should turn green 
@@ -134,7 +130,7 @@ ls # rin.sh should turn green
 4 tabs will open 
 you can manually open them by: 
 ```
-roslaunch arctos_config demo.launch
+roslaunch robly_config demo.launch
 rosrun moveo_moveit interface.py 
 rosrun moveo_moveit transform.py 
 python3 ui.py 
@@ -148,7 +144,7 @@ sudo apt install ros-melodic-rosbash
 Wait for the gui and rviz to show 
 
 In moveit rviz go File>Open config or Ctrl+O and open 
-arctosgui_config.rviz
+robly_config.rviz
 
 Connect the robot 
 
@@ -185,7 +181,7 @@ you can also refer to [this video](https://www.youtube.com/watch?v=R71iVkeIhtA&t
 
 
 ## Overview
-The ArmSimPro Code Editor is a versatile text editor designed specifically for programming microcontrollers that control a 6 Degrees of Freedom (6 DOF) robotic arm kit for kids. It provides a user-friendly interface for writing, editing, and debugging code related to the control and movement of the robotic arm.
+The Robly Code Editor is a versatile text editor designed specifically for programming microcontrollers that control a 6 Degrees of Freedom (6 DOF) robotic arm kit for kids. It provides a user-friendly interface for writing, editing, and debugging code related to the control and movement of the robotic arm.
 
 ## Note:
 I usually develop on my own, so there could be bad design patterns and bugs that you may see. If you see some bugs or bad design paterns don't hesitate to post an issue. 
